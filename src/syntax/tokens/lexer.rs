@@ -2,7 +2,7 @@ use std::{borrow::Cow, ops::Range, path::Path, sync::Arc};
 
 use logos::{Lexer, Logos};
 
-use super::{FileLocation, Span};
+use super::{FileLocation, FileRef, Span};
 
 #[derive(Logos, Debug, PartialEq)]
 #[logos(skip r"[ \t\r\n\f]+")] // new way to annotate whitespace
@@ -90,7 +90,7 @@ enum StringToken {
     Caret,
 
     #[token("!")]
-    Not,
+    Exclamation,
 
     #[token("~")]
     Tilde,
@@ -102,7 +102,7 @@ enum StringToken {
     Gt,
 
     #[token("=")]
-    Assign,
+    Eq,
 
     #[token("?")]
     Question,
@@ -129,8 +129,6 @@ pub enum TokenValue {
     String(Arc<str>),
     Integer(i64),
     Float(f64),
-    // LineComment,
-    // BlockComment,
     Parens(TokenList),
     Braces(TokenList),
     Brackets(TokenList),
@@ -144,11 +142,11 @@ pub enum TokenValue {
     Slash,
     Percent,
     Caret,
-    Not,
+    Exclamation,
     Tilde,
     Lt,
     Gt,
-    Assign,
+    Eq,
     Question,
     And,
     Or,
@@ -163,7 +161,7 @@ pub struct ParsedTokenTree {
 struct MetaLexer<'a, L: Logos<'a, Source = str>> {
     lexer: Lexer<'a, L>,
 
-    file: Arc<Path>,
+    file: Arc<FileRef>,
 
     // Tracking the current location
     line: u32,
@@ -174,17 +172,14 @@ struct MetaLexer<'a, L: Logos<'a, Source = str>> {
 }
 
 impl<'a, L: Logos<'a, Source = str>> MetaLexer<'a, L> {
-    fn new(lexer: Lexer<'a, L>, file: Arc<Path>) -> Self {
+    fn new(lexer: Lexer<'a, L>, file: Arc<FileRef>) -> Self {
         Self {
             lexer,
             file: file.clone(),
             line: 1,
             column: 1,
             index: 0,
-            span: Span {
-                file,
-                range: FileLocation::new(0, 0, 0)..FileLocation::new(0, 0, 0),
-            },
+            span: Span::new(file, FileLocation::new(0, 0, 0)..FileLocation::new(0, 0, 0)),
         }
     }
 
@@ -251,9 +246,11 @@ impl<'a, L: Logos<'a, Source = str>> MetaLexer<'a, L> {
     }
 }
 
-pub fn parse_file(data: &str, path: Arc<Path>) -> ParsedTokenTree {
-    let lexer = StringToken::lexer(data);
-    let mut meta_lexer = MetaLexer::new(lexer, path);
+pub fn parse_file(file: FileRef) -> ParsedTokenTree {
+    let file = Arc::new(file);
+
+    let lexer = StringToken::lexer(&file.contents);
+    let mut meta_lexer = MetaLexer::new(lexer, file.clone());
 
     parse_group(&mut meta_lexer, None)
 }
@@ -297,23 +294,32 @@ fn parse_group(lexer: &mut MetaLexer<StringToken>, end: Option<StringToken>) -> 
 
         let token = match token {
             StringToken::LParen => {
+                let start = lexer.span();
                 let group = parse_group(lexer, Some(StringToken::RParen));
+                errors.extend(group.errors);
+                let end = lexer.span();
                 WithSpan {
-                    span: group.tokens.span.clone(),
+                    span: start.join(&end),
                     value: TokenValue::Parens(group.tokens),
                 }
             }
             StringToken::LBrace => {
+                let start = lexer.span();
                 let group = parse_group(lexer, Some(StringToken::RBrace));
+                errors.extend(group.errors);
+                let end = lexer.span();
                 WithSpan {
-                    span: group.tokens.span.clone(),
+                    span: start.join(&end),
                     value: TokenValue::Braces(group.tokens),
                 }
             }
             StringToken::LBracket => {
+                let start = lexer.span();
                 let group = parse_group(lexer, Some(StringToken::RBracket));
+                errors.extend(group.errors);
+                let end = lexer.span();
                 WithSpan {
-                    span: group.tokens.span.clone(),
+                    span: start.join(&end),
                     value: TokenValue::Brackets(group.tokens),
                 }
             }
@@ -374,11 +380,11 @@ fn parse_group(lexer: &mut MetaLexer<StringToken>, end: Option<StringToken>) -> 
             StringToken::Slash => make_token(TokenValue::Slash),
             StringToken::Percent => make_token(TokenValue::Percent),
             StringToken::Caret => make_token(TokenValue::Caret),
-            StringToken::Not => make_token(TokenValue::Not),
+            StringToken::Exclamation => make_token(TokenValue::Exclamation),
             StringToken::Tilde => make_token(TokenValue::Tilde),
             StringToken::Lt => make_token(TokenValue::Lt),
             StringToken::Gt => make_token(TokenValue::Gt),
-            StringToken::Assign => make_token(TokenValue::Assign),
+            StringToken::Eq => make_token(TokenValue::Eq),
             StringToken::Question => make_token(TokenValue::Question),
             StringToken::And => make_token(TokenValue::And),
             StringToken::Or => make_token(TokenValue::Or),

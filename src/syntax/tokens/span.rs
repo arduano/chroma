@@ -1,4 +1,8 @@
-use std::{ops::Range, path::Path, sync::Arc};
+use std::{
+    ops::Range,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileLocation {
@@ -35,14 +39,34 @@ impl PartialOrd for FileLocation {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+pub struct FileRef {
+    pub path: PathBuf,
+    pub contents: String,
+}
+
+impl std::fmt::Debug for FileRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FileRef")
+            .field("path", &self.path)
+            .field("contents", &"[omitted]")
+            .finish()
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Span {
-    pub file: Arc<Path>,
+    pub file: Arc<FileRef>,
     pub range: Range<FileLocation>,
 }
 
+impl PartialEq for Span {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.file, &other.file) && self.range == other.range
+    }
+}
+
 impl Span {
-    pub fn new(file: Arc<Path>, range: Range<FileLocation>) -> Self {
+    pub fn new(file: Arc<FileRef>, range: Range<FileLocation>) -> Self {
         Self { file, range }
     }
 
