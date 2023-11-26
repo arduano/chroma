@@ -11,6 +11,20 @@ pub trait TokenItem {
     fn span(&self) -> Span;
 }
 
+pub trait DisplayStatic {
+    fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result;
+    fn displayed() -> StaticDisplay<Self> {
+        StaticDisplay(std::marker::PhantomData::<Self>)
+    }
+}
+
+pub struct StaticDisplay<T: DisplayStatic + ?Sized>(std::marker::PhantomData<T>);
+impl<T: DisplayStatic> std::fmt::Display for StaticDisplay<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        T::display(f)
+    }
+}
+
 pub trait TestTokenValue: TokenItem {
     fn test(reader: &TokenReader) -> bool;
 }
@@ -22,14 +36,14 @@ impl<T: ParseSimpleToken> TestTokenValue for T {
     }
 }
 
-pub trait ParseSimpleToken: TokenItem
+pub trait ParseSimpleToken: TokenItem + DisplayStatic
 where
     Self: Sized,
 {
     fn parse(reader: &mut TokenReader) -> Option<Self>;
 }
 
-pub trait ParseGroupToken: TokenItem
+pub trait ParseGroupToken: TokenItem + DisplayStatic
 where
     Self: Sized,
 {
@@ -40,6 +54,7 @@ where
 // = Advanced Token Types =
 // ========================
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct TIdent {
     span: Span,
     ident: Arc<str>,
@@ -74,6 +89,13 @@ impl ParseSimpleToken for TIdent {
     }
 }
 
+impl DisplayStatic for TIdent {
+    fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{ident}}")
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct TInteger {
     span: Span,
     value: i64,
@@ -108,6 +130,13 @@ impl ParseSimpleToken for TInteger {
     }
 }
 
+impl DisplayStatic for TInteger {
+    fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{integer}}")
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct TFloat {
     span: Span,
     value: f64,
@@ -142,6 +171,13 @@ impl ParseSimpleToken for TFloat {
     }
 }
 
+impl DisplayStatic for TFloat {
+    fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{float}}")
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct TString {
     span: Span,
     value: Arc<str>,
@@ -176,12 +212,19 @@ impl ParseSimpleToken for TString {
     }
 }
 
+impl DisplayStatic for TString {
+    fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{string}}")
+    }
+}
+
 // ==========
 // = Macros =
 // ==========
 
 macro_rules! simple_token {
     ($name:ident, $($token:ident),*) => {
+        #[derive(Debug, Clone, PartialEq)]
         pub struct $name(Span);
 
         impl $name {
@@ -224,11 +267,22 @@ macro_rules! simple_token {
                 Some(Self(span))
             }
         }
+
+        impl DisplayStatic for $name {
+            fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                let matches = Self::MATCHES;
+                for token in matches.iter() {
+                    write!(f, "{}", token)?;
+                }
+                Ok(())
+            }
+        }
     }
 }
 
 macro_rules! simple_ident_token {
     ($name:ident, $matches:expr) => {
+        #[derive(Debug, Clone, PartialEq)]
         pub struct $name(Span);
 
         impl $name {
@@ -258,11 +312,18 @@ macro_rules! simple_ident_token {
                 Some(Self(next_token.span.clone()))
             }
         }
+
+        impl DisplayStatic for $name {
+            fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", Self::MATCHES)
+            }
+        }
     };
 }
 
 macro_rules! group_token {
-    ($name:ident, $token:ident) => {
+    ($name:ident, $token:ident, $display: expr) => {
+        #[derive(Debug, Clone, PartialEq)]
         pub struct $name {
             span: Span,
         }
@@ -285,10 +346,16 @@ macro_rules! group_token {
                 let token = Self {
                     span: next_token.span.clone(),
                 };
-                let inner_reader = TokenReader::new(&g);
+                let inner_reader = TokenReader::new_grpuped(&g);
 
                 reader.skip(1);
                 Some((token, inner_reader))
+            }
+        }
+
+        impl DisplayStatic for $name {
+            fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", $display)
             }
         }
     };
@@ -299,9 +366,9 @@ macro_rules! group_token {
 // ================
 
 // Groups
-group_token!(TParens, Parens);
-group_token!(TBraces, Braces);
-group_token!(TBrackets, Brackets);
+group_token!(TParens, Parens, "parentheses");
+group_token!(TBraces, Braces, "braces");
+group_token!(TBrackets, Brackets, "brackets");
 
 // Arithmetic
 simple_token!(TPlus, Plus);
@@ -331,8 +398,18 @@ simple_token!(TGreaterThanEq, Gt, Eq);
 simple_token!(TEquals, Eq, Eq);
 simple_token!(TNotEquals, Exclamation, Eq);
 
+// Other
+simple_token!(TAssign, Eq);
+simple_token!(TColon, Colon);
+simple_token!(TSemicolon, Semi);
+simple_token!(TComma, Comma);
+simple_token!(TDot, Dot);
+simple_token!(TEpsilon, Dot, Dot, Dot);
+
 // Named tokens
 simple_ident_token!(TFn, "fn");
+simple_ident_token!(TType, "type");
+simple_ident_token!(TConst, "const");
 simple_ident_token!(TLet, "let");
 simple_ident_token!(TIf, "if");
 simple_ident_token!(TElse, "else");

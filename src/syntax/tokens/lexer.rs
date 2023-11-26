@@ -1,6 +1,8 @@
-use std::{borrow::Cow, ops::Range, path::Path, sync::Arc};
+use std::{backtrace, borrow::Cow, ops::Range, path::Path, sync::Arc};
 
 use logos::{Lexer, Logos};
+
+use crate::syntax::{CompilerError, WithSpan};
 
 use super::{FileLocation, FileRef, Span};
 
@@ -114,14 +116,14 @@ enum StringToken {
     Or,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct WithSpan<T> {
-    pub value: T,
-    pub span: Span,
-}
-
 pub type TokenList = WithSpan<Arc<[WithSpan<TokenValue>]>>;
-pub type LexerError = WithSpan<Cow<'static, str>>;
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct GroupedTokenList {
+    pub tokens: TokenList,
+    pub left_cap: Span,
+    pub right_cap: Span,
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenValue {
@@ -129,9 +131,9 @@ pub enum TokenValue {
     String(Arc<str>),
     Integer(i64),
     Float(f64),
-    Parens(TokenList),
-    Braces(TokenList),
-    Brackets(TokenList),
+    Parens(GroupedTokenList),
+    Braces(GroupedTokenList),
+    Brackets(GroupedTokenList),
     Semi,
     Colon,
     Comma,
@@ -152,10 +154,42 @@ pub enum TokenValue {
     Or,
 }
 
+impl std::fmt::Display for TokenValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TokenValue::Ident(s) => write!(f, "{}", s),
+            TokenValue::String(s) => write!(f, "\"{}\"", s),
+            TokenValue::Integer(i) => write!(f, "{}", i),
+            TokenValue::Float(fl) => write!(f, "{}", fl),
+            TokenValue::Parens(_) => write!(f, "(...)"),
+            TokenValue::Braces(_) => write!(f, "{{...}}"),
+            TokenValue::Brackets(_) => write!(f, "[...]"),
+            TokenValue::Semi => write!(f, ";"),
+            TokenValue::Colon => write!(f, ":"),
+            TokenValue::Comma => write!(f, ","),
+            TokenValue::Dot => write!(f, "."),
+            TokenValue::Plus => write!(f, "+"),
+            TokenValue::Minus => write!(f, "-"),
+            TokenValue::Star => write!(f, "*"),
+            TokenValue::Slash => write!(f, "/"),
+            TokenValue::Percent => write!(f, "%"),
+            TokenValue::Caret => write!(f, "^"),
+            TokenValue::Exclamation => write!(f, "!"),
+            TokenValue::Tilde => write!(f, "~"),
+            TokenValue::Lt => write!(f, "<"),
+            TokenValue::Gt => write!(f, ">"),
+            TokenValue::Eq => write!(f, "="),
+            TokenValue::Question => write!(f, "?"),
+            TokenValue::And => write!(f, "&"),
+            TokenValue::Or => write!(f, "|"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParsedTokenTree {
     pub tokens: TokenList,
-    pub errors: Vec<LexerError>,
+    pub errors: Vec<CompilerError>,
 }
 
 struct MetaLexer<'a, L: Logos<'a, Source = str>> {
@@ -238,8 +272,8 @@ impl<'a, L: Logos<'a, Source = str>> MetaLexer<'a, L> {
         self.lexer.slice()
     }
 
-    fn make_error(&self, message: impl Into<Cow<'static, str>>) -> LexerError {
-        LexerError {
+    fn make_error(&self, message: impl Into<Cow<'static, str>>) -> CompilerError {
+        CompilerError {
             value: message.into(),
             span: self.span(),
         }
@@ -272,12 +306,6 @@ fn parse_group(lexer: &mut MetaLexer<StringToken>, end: Option<StringToken>) -> 
             break;
         };
 
-        let span = lexer.span();
-        if span_start.is_none() {
-            span_start = Some(span.clone());
-        }
-        span_end = Some(span.clone());
-
         let token = match token {
             Ok(token) => token,
             Err(err) => {
@@ -290,6 +318,12 @@ fn parse_group(lexer: &mut MetaLexer<StringToken>, end: Option<StringToken>) -> 
             break;
         }
 
+        let span = lexer.span();
+        if span_start.is_none() {
+            span_start = Some(span.clone());
+        }
+        span_end = Some(span.clone());
+
         let make_token = move |token: TokenValue| WithSpan { value: token, span };
 
         let token = match token {
@@ -298,9 +332,16 @@ fn parse_group(lexer: &mut MetaLexer<StringToken>, end: Option<StringToken>) -> 
                 let group = parse_group(lexer, Some(StringToken::RParen));
                 errors.extend(group.errors);
                 let end = lexer.span();
+
+                span_end = Some(end.clone());
+
                 WithSpan {
                     span: start.join(&end),
-                    value: TokenValue::Parens(group.tokens),
+                    value: TokenValue::Parens(GroupedTokenList {
+                        tokens: group.tokens,
+                        left_cap: start,
+                        right_cap: end,
+                    }),
                 }
             }
             StringToken::LBrace => {
@@ -308,9 +349,16 @@ fn parse_group(lexer: &mut MetaLexer<StringToken>, end: Option<StringToken>) -> 
                 let group = parse_group(lexer, Some(StringToken::RBrace));
                 errors.extend(group.errors);
                 let end = lexer.span();
+
+                span_end = Some(end.clone());
+
                 WithSpan {
                     span: start.join(&end),
-                    value: TokenValue::Braces(group.tokens),
+                    value: TokenValue::Parens(GroupedTokenList {
+                        tokens: group.tokens,
+                        left_cap: start,
+                        right_cap: end,
+                    }),
                 }
             }
             StringToken::LBracket => {
@@ -318,9 +366,16 @@ fn parse_group(lexer: &mut MetaLexer<StringToken>, end: Option<StringToken>) -> 
                 let group = parse_group(lexer, Some(StringToken::RBracket));
                 errors.extend(group.errors);
                 let end = lexer.span();
+
+                span_end = Some(end.clone());
+
                 WithSpan {
                     span: start.join(&end),
-                    value: TokenValue::Brackets(group.tokens),
+                    value: TokenValue::Parens(GroupedTokenList {
+                        tokens: group.tokens,
+                        left_cap: start,
+                        right_cap: end,
+                    }),
                 }
             }
             StringToken::RParen | StringToken::RBrace | StringToken::RBracket => {

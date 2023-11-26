@@ -2,7 +2,10 @@ use std::{path::PathBuf, str::FromStr};
 
 use syntax::tokens::parse_file;
 
-use crate::syntax::tokens::FileRef;
+use crate::syntax::{
+    ast::{types::STypeFn, AstItem, AstParser},
+    tokens::{FileRef, TokenReader},
+};
 
 mod syntax;
 
@@ -16,5 +19,11 @@ fn main() {
     };
 
     let tokens = parse_file(file);
-    dbg!(tokens);
+
+    let mut ast_parser = AstParser::new(TokenReader::new(&tokens.tokens));
+
+    let ast = STypeFn::parse(&mut ast_parser);
+
+    dbg!(ast);
+    dbg!(ast_parser.errors());
 }

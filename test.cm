@@ -1,0 +1,20 @@
+// type Value = {
+//     [ident]: string;
+// };
+
+type fn AddField<Name: const ident, Val: foo Value> // {
+    // type result = {
+    //     ...Val,
+    //     [Name]: string,
+    // };
+    //
+    // result
+// }
+
+// type Foo = {
+//     foo: string;
+// };
+
+// type Data = AddField<bar, Foo>;
+
+// type assert Foo extends Value;

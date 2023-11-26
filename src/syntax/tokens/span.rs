@@ -53,7 +53,7 @@ impl std::fmt::Debug for FileRef {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Span {
     pub file: Arc<FileRef>,
     pub range: Range<FileLocation>,
@@ -80,5 +80,20 @@ impl Span {
             file: self.file.clone(),
             range: smaller_start..larger_end,
         }
+    }
+}
+
+impl std::fmt::Debug for Span {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let start = self.range.start;
+        let end = self.range.end;
+
+        let str = &self.file.contents[start.index as usize..end.index as usize];
+
+        write!(
+            f,
+            "{:?} {:?} {}:{}-{}:{}",
+            str, self.file.path, start.line, start.column, end.line, end.column
+        )
     }
 }

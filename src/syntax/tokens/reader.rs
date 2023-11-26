@@ -1,9 +1,15 @@
-use super::{ParseSimpleToken, ParsedTokenTree, TestTokenValue, TokenValue, WithSpan, TokenList};
+use crate::syntax::WithSpan;
+
+use super::{
+    GroupedTokenList, ParseGroupToken, ParseSimpleToken, ParsedTokenTree, Span, TestTokenValue,
+    TokenList, TokenValue,
+};
 
 #[derive(Clone)]
 pub struct TokenReader<'a> {
     tree: &'a TokenList,
     index: usize,
+    end_cap: Span,
 }
 
 impl<'a> TokenReader<'a> {
@@ -11,7 +17,29 @@ impl<'a> TokenReader<'a> {
         Self {
             tree: tokens,
             index: 0,
+
+            // Get the span of either the last token, or the whole token list (if empty).
+            end_cap: tokens
+                .value
+                .last()
+                .map(|t| &t.span)
+                .unwrap_or(&tokens.span)
+                .clone(),
         }
+    }
+
+    pub fn new_grpuped(tokens: &'a GroupedTokenList) -> Self {
+        Self {
+            tree: &tokens.tokens,
+            index: 0,
+            end_cap: tokens.right_cap.clone(),
+        }
+    }
+
+    pub fn span(&self) -> &Span {
+        self.next_token()
+            .map(|t| &t.span)
+            .unwrap_or_else(|| &self.end_cap)
     }
 
     pub fn peek<T: TestTokenValue>(&self) -> bool {
@@ -61,5 +89,13 @@ impl<'a> TokenReader<'a> {
     pub fn skip(&mut self, count: usize) {
         assert!(self.remaining_len() >= count);
         self.index += count;
+    }
+
+    pub fn parse_simple<T: ParseSimpleToken>(&mut self) -> Option<T> {
+        T::parse(self)
+    }
+
+    pub fn parse_grouped<T: ParseGroupToken>(&mut self) -> Option<(T, TokenReader<'a>)> {
+        T::parse(self)
     }
 }
