@@ -2,7 +2,7 @@
 //     [ident]: string;
 // };
 
-type fn AddField<Name: const ident, Val: foo Value> // {
+type fn AddField<Name: const ident, Val: Value> // {
     // type result = {
     //     ...Val,
     //     [Name]: string,

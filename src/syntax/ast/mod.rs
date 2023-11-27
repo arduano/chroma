@@ -108,11 +108,7 @@ impl<'a> AstParser<'a> {
 
         if reader.remaining_len() == 0 {
             self.errors.push(CompilerError::new(
-                format!(
-                    "Expected {}, call: {}",
-                    T::displayed(),
-                    std::backtrace::Backtrace::capture()
-                ),
+                format!("Expected {}", T::displayed(),),
                 reader.span().clone(),
             ));
         }
@@ -137,11 +133,7 @@ impl<'a> AstParser<'a> {
         }
 
         self.errors.push(CompilerError::new(
-            format!(
-                "Expected {}, call: {}",
-                T::displayed(),
-                std::backtrace::Backtrace::capture()
-            ),
+            format!("Expected {}", T::displayed(),),
             error_start.join(&error_end),
         ));
 
@@ -189,11 +181,7 @@ impl<'a> AstParser<'a> {
 
         if self.input.remaining_len() == 0 {
             self.errors.push(CompilerError::new(
-                format!(
-                    "Expected {}, call: {}",
-                    I::NAME,
-                    std::backtrace::Backtrace::capture()
-                ),
+                format!("Expected {}", I::NAME,),
                 self.input.span().clone(),
             ));
         }
@@ -232,11 +220,7 @@ impl<'a> AstParser<'a> {
         }
 
         self.errors.push(CompilerError::new(
-            format!(
-                "Expected {}, call: {}",
-                T::displayed(),
-                std::backtrace::Backtrace::capture()
-            ),
+            format!("Expected {}", T::displayed(),),
             error_start.join(&error_end),
         ));
 
@@ -317,11 +301,7 @@ impl<'a> AstParser<'a> {
                 }
 
                 self.errors.push(CompilerError::new(
-                    format!(
-                        "Expected {}, call: {}",
-                        T::NAME,
-                        std::backtrace::Backtrace::capture()
-                    ),
+                    format!("Expected {}", T::NAME,),
                     error_start.join(&error_end),
                 ));
 

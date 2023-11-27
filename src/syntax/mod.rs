@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{backtrace::Backtrace, borrow::Cow, sync::Arc};
 
 use self::tokens::Span;
 
@@ -20,4 +20,19 @@ impl<T> WithSpan<T> {
     }
 }
 
-pub type CompilerError = WithSpan<Cow<'static, str>>;
+#[derive(Debug, Clone)]
+pub struct CompilerError {
+    message: Cow<'static, str>,
+    span: Span,
+    backtrace: Arc<Backtrace>,
+}
+
+impl CompilerError {
+    pub fn new(message: impl Into<Cow<'static, str>>, span: Span) -> Self {
+        Self {
+            message: message.into(),
+            backtrace: Arc::new(Backtrace::capture()),
+            span,
+        }
+    }
+}

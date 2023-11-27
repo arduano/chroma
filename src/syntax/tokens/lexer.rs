@@ -186,7 +186,7 @@ impl std::fmt::Display for TokenValue {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct ParsedTokenTree {
     pub tokens: TokenList,
     pub errors: Vec<CompilerError>,
@@ -273,10 +273,7 @@ impl<'a, L: Logos<'a, Source = str>> MetaLexer<'a, L> {
     }
 
     fn make_error(&self, message: impl Into<Cow<'static, str>>) -> CompilerError {
-        CompilerError {
-            value: message.into(),
-            span: self.span(),
-        }
+        CompilerError::new(message, self.span())
     }
 }
 
