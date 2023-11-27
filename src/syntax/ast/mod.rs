@@ -1,5 +1,5 @@
 use super::{
-    tokens::{ParseGroupToken, ParseSimpleToken, Span, TokenReader},
+    tokens::{ParseGroupToken, ParseSimpleToken, TokenReader},
     CompilerError,
 };
 
@@ -161,7 +161,7 @@ impl<'a> AstParser<'a> {
 
             self.input = outer_changed_reader;
             match result {
-                Attempted::Ok(item) => ParseResult::Ok(token),
+                Attempted::Ok(_item) => ParseResult::Ok(token),
                 Attempted::Err(ParseErrorError) => ParseResult::Err(ParseError::Error),
             }
         } else {

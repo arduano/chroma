@@ -1,8 +1,4 @@
-use std::{
-    ops::Range,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{ops::Range, path::PathBuf, sync::Arc};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileLocation {

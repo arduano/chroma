@@ -1,4 +1,4 @@
-use std::{backtrace, borrow::Cow, ops::Range, path::Path, sync::Arc};
+use std::{borrow::Cow, sync::Arc};
 
 use logos::{Lexer, Logos};
 

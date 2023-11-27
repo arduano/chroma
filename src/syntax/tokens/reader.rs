@@ -1,8 +1,8 @@
 use crate::syntax::WithSpan;
 
 use super::{
-    GroupedTokenList, ParseGroupToken, ParseSimpleToken, ParsedTokenTree, Span, TestTokenValue,
-    TokenList, TokenValue,
+    GroupedTokenList, ParseGroupToken, ParseSimpleToken, Span, TestTokenValue, TokenList,
+    TokenValue,
 };
 
 #[derive(Clone)]
