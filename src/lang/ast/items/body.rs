@@ -1,4 +1,4 @@
-use crate::syntax::{ast::helpers::*, tokens::*, CompilerError};
+use crate::lang::{ast::helpers::*, tokens::*, CompilerError};
 
 use super::*;
 

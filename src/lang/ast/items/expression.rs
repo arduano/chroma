@@ -1,4 +1,4 @@
-use crate::syntax::{ast::helpers::*, tokens::*, CompilerError};
+use crate::lang::{ast::helpers::*, tokens::*, CompilerError};
 
 trait ExpressionBottomUpParse {
     /// Parse an expression from the bottom up. Returns Ok if the

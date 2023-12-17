@@ -1,4 +1,4 @@
-use crate::syntax::WithSpan;
+use crate::lang::WithSpan;
 
 use super::{GroupedTokenList, Span, TestTokenValue, TokenList, TokenValue};
 

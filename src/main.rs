@@ -1,8 +1,8 @@
 use std::{path::PathBuf, str::FromStr};
 
-use syntax::tokens::parse_file;
+use lang::tokens::parse_file;
 
-use crate::syntax::{
+use crate::lang::{
     ast::{
         helpers::{AstItem, AstParser, ParsingPhaseEnv},
         items::STypeFn,
@@ -10,7 +10,7 @@ use crate::syntax::{
     tokens::{FileRef, TokenReader},
 };
 
-mod syntax;
+mod lang;
 
 fn main() {
     let test_file_path = PathBuf::from_str("./test.cm").unwrap();

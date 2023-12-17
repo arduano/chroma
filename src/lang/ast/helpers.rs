@@ -1,4 +1,4 @@
-use crate::syntax::{
+use crate::lang::{
     tokens::{ParseGroupToken, ParseSimpleToken, Span, TokenItem, TokenReader},
     CompilerError,
 };
@@ -186,7 +186,7 @@ impl ErrorRecoveryMode {
     fn should_stop(&self, reader: &mut TokenReader, passed: usize) -> bool {
         match self {
             ErrorRecoveryMode::UntilEnd => reader.is_ended(),
-            ErrorRecoveryMode::UntilN(n) => passed <= *n,
+            ErrorRecoveryMode::UntilN(n) => passed > *n,
             ErrorRecoveryMode::UntilToken(matcher) => {
                 let mut reader_clone = reader.clone();
                 let matches = matcher.matches(&mut reader_clone);
@@ -315,7 +315,9 @@ impl<'a> AstParser<'a> {
 
         let error_start = self.input.span();
 
-        reader.skip(1);
+        if !reader.is_ended() {
+            reader.skip(1);
+        }
 
         let mut i = 1;
         while !reader.is_ended() && !reader.peek::<T>() {
@@ -397,14 +399,16 @@ impl<'a> AstParser<'a> {
 
         if self.input.is_ended() {
             self.errors.push(CompilerError::new(
-                format!("Expected {}", I::NAME,),
+                format!("Expected {}", I::NAME),
                 self.input.span().clone(),
             ));
         }
 
         let error_start = self.input.span().clone();
 
-        self.input.skip(1);
+        if !self.input.is_ended() {
+            self.input.skip(1);
+        }
 
         let mut found_item = None;
 
@@ -439,7 +443,7 @@ impl<'a> AstParser<'a> {
             error_start.join(&error_end)
         );
         self.errors.push(CompilerError::new(
-            format!("Expected {}", T::displayed(),),
+            format!("Expected {}", T::displayed()),
             error_start.join(&error_end),
         ));
 
@@ -507,7 +511,9 @@ impl<'a> AstParser<'a> {
                 let error_start = self.input.span().clone();
 
                 let prev_reader = self.input.clone();
-                self.input.skip(1);
+                if !self.input.is_ended() {
+                    self.input.skip(1);
+                }
 
                 let mut error = false;
                 let mut item = None;

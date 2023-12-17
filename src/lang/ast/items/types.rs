@@ -1,7 +1,7 @@
 mod type_fn_sig;
 pub use type_fn_sig::*;
 
-use crate::syntax::{ast::helpers::*, tokens::*};
+use crate::lang::{ast::helpers::*, tokens::*};
 
 use super::*;
 
