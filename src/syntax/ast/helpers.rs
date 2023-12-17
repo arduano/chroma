@@ -298,7 +298,7 @@ impl<'a> AstParser<'a> {
 
     pub fn parse_required_token<T: ParseSimpleToken>(&mut self) -> Attempted<T> {
         let mut reader = self.input.clone();
-        let token = reader.parse_simple::<T>();
+        let token = T::parse(&mut reader);
 
         if let Some(token) = token {
             self.input = reader;
@@ -340,7 +340,7 @@ impl<'a> AstParser<'a> {
             error_start.join(&error_end),
         ));
 
-        let token = reader.parse_simple::<T>();
+        let token = T::parse(&mut reader);
 
         if let Some(token) = token {
             // Found value, update reader

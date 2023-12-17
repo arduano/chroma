@@ -1,9 +1,6 @@
 use crate::syntax::WithSpan;
 
-use super::{
-    GroupedTokenList, ParseGroupToken, ParseSimpleToken, Span, TestTokenValue, TokenList,
-    TokenValue,
-};
+use super::{GroupedTokenList, Span, TestTokenValue, TokenList, TokenValue};
 
 #[derive(Clone)]
 pub struct TokenReader<'a> {
@@ -60,15 +57,6 @@ impl<'a> TokenReader<'a> {
         T::test(self)
     }
 
-    pub fn peek_n<T: TestTokenValue>(&self, ahead: usize) -> bool {
-        if self.remaining_len() <= ahead {
-            return false;
-        }
-        let mut other = self.clone();
-        other.skip(ahead);
-        T::test(&other)
-    }
-
     pub fn remaining_tokens_slice(&self) -> &'a [WithSpan<TokenValue>] {
         &self.tree.value[self.index..]
     }
@@ -94,14 +82,6 @@ impl<'a> TokenReader<'a> {
     pub fn skip(&mut self, count: usize) {
         assert!(self.remaining_len() >= count);
         self.index += count;
-    }
-
-    pub fn parse_simple<T: ParseSimpleToken>(&mut self) -> Option<T> {
-        T::parse(self)
-    }
-
-    pub fn parse_grouped<T: ParseGroupToken>(&mut self) -> Option<(T, TokenReader<'a>)> {
-        T::parse(self)
     }
 
     pub fn trim_empty(&mut self) {
