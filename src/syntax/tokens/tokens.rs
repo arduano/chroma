@@ -55,6 +55,44 @@ where
     fn parse<'a>(reader: &mut TokenReader<'a>) -> Option<(Self, TokenReader<'a>)>;
 }
 
+// ================
+// = Special/Meta =
+// ================
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TBlockLineEndSearch {
+    span: Span,
+}
+
+impl TokenItem for TBlockLineEndSearch {
+    const TOKEN_LEN: usize = 1;
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
+
+impl ParseSimpleToken for TBlockLineEndSearch {
+    fn parse(reader: &mut TokenReader) -> Option<Self> {
+        // Don't trim, as trimming will skip newlines.
+        let next_token = reader.next_token()?;
+
+        if next_token.value == TokenValue::Newline || next_token.value == TokenValue::Semi {
+            reader.skip(1);
+            return Some(Self {
+                span: next_token.span.clone(),
+            });
+        };
+
+        None
+    }
+}
+
+impl DisplayStatic for TBlockLineEndSearch {
+    fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, ";")
+    }
+}
+
 // ========================
 // = Advanced Token Types =
 // ========================

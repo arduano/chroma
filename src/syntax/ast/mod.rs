@@ -1,5 +1,5 @@
 use super::{
-    tokens::{ParseGroupToken, ParseSimpleToken, TokenItem, TokenReader},
+    tokens::{ParseGroupToken, ParseSimpleToken, Span, TokenItem, TokenReader},
     CompilerError,
 };
 
@@ -250,6 +250,10 @@ impl<'a> AstParser<'a> {
         self.errors.errors()
     }
 
+    pub fn add_error(&mut self, error: CompilerError) {
+        self.errors.push(error);
+    }
+
     fn set_error_recovery_mode(&mut self, lookahead: ErrorRecoveryMode) {
         self.curr_frame.current_error_recovery_mode = lookahead;
     }
@@ -274,6 +278,25 @@ impl<'a> AstParser<'a> {
             debug!("Skipped optional token: {}", T::displayed());
             Err(ParseErrorNoMatch)
         }
+    }
+
+    fn search_until_token<T: ParseSimpleToken>(&mut self) -> Span {
+        let error_start = self.input.span().clone();
+        let mut error_end = error_start.clone();
+
+        let mut i = 1;
+        while !self.input.is_ended() && !self.input.peek::<T>() {
+            let lookahead = &self.curr_frame.current_error_recovery_mode;
+            if lookahead.should_stop(&mut self.input, i) {
+                break;
+            }
+
+            self.input.skip(1);
+            error_end = self.input.span().clone();
+            i += 1;
+        }
+
+        error_start.join(&error_end)
     }
 
     fn parse_required_token<T: ParseSimpleToken>(&mut self) -> Attempted<T> {

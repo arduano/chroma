@@ -35,6 +35,14 @@ impl AstItem for SBody {
 
         while !reader.is_empty() {
             let statement = reader.parse_required(env.outside_nested_expr());
+
+            if let Ok(statement) = &statement {
+                if !matches!(&statement, SExpression::TerminatedExpr(_)) && !reader.is_empty() {
+                    let span = reader.search_until_token::<TBlockLineEndSearch>();
+                    reader.add_error(CompilerError::new("Expected ;", span));
+                }
+            }
+
             statements.push(statement);
         }
 

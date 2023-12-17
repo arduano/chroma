@@ -13,8 +13,11 @@ use super::{FileLocation, FileRef, Span};
 #[logos(subpattern binary = r"[0-1][_0-1]*")]
 #[logos(subpattern exp = r"[eE][+-]?[0-9][_0-9]*")]
 enum StringToken {
-    #[regex(r"[ \t\r\n\f]+")]
+    #[regex(r"[^\S\r\n\f]+")]
     Whitespace,
+
+    #[regex(r"[\r\n\f]+")]
+    Newline,
 
     #[regex(r"[\p{XID_Start}_]\p{XID_Continue}*")]
     Ident,
@@ -135,6 +138,8 @@ pub enum TokenValue {
     Braces(GroupedTokenList),
     Brackets(GroupedTokenList),
     Whitespace,
+    Newline,
+    Comment,
     Semi,
     Colon,
     Comma,
@@ -150,7 +155,6 @@ pub enum TokenValue {
     Lt,
     Gt,
     Eq,
-
     Question,
     And,
     Or,
@@ -167,6 +171,8 @@ impl std::fmt::Display for TokenValue {
             TokenValue::Braces(_) => write!(f, "{{...}}"),
             TokenValue::Brackets(_) => write!(f, "[...]"),
             TokenValue::Whitespace => write!(f, "{{whitespace}}"),
+            TokenValue::Newline => write!(f, "{{newline}}"),
+            TokenValue::Comment => write!(f, "{{comment}}"),
             TokenValue::Semi => write!(f, ";"),
             TokenValue::Colon => write!(f, ":"),
             TokenValue::Comma => write!(f, ","),
@@ -382,9 +388,6 @@ fn parse_group(lexer: &mut MetaLexer<StringToken>, end: Option<StringToken>) -> 
                 errors.push(lexer.make_error("Unexpected closing bracket"));
                 break;
             }
-            StringToken::LineComment | StringToken::BlockComment => {
-                continue;
-            }
             StringToken::Ident => make_token(TokenValue::Ident(lexer.slice().into())),
             StringToken::String => {
                 let mut string = lexer.slice();
@@ -431,6 +434,9 @@ fn parse_group(lexer: &mut MetaLexer<StringToken>, end: Option<StringToken>) -> 
             }
 
             StringToken::Whitespace => make_token(TokenValue::Whitespace),
+            StringToken::Newline => make_token(TokenValue::Newline),
+            StringToken::LineComment => make_token(TokenValue::Comment),
+            StringToken::BlockComment => make_token(TokenValue::Comment),
             StringToken::Plus => make_token(TokenValue::Plus),
             StringToken::Minus => make_token(TokenValue::Minus),
             StringToken::Star => make_token(TokenValue::Star),

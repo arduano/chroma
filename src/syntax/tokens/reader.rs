@@ -110,7 +110,19 @@ impl<'a> TokenReader<'a> {
     }
 
     pub fn trim_empty(&mut self) {
-        while self.next_token().map(|s| &s.value) == Some(&TokenValue::Whitespace) {
+        loop {
+            let next = self.next_token().map(|s| &s.value);
+            let Some(next) = next else {
+                break;
+            };
+
+            if next != &TokenValue::Whitespace
+                && next != &TokenValue::Newline
+                && next != &TokenValue::Comment
+            {
+                break;
+            }
+
             self.skip(1);
         }
     }
