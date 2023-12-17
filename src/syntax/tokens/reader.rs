@@ -9,6 +9,7 @@ use super::{
 pub struct TokenReader<'a> {
     tree: &'a TokenList,
     index: usize,
+    start_cap: Span,
     end_cap: Span,
 }
 
@@ -19,6 +20,12 @@ impl<'a> TokenReader<'a> {
             index: 0,
 
             // Get the span of either the last token, or the whole token list (if empty).
+            start_cap: tokens
+                .value
+                .first()
+                .map(|t| &t.span)
+                .unwrap_or(&tokens.span)
+                .clone(),
             end_cap: tokens
                 .value
                 .last()
@@ -32,6 +39,7 @@ impl<'a> TokenReader<'a> {
         Self {
             tree: &tokens.tokens,
             index: 0,
+            start_cap: tokens.left_cap.clone(),
             end_cap: tokens.right_cap.clone(),
         }
     }
@@ -40,6 +48,12 @@ impl<'a> TokenReader<'a> {
         self.next_token()
             .map(|t| &t.span)
             .unwrap_or_else(|| &self.end_cap)
+    }
+
+    pub fn prev_span(&self) -> &Span {
+        self.prev_token()
+            .map(|t| &t.span)
+            .unwrap_or_else(|| &self.start_cap)
     }
 
     pub fn peek<T: TestTokenValue>(&self) -> bool {

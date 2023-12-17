@@ -3,10 +3,10 @@
 // };
 
 type fn AddField<Name: const ident, Val: Value> {
-    type result = foo
-    type result2 = foo;
-
-    result
+    type result = {
+        ...Val,
+        [Name]: string,
+    };
 }
 
 // type Foo = {

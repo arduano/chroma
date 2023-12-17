@@ -93,6 +93,40 @@ impl DisplayStatic for TBlockLineEndSearch {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct TDataLineEndSearch {
+    span: Span,
+}
+
+impl TokenItem for TDataLineEndSearch {
+    const TOKEN_LEN: usize = 1;
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
+
+impl ParseSimpleToken for TDataLineEndSearch {
+    fn parse(reader: &mut TokenReader) -> Option<Self> {
+        // Don't trim, as trimming will skip newlines.
+        let next_token = reader.next_token()?;
+
+        if next_token.value == TokenValue::Newline || next_token.value == TokenValue::Comma {
+            reader.skip(1);
+            return Some(Self {
+                span: next_token.span.clone(),
+            });
+        };
+
+        None
+    }
+}
+
+impl DisplayStatic for TDataLineEndSearch {
+    fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, ",")
+    }
+}
+
 // ========================
 // = Advanced Token Types =
 // ========================

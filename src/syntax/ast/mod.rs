@@ -317,7 +317,6 @@ impl<'a> AstParser<'a> {
         }
 
         let error_start = self.input.span();
-        let mut error_end = error_start.clone();
 
         reader.skip(1);
 
@@ -329,10 +328,16 @@ impl<'a> AstParser<'a> {
             }
 
             reader.skip(1);
-            error_end = reader.span().clone();
             i += 1;
         }
 
+        let error_end = self.input.prev_span();
+
+        debug!(
+            "Error parsing required: {} span {:?}",
+            T::displayed(),
+            error_start.join(&error_end)
+        );
         self.errors.push(CompilerError::new(
             format!("Expected {}", T::displayed(),),
             error_start.join(&error_end),
@@ -366,8 +371,6 @@ impl<'a> AstParser<'a> {
 
         let token = T::parse(&mut outer_changed_reader);
         if let Some((token, inner_reader)) = token {
-            let outer_changed_reader = self.input.clone();
-
             self.input = inner_reader;
 
             let result = self.parse_required::<I>(env);
@@ -403,7 +406,6 @@ impl<'a> AstParser<'a> {
         }
 
         let error_start = self.input.span().clone();
-        let mut error_end = error_start.clone();
 
         self.input.skip(1);
 
@@ -427,12 +429,18 @@ impl<'a> AstParser<'a> {
                 }
                 Err(ParseError::NoMatch) => {
                     self.input.skip(1);
-                    error_end = self.input.span().clone();
                     i += 1;
                 }
             }
         }
 
+        let error_end = self.input.prev_span();
+
+        debug!(
+            "Error parsing required: {} span {:?}",
+            T::displayed(),
+            error_start.join(&error_end)
+        );
         self.errors.push(CompilerError::new(
             format!("Expected {}", T::displayed(),),
             error_start.join(&error_end),
@@ -500,7 +508,6 @@ impl<'a> AstParser<'a> {
             }
             ParseResult::Err(ParseError::NoMatch) => {
                 let error_start = self.input.span().clone();
-                let mut error_end = error_start.clone();
 
                 let prev_reader = self.input.clone();
                 self.input.skip(1);
@@ -526,13 +533,19 @@ impl<'a> AstParser<'a> {
                             break;
                         }
                         ParseResult::Err(ParseError::NoMatch) => {
-                            error_end = self.input.span().clone();
                             self.input.skip(1);
                             i += 1;
                         }
                     }
                 }
 
+                let error_end = self.input.prev_span();
+
+                debug!(
+                    "Error parsing required: {} span {:?}",
+                    T::NAME,
+                    error_start.join(&error_end)
+                );
                 self.errors.push(CompilerError::new(
                     format!("Expected {}", T::NAME,),
                     error_start.join(&error_end),
