@@ -7,7 +7,6 @@ use super::{Span, TokenReader, TokenValue};
 // ==========
 
 pub trait TokenItem {
-    const TOKEN_LEN: usize;
     fn span(&self) -> Span;
 }
 
@@ -65,7 +64,6 @@ pub struct TBlockLineEndSearch {
 }
 
 impl TokenItem for TBlockLineEndSearch {
-    const TOKEN_LEN: usize = 1;
     fn span(&self) -> Span {
         self.span.clone()
     }
@@ -99,7 +97,6 @@ pub struct TDataLineEndSearch {
 }
 
 impl TokenItem for TDataLineEndSearch {
-    const TOKEN_LEN: usize = 1;
     fn span(&self) -> Span {
         self.span.clone()
     }
@@ -144,7 +141,6 @@ impl TIdent {
 }
 
 impl TokenItem for TIdent {
-    const TOKEN_LEN: usize = 1;
     fn span(&self) -> Span {
         self.span.clone()
     }
@@ -186,7 +182,6 @@ impl TInteger {
 }
 
 impl TokenItem for TInteger {
-    const TOKEN_LEN: usize = 1;
     fn span(&self) -> Span {
         self.span.clone()
     }
@@ -228,7 +223,6 @@ impl TFloat {
 }
 
 impl TokenItem for TFloat {
-    const TOKEN_LEN: usize = 1;
     fn span(&self) -> Span {
         self.span.clone()
     }
@@ -270,7 +264,6 @@ impl TString {
 }
 
 impl TokenItem for TString {
-    const TOKEN_LEN: usize = 1;
     fn span(&self) -> Span {
         self.span.clone()
     }
@@ -313,7 +306,6 @@ macro_rules! simple_token {
         }
 
         impl TokenItem for $name {
-            const TOKEN_LEN: usize = Self::MATCHES.len();
             fn span(&self) -> Span {
                 self.0.clone()
             }
@@ -372,7 +364,6 @@ macro_rules! simple_ident_token {
         }
 
         impl TokenItem for $name {
-            const TOKEN_LEN: usize = 1;
             fn span(&self) -> Span {
                 self.0.clone()
             }
@@ -412,7 +403,6 @@ macro_rules! group_token {
         }
 
         impl TokenItem for $name {
-            const TOKEN_LEN: usize = 1;
             fn span(&self) -> Span {
                 self.span.clone()
             }

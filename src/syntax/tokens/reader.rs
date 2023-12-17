@@ -69,25 +69,6 @@ impl<'a> TokenReader<'a> {
         T::test(&other)
     }
 
-    pub fn peek_2<T: TestTokenValue, U: TestTokenValue>(&self) -> bool {
-        self.peek::<T>() && self.peek_n::<U>(T::TOKEN_LEN)
-    }
-
-    pub fn peek_3<T: TestTokenValue, U: TestTokenValue, V: TestTokenValue>(&self) -> bool {
-        self.peek::<T>()
-            && self.peek_n::<U>(T::TOKEN_LEN)
-            && self.peek_n::<V>(T::TOKEN_LEN + U::TOKEN_LEN)
-    }
-
-    pub fn peek_4<T: TestTokenValue, U: TestTokenValue, V: TestTokenValue, W: TestTokenValue>(
-        &self,
-    ) -> bool {
-        self.peek::<T>()
-            && self.peek_n::<U>(T::TOKEN_LEN)
-            && self.peek_n::<V>(T::TOKEN_LEN + U::TOKEN_LEN)
-            && self.peek_n::<W>(T::TOKEN_LEN + U::TOKEN_LEN + V::TOKEN_LEN)
-    }
-
     pub fn remaining_tokens_slice(&self) -> &'a [WithSpan<TokenValue>] {
         &self.tree.value[self.index..]
     }
