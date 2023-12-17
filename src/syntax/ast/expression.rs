@@ -105,14 +105,14 @@ pub struct STerminatedExpr {
 impl AstItem for STerminatedExpr {
     const NAME: &'static str = "terminated expression";
 
-    fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
+    fn parse<'a>(_reader: &mut AstParser<'a>, _env: ParsingPhaseEnv) -> ParseResult<Self>
     where
         Self: Sized,
     {
         unreachable!("This should never be called directly");
     }
 
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
+    fn check(&self, _env: CheckingPhaseEnv, _errors: &mut ErrorCollector) {
         // N/A
     }
 }
@@ -203,7 +203,7 @@ pub struct SVarRead {
 impl AstItem for SVarRead {
     const NAME: &'static str = "variable read";
 
-    fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
+    fn parse<'a>(reader: &mut AstParser<'a>, _env: ParsingPhaseEnv) -> ParseResult<Self>
     where
         Self: Sized,
     {
@@ -212,7 +212,7 @@ impl AstItem for SVarRead {
         Ok(Self { name })
     }
 
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
+    fn check(&self, _env: CheckingPhaseEnv, _errors: &mut ErrorCollector) {
         // N/A
     }
 }

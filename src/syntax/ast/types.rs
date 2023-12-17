@@ -3,7 +3,7 @@ pub use type_fn_sig::*;
 
 use crate::syntax::tokens::*;
 
-use super::{expression::SExpression, *};
+use super::*;
 
 /// Represents a type fn.
 ///

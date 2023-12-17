@@ -142,7 +142,7 @@ pub struct STypeConstraint {
 impl AstItem for STypeConstraint {
     const NAME: &'static str = "type constraint";
 
-    fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
+    fn parse<'a>(reader: &mut AstParser<'a>, _env: ParsingPhaseEnv) -> ParseResult<Self>
     where
         Self: Sized,
     {
@@ -154,7 +154,7 @@ impl AstItem for STypeConstraint {
         })
     }
 
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
+    fn check(&self, _env: CheckingPhaseEnv, _errors: &mut ErrorCollector) {
         // TODO: Check inner constraint type with env.inside_nested_expr()
     }
 }
