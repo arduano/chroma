@@ -16,7 +16,7 @@ pub struct STypeFnSignature {
 impl AstItem for STypeFnSignature {
     const NAME: &'static str = "type function signature";
 
-    fn parse<'a>(reader: &mut AstParser<'a>) -> ParseResult<Self>
+    fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
     where
         Self: Sized,
     {
@@ -24,7 +24,7 @@ impl AstItem for STypeFnSignature {
         reader.parse_optional_token::<TFn>()?;
 
         let name = reader.parse_required_token();
-        let args = reader.parse_required();
+        let args = reader.parse_required(env);
 
         Ok(Self { name, args })
     }
@@ -51,7 +51,7 @@ pub struct STypeArgs {
 impl AstItem for STypeArgs {
     const NAME: &'static str = "type arguments";
 
-    fn parse<'a>(reader: &mut AstParser<'a>) -> ParseResult<Self>
+    fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
     where
         Self: Sized,
     {
@@ -60,7 +60,7 @@ impl AstItem for STypeArgs {
         let mut args = Vec::new();
 
         loop {
-            let arg = reader.parse_required();
+            let arg = reader.parse_required(env);
             let errored = arg.is_err();
             args.push(arg);
 
@@ -103,7 +103,7 @@ pub struct STypeArg {
 impl AstItem for STypeArg {
     const NAME: &'static str = "type argument";
 
-    fn parse<'a>(reader: &mut AstParser<'a>) -> ParseResult<Self>
+    fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
     where
         Self: Sized,
     {
@@ -112,7 +112,7 @@ impl AstItem for STypeArg {
         let has_constraint = reader.parse_optional_token::<TColon>().is_ok();
 
         let constraint = if has_constraint {
-            Some(reader.parse_required()?)
+            Some(reader.parse_required(env)?)
         } else {
             None
         };
@@ -142,7 +142,7 @@ pub struct STypeConstraint {
 impl AstItem for STypeConstraint {
     const NAME: &'static str = "type constraint";
 
-    fn parse<'a>(reader: &mut AstParser<'a>) -> ParseResult<Self>
+    fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
     where
         Self: Sized,
     {

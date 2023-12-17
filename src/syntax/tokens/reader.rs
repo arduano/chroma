@@ -82,8 +82,18 @@ impl<'a> TokenReader<'a> {
         self.remaining_tokens_slice().first()
     }
 
+    pub fn prev_token(&self) -> Option<&'a WithSpan<TokenValue>> {
+        self.tree.value.get(self.index - 1)
+    }
+
     pub fn remaining_len(&self) -> usize {
         self.tree.value.len() - self.index
+    }
+
+    pub fn is_ended(&self) -> bool {
+        let mut trimming = self.clone();
+        trimming.trim_empty();
+        trimming.remaining_len() == 0
     }
 
     pub fn skip(&mut self, count: usize) {
@@ -97,5 +107,11 @@ impl<'a> TokenReader<'a> {
 
     pub fn parse_grouped<T: ParseGroupToken>(&mut self) -> Option<(T, TokenReader<'a>)> {
         T::parse(self)
+    }
+
+    pub fn trim_empty(&mut self) {
+        while self.next_token().map(|s| &s.value) == Some(&TokenValue::Whitespace) {
+            self.skip(1);
+        }
     }
 }

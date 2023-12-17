@@ -7,13 +7,15 @@ use crate::syntax::{CompilerError, WithSpan};
 use super::{FileLocation, FileRef, Span};
 
 #[derive(Logos, Debug, PartialEq)]
-#[logos(skip r"[ \t\r\n\f]+")] // new way to annotate whitespace
 #[logos(subpattern decimal = r"[0-9][_0-9]*")]
 #[logos(subpattern hex = r"[0-9a-fA-F][_0-9a-fA-F]*")]
 #[logos(subpattern octal = r"[0-7][_0-7]*")]
 #[logos(subpattern binary = r"[0-1][_0-1]*")]
 #[logos(subpattern exp = r"[eE][+-]?[0-9][_0-9]*")]
 enum StringToken {
+    #[regex(r"[ \t\r\n\f]+")]
+    Whitespace,
+
     #[regex(r"[\p{XID_Start}_]\p{XID_Continue}*")]
     Ident,
 
@@ -35,8 +37,6 @@ enum StringToken {
     #[regex(r#"[+-]?(((?&decimal)\.(?&decimal)?(?&exp)?[fFdD]?)|(\.(?&decimal)(?&exp)?[fFdD]?)|((?&decimal)(?&exp)[fFdD]?)|((?&decimal)(?&exp)?[fFdD]))"#)]
     Float,
 
-    // #[regex(r"0[xX](((?&hex))|((?&hex)\.)|((?&hex)?\.(?&hex)))[pP][+-]?(?&decimal)[fFdD]?")]
-    // HexFloat,
     #[regex(r"//[^\r\n]*")]
     LineComment,
 
@@ -134,6 +134,7 @@ pub enum TokenValue {
     Parens(GroupedTokenList),
     Braces(GroupedTokenList),
     Brackets(GroupedTokenList),
+    Whitespace,
     Semi,
     Colon,
     Comma,
@@ -149,6 +150,7 @@ pub enum TokenValue {
     Lt,
     Gt,
     Eq,
+
     Question,
     And,
     Or,
@@ -164,6 +166,7 @@ impl std::fmt::Display for TokenValue {
             TokenValue::Parens(_) => write!(f, "(...)"),
             TokenValue::Braces(_) => write!(f, "{{...}}"),
             TokenValue::Brackets(_) => write!(f, "[...]"),
+            TokenValue::Whitespace => write!(f, "{{whitespace}}"),
             TokenValue::Semi => write!(f, ";"),
             TokenValue::Colon => write!(f, ":"),
             TokenValue::Comma => write!(f, ","),
@@ -351,7 +354,7 @@ fn parse_group(lexer: &mut MetaLexer<StringToken>, end: Option<StringToken>) -> 
 
                 WithSpan {
                     span: start.join(&end),
-                    value: TokenValue::Parens(GroupedTokenList {
+                    value: TokenValue::Braces(GroupedTokenList {
                         tokens: group.tokens,
                         left_cap: start,
                         right_cap: end,
@@ -368,7 +371,7 @@ fn parse_group(lexer: &mut MetaLexer<StringToken>, end: Option<StringToken>) -> 
 
                 WithSpan {
                     span: start.join(&end),
-                    value: TokenValue::Parens(GroupedTokenList {
+                    value: TokenValue::Brackets(GroupedTokenList {
                         tokens: group.tokens,
                         left_cap: start,
                         right_cap: end,
@@ -426,6 +429,8 @@ fn parse_group(lexer: &mut MetaLexer<StringToken>, end: Option<StringToken>) -> 
 
                 make_token(TokenValue::Float(float))
             }
+
+            StringToken::Whitespace => make_token(TokenValue::Whitespace),
             StringToken::Plus => make_token(TokenValue::Plus),
             StringToken::Minus => make_token(TokenValue::Minus),
             StringToken::Star => make_token(TokenValue::Star),

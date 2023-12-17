@@ -3,7 +3,7 @@ use std::{path::PathBuf, str::FromStr};
 use syntax::tokens::parse_file;
 
 use crate::syntax::{
-    ast::{AstItem, AstParser, STypeFn},
+    ast::{AstItem, AstParser, ParsingPhaseEnv, STypeFn},
     tokens::{FileRef, TokenReader},
 };
 
@@ -20,9 +20,12 @@ fn main() {
 
     let tokens = parse_file(file);
 
+    dbg!(&tokens);
+
     let mut ast_parser = AstParser::new(TokenReader::new(&tokens.tokens));
 
-    let ast = STypeFn::parse(&mut ast_parser);
+    let env = ParsingPhaseEnv::new();
+    let ast = STypeFn::parse(&mut ast_parser, env);
 
     dbg!(ast);
     dbg!(ast_parser.errors());

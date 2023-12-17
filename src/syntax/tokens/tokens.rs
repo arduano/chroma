@@ -24,6 +24,11 @@ impl<T: DisplayStatic> std::fmt::Display for StaticDisplay<T> {
         T::display(f)
     }
 }
+impl<T: DisplayStatic> std::fmt::Debug for StaticDisplay<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        T::display(f)
+    }
+}
 
 pub trait TestTokenValue: TokenItem {
     fn test(reader: &TokenReader) -> bool;
@@ -75,6 +80,7 @@ impl TokenItem for TIdent {
 
 impl ParseSimpleToken for TIdent {
     fn parse(reader: &mut TokenReader) -> Option<Self> {
+        reader.trim_empty();
         let next_token = reader.next_token()?;
 
         let TokenValue::Ident(s) = &next_token.value else {
@@ -116,6 +122,7 @@ impl TokenItem for TInteger {
 
 impl ParseSimpleToken for TInteger {
     fn parse(reader: &mut TokenReader) -> Option<Self> {
+        reader.trim_empty();
         let next_token = reader.next_token()?;
 
         let TokenValue::Integer(i) = &next_token.value else {
@@ -157,6 +164,7 @@ impl TokenItem for TFloat {
 
 impl ParseSimpleToken for TFloat {
     fn parse(reader: &mut TokenReader) -> Option<Self> {
+        reader.trim_empty();
         let next_token = reader.next_token()?;
 
         let TokenValue::Float(i) = &next_token.value else {
@@ -198,6 +206,7 @@ impl TokenItem for TString {
 
 impl ParseSimpleToken for TString {
     fn parse(reader: &mut TokenReader) -> Option<Self> {
+        reader.trim_empty();
         let next_token = reader.next_token()?;
 
         let TokenValue::String(s) = &next_token.value else {
@@ -240,6 +249,7 @@ macro_rules! simple_token {
 
         impl ParseSimpleToken for $name {
             fn parse(reader: &mut TokenReader) -> Option<Self> {
+        reader.trim_empty();
                 let matches = Self::MATCHES;
 
                 let next_tokens = reader.remaining_tokens_slice();
@@ -298,6 +308,7 @@ macro_rules! simple_ident_token {
 
         impl ParseSimpleToken for $name {
             fn parse(reader: &mut TokenReader) -> Option<Self> {
+                reader.trim_empty();
                 let next_token = reader.next_token()?;
 
                 let TokenValue::Ident(s) = &next_token.value else {
@@ -337,6 +348,7 @@ macro_rules! group_token {
 
         impl ParseGroupToken for $name {
             fn parse<'a>(reader: &mut TokenReader<'a>) -> Option<(Self, TokenReader<'a>)> {
+                reader.trim_empty();
                 let next_token = reader.next_token()?;
 
                 let TokenValue::$token(g) = &next_token.value else {

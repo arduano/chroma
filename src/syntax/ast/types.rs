@@ -22,18 +22,18 @@ use super::{expression::SExpression, *};
 #[derive(Debug, Clone, PartialEq)]
 pub struct STypeFn {
     signature: STypeFnSignature,
-    body: Attempted<SBody>,
+    body: Attempted<(TBraces, SBody)>,
 }
 
 impl AstItem for STypeFn {
     const NAME: &'static str = "type function";
 
-    fn parse<'a>(reader: &mut AstParser<'a>) -> ParseResult<Self>
+    fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
     where
         Self: Sized,
     {
-        let signature = reader.parse_optional()?;
-        let body = reader.parse_required();
+        let signature = reader.parse_optional(env)?;
+        let body = reader.parse_required_group::<TBraces, SBody>(env.outside_nested_expr());
 
         Ok(Self { signature, body })
     }
@@ -41,7 +41,7 @@ impl AstItem for STypeFn {
     fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
         self.signature.check(env, errors);
 
-        if let Ok(body) = &self.body {
+        if let Ok((_, body)) = &self.body {
             body.check(env, errors);
         }
     }

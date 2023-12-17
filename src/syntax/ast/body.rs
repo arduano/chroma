@@ -12,7 +12,7 @@ use super::{expression::SExpression, *};
 ///         ...Val,
 ///         [Name]: string,
 ///     };
-///     
+///
 ///     let a = 1;
 ///
 ///     Result
@@ -26,14 +26,15 @@ pub struct SBody {
 impl AstItem for SBody {
     const NAME: &'static str = "body";
 
-    fn parse<'a>(reader: &mut AstParser<'a>) -> ParseResult<Self>
+    fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
     where
         Self: Sized,
     {
         let mut statements = Vec::new();
+        reader.set_error_recovery_mode(ErrorRecoveryMode::until_token::<TSemicolon>());
 
         while !reader.is_empty() {
-            let statement = reader.parse_required();
+            let statement = reader.parse_required(env.outside_nested_expr());
             statements.push(statement);
         }
 
