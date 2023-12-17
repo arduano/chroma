@@ -3,7 +3,12 @@ use super::{
     CompilerError,
 };
 
-pub mod types;
+mod expression;
+pub use expression::*;
+mod body;
+pub use body::*;
+mod types;
+pub use types::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParseError {
@@ -38,6 +43,73 @@ pub trait AstItem {
     fn parse<'a>(reader: &mut AstParser<'a>) -> ParseResult<Self>
     where
         Self: Sized;
+
+    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector);
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CheckingPhaseEnv {
+    inside_type_only: bool,
+    inside_nested_expr: bool,
+}
+
+impl CheckingPhaseEnv {
+    pub fn new() -> Self {
+        Self {
+            inside_type_only: false,
+            inside_nested_expr: false,
+        }
+    }
+
+    fn inside_type_only(self) -> Self {
+        Self {
+            inside_type_only: true,
+            ..self
+        }
+    }
+
+    fn inside_nested_expr(self) -> Self {
+        Self {
+            inside_nested_expr: true,
+            ..self
+        }
+    }
+
+    fn outside_type_only(self) -> Self {
+        Self {
+            inside_type_only: false,
+            ..self
+        }
+    }
+
+    fn outside_nested_expr(self) -> Self {
+        Self {
+            inside_nested_expr: false,
+            ..self
+        }
+    }
+}
+
+pub struct ErrorCollector {
+    errors: Vec<CompilerError>,
+}
+
+impl ErrorCollector {
+    fn new() -> Self {
+        Self { errors: Vec::new() }
+    }
+
+    fn push(&mut self, error: CompilerError) {
+        self.errors.push(error);
+    }
+
+    fn extend(&mut self, errors: Vec<CompilerError>) {
+        self.errors.extend(errors);
+    }
+
+    fn errors(&self) -> &[CompilerError] {
+        &self.errors
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -56,7 +128,7 @@ impl Default for AstParserFrame {
 pub struct AstParser<'a> {
     curr_frame: AstParserFrame,
     input: TokenReader<'a>,
-    errors: Vec<CompilerError>,
+    errors: ErrorCollector,
 }
 
 impl<'a> AstParser<'a> {
@@ -64,12 +136,16 @@ impl<'a> AstParser<'a> {
         Self {
             curr_frame: AstParserFrame::default(),
             input,
-            errors: Vec::new(),
+            errors: ErrorCollector::new(),
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.input.remaining_len() == 0
+    }
+
     pub fn errors(&self) -> &[CompilerError] {
-        &self.errors
+        self.errors.errors()
     }
 
     fn set_error_lookahead(&mut self, lookahead: Option<usize>) {

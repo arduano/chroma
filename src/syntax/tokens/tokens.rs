@@ -421,3 +421,5 @@ simple_ident_token!(TContinue, "continue");
 simple_ident_token!(TReturn, "return");
 simple_ident_token!(TTrue, "true");
 simple_ident_token!(TFalse, "false");
+simple_ident_token!(TExtends, "extends");
+simple_ident_token!(TTypeof, "typeof");

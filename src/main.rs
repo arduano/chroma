@@ -3,7 +3,7 @@ use std::{path::PathBuf, str::FromStr};
 use syntax::tokens::parse_file;
 
 use crate::syntax::{
-    ast::{types::STypeFn, AstItem, AstParser},
+    ast::{AstItem, AstParser, STypeFn},
     tokens::{FileRef, TokenReader},
 };
 

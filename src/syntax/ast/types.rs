@@ -1,112 +1,48 @@
+mod type_fn_sig;
+pub use type_fn_sig::*;
+
 use crate::syntax::tokens::*;
 
-use super::{AstItem, Attempted};
+use super::{expression::SExpression, *};
 
+/// Represents a type fn.
+///
+/// # Example
+///
+/// ```no_run
+/// type fn AddField<Name: const ident, Val: Value> {
+///     type Result = {
+///         ...Val,
+///         [Name]: string,
+///     };
+///
+///     Result
+/// }
+/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct STypeFn {
-    pub name: Attempted<TIdent>,
-    pub args: Attempted<STypeArgs>,
+    signature: STypeFnSignature,
+    body: Attempted<SBody>,
 }
 
 impl AstItem for STypeFn {
     const NAME: &'static str = "type function";
 
-    fn parse<'a>(reader: &mut super::AstParser<'a>) -> super::ParseResult<Self>
+    fn parse<'a>(reader: &mut AstParser<'a>) -> ParseResult<Self>
     where
         Self: Sized,
     {
-        reader.parse_optional_token::<TType>()?;
-        reader.parse_optional_token::<TFn>()?;
+        let signature = reader.parse_optional()?;
+        let body = reader.parse_required();
 
-        let name = reader.parse_required_token();
-        let args = reader.parse_required();
-
-        Ok(Self { name, args })
+        Ok(Self { signature, body })
     }
-}
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct STypeArgs {
-    pub args: Vec<Attempted<STypeArg>>,
-}
+    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
+        self.signature.check(env, errors);
 
-impl AstItem for STypeArgs {
-    const NAME: &'static str = "type arguments";
-
-    fn parse<'a>(reader: &mut super::AstParser<'a>) -> super::ParseResult<Self>
-    where
-        Self: Sized,
-    {
-        reader.parse_optional_token::<TLessThan>()?;
-
-        let mut args = Vec::new();
-
-        loop {
-            let arg = reader.parse_required();
-            let errored = arg.is_err();
-            args.push(arg);
-
-            let had_comma = reader.parse_optional_token::<TComma>().is_ok();
-
-            if errored || !had_comma {
-                reader.parse_required_token::<TGreaterThan>().ok();
-                break;
-            } else {
-                if reader.parse_optional_token::<TGreaterThan>().is_ok() {
-                    break;
-                }
-            }
+        if let Ok(body) = &self.body {
+            body.check(env, errors);
         }
-
-        Ok(Self { args })
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct STypeArg {
-    pub name: TIdent,
-    pub constraint: Option<STypeConstraint>,
-}
-
-impl AstItem for STypeArg {
-    const NAME: &'static str = "type argument";
-
-    fn parse<'a>(reader: &mut super::AstParser<'a>) -> super::ParseResult<Self>
-    where
-        Self: Sized,
-    {
-        let name = reader.parse_required_token()?;
-
-        let has_constraint = reader.parse_optional_token::<TColon>().is_ok();
-
-        let constraint = if has_constraint {
-            Some(reader.parse_required()?)
-        } else {
-            None
-        };
-
-        Ok(Self { name, constraint })
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct STypeConstraint {
-    pub is_const: bool,
-    pub name: Attempted<TIdent>, //TODO: Fix
-}
-
-impl AstItem for STypeConstraint {
-    const NAME: &'static str = "type constraint";
-
-    fn parse<'a>(reader: &mut super::AstParser<'a>) -> super::ParseResult<Self>
-    where
-        Self: Sized,
-    {
-        let is_const = reader.parse_optional_token::<TConst>().is_ok();
-
-        Ok(Self {
-            is_const,
-            name: reader.parse_required_token(),
-        })
     }
 }
