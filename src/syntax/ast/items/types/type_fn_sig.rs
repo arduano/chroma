@@ -1,4 +1,4 @@
-use crate::syntax::{ast::*, tokens::*};
+use crate::syntax::{ast::helpers::*, tokens::*};
 
 /// Represents a type fn signature.
 ///

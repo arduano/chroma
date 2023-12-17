@@ -1,5 +1,4 @@
-use super::*;
-use crate::syntax::tokens::*;
+use crate::syntax::{ast::helpers::*, tokens::*, CompilerError};
 
 trait ExpressionBottomUpParse {
     /// Parse an expression from the bottom up. Returns Ok if the
@@ -472,14 +471,10 @@ impl AstItem for SObjectLiteralComputedKey {
     where
         Self: Sized,
     {
-        dbg!(reader.input.span());
         let (key_brackets, key_expression) =
             reader.parse_optional_group::<TBrackets, SExpression>(env.inside_nested_expr())?;
-        dbg!(reader.input.span());
         let colon = reader.parse_required_token();
-        dbg!(reader.input.span());
         let value_expression = reader.parse_required(env.inside_nested_expr());
-        dbg!(reader.input.span());
 
         Ok(Self {
             key_brackets,
