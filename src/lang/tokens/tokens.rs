@@ -500,3 +500,4 @@ simple_ident_token!(TTypeof, "typeof");
 simple_ident_token!(TMod, "mod");
 simple_ident_token!(TUse, "use");
 simple_ident_token!(TAs, "as");
+simple_ident_token!(TPub, "pub");

@@ -5,7 +5,7 @@ use lang::tokens::parse_file;
 use crate::lang::{
     ast::{
         helpers::{AstItem, AstParser, ParsingPhaseEnv},
-        items::STypeFn,
+        items::{SModule, STypeFn},
     },
     tokens::{FileRef, TokenReader},
 };
@@ -28,7 +28,7 @@ fn main() {
     let mut ast_parser = AstParser::new(TokenReader::new(&tokens.tokens));
 
     let env = ParsingPhaseEnv::new();
-    let ast = STypeFn::parse(&mut ast_parser, env);
+    let ast = SModule::parse(&mut ast_parser, env);
 
     dbg!(ast);
     dbg!(ast_parser.errors());

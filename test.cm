@@ -1,18 +1,8 @@
-// type Value = {
-//     [ident]: string;
-// };
-
-type fn AddField<Name: const ident, Val: Value> {
-    type result = {
-        ...Val,
-        [Name]: string,
-    };
+mod: {
+    type fn AddField<Name: const ident, Val: Value> {
+        type result = {
+            ...Val,
+            [Name]: string,
+        };
+    }
 }
-
-// type Foo = {
-//     foo: string;
-// };
-
-// type Data = AddField<bar, Foo>;
-
-// type assert Foo extends Value;
