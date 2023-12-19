@@ -1,4 +1,4 @@
-use crate::lang::{ast::helpers::*, tokens::*, CompilerError};
+use crate::lang::{ast::helpers::*, tokens::*};
 
 use super::*;
 
@@ -141,7 +141,7 @@ pub struct SDeclarationPubVisibility {
 impl AstItem for SDeclarationPubVisibility {
     const NAME: &'static str = "declaration visibility";
 
-    fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
+    fn parse<'a>(reader: &mut AstParser<'a>, _env: ParsingPhaseEnv) -> ParseResult<Self>
     where
         Self: Sized,
     {
@@ -149,7 +149,7 @@ impl AstItem for SDeclarationPubVisibility {
         Ok(Self { public })
     }
 
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
+    fn check(&self, _env: CheckingPhaseEnv, _errors: &mut ErrorCollector) {
         // N/A
     }
 }

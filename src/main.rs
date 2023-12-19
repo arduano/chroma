@@ -5,7 +5,7 @@ use lang::tokens::parse_file;
 use crate::lang::{
     ast::{
         helpers::{AstItem, AstParser, ParsingPhaseEnv},
-        items::{SModule, STypeFn},
+        items::SModule,
     },
     tokens::{FileRef, TokenReader},
 };

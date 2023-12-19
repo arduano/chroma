@@ -1,5 +1,5 @@
 use super::*;
-use crate::lang::{ast::helpers::*, tokens::*, CompilerError};
+use crate::lang::{ast::helpers::*, tokens::*};
 
 mod obj_literal;
 pub use obj_literal::*;
@@ -49,8 +49,8 @@ impl AstItem for SExpression {
 
         fn process_bottom_up<'a>(
             expression: SExpression,
-            reader: &mut AstParser<'a>,
-            env: ParsingPhaseEnv,
+            _reader: &mut AstParser<'a>,
+            _env: ParsingPhaseEnv,
         ) -> Result<SExpression, SExpression> {
             // let expression = STerminatedExpr::parse_bottom_up(expression, reader, env)?;
             Ok(expression)

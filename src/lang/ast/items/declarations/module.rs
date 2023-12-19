@@ -1,10 +1,7 @@
 use crate::lang::{
     ast::{helpers::*, items::SDeclarationBody},
     tokens::*,
-    CompilerError,
 };
-
-use super::SExpression;
 
 /// Represents a module.
 ///

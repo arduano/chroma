@@ -3,8 +3,8 @@ use std::{backtrace::Backtrace, borrow::Cow, sync::Arc};
 use self::tokens::Span;
 
 pub mod ast;
-pub mod tokens;
 pub mod modules;
+pub mod tokens;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct WithSpan<T> {
