@@ -1,4 +1,4 @@
-use crate::lang::{ast::helpers::*, tokens::*};
+use crate::lang::{ast::helpers::*, tokens::*, CompilerError};
 
 use super::*;
 
@@ -18,7 +18,7 @@ use super::*;
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct SBody {
-    pub statements: Vec<Attempted<SBodyExpression>>,
+    pub statements: Vec<Attempted<SBodyStatement>>,
 }
 
 impl AstItem for SBody {
@@ -32,15 +32,33 @@ impl AstItem for SBody {
         reader.set_error_recovery_mode(ErrorRecoveryMode::until_token::<TSemicolon>());
 
         while !reader.is_empty() {
-            let statement = reader.parse_required(env.outside_nested_expr());
+            let statement = reader.parse_required::<SBodyStatement>(env.outside_nested_expr());
 
-            // TODO: Probably not needed anymore?
-            // if let Ok(statement) = &statement {
-            //     if !matches!(&statement, SExpression::TerminatedExpr(_)) && !reader.is_empty() {
-            //         let span = reader.search_until_token::<TBlockLineEndSearch>();
-            //         reader.add_error(CompilerError::new("Expected ;", span));
-            //     }
-            // }
+            if let Ok(statement) = &statement {
+                let semi_requirement = statement.statement.needs_semicolon();
+                match semi_requirement {
+                    SemiRequirement::Never => {
+                        if let Ok(semicolon) = &statement.semicolon {
+                            reader.add_error(CompilerError::new(
+                                "Unexpected ;",
+                                semicolon.span().clone(),
+                            ));
+                        }
+                    }
+                    SemiRequirement::Expression => {
+                        if !reader.is_empty() {
+                            if let Err(span) = &statement.semicolon {
+                                reader.add_error(CompilerError::new("Expected ;", span.clone()));
+                            }
+                        }
+                    }
+                    SemiRequirement::Always => {
+                        if let Err(span) = &statement.semicolon {
+                            reader.add_error(CompilerError::new("Expected ;", span.clone()));
+                        }
+                    }
+                }
+            }
 
             statements.push(statement);
         }
@@ -57,7 +75,7 @@ impl AstItem for SBody {
     }
 }
 
-/// Represents an expression with a semicolon at the end.
+/// Represents a statement with a semicolon at the end.
 ///
 /// # Example
 ///
@@ -65,21 +83,21 @@ impl AstItem for SBody {
 /// let a = 1;
 /// ```
 #[derive(Debug, Clone, PartialEq)]
-pub struct SBodyExpression {
-    pub expr: Box<SExpression>,
+pub struct SBodyStatement {
+    pub statement: Box<SStatement>,
 
     // Result of the semicolon or the span where the semicolon should be
     pub semicolon: Result<TSemicolon, Span>,
 }
 
-impl AstItem for SBodyExpression {
-    const NAME: &'static str = "body expression";
+impl AstItem for SBodyStatement {
+    const NAME: &'static str = "body statement";
 
     fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
     where
         Self: Sized,
     {
-        let expr = reader.parse_required(env.outside_nested_expr())?;
+        let statement = reader.parse_required(env.outside_nested_expr())?;
         let semicolon = reader.parse_optional_token::<TSemicolon>();
 
         let semicolon = match semicolon {
@@ -91,13 +109,13 @@ impl AstItem for SBodyExpression {
         };
 
         Ok(Self {
-            expr: Box::new(expr),
+            statement: Box::new(statement),
             semicolon,
         })
     }
 
     fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        self.expr.check(env.outside_nested_expr(), errors);
+        self.statement.check(env.outside_nested_expr(), errors);
     }
 }
 

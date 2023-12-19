@@ -13,6 +13,16 @@ pub enum SDeclaration {
     Module(SModule),
 }
 
+impl SDeclaration {
+    pub fn needs_semicolon(&self) -> bool {
+        match self {
+            Self::TypeDefine(_) => true,
+            Self::TypeFn(_) => false,
+            Self::Module(_) => false,
+        }
+    }
+}
+
 impl AstItem for SDeclaration {
     const NAME: &'static str = "declaration";
 

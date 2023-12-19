@@ -1,4 +1,3 @@
-use super::*;
 use crate::lang::{ast::helpers::*, tokens::*};
 
 mod obj_literal;
@@ -18,9 +17,17 @@ trait ExpressionBottomUpParse {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum SExpression {
-    Declaration(SDeclaration),
     VarRead(SVarRead),
     ObjectLiteral(SObjectLiteral),
+}
+
+impl SExpression {
+    pub fn needs_semicolon(&self) -> bool {
+        match self {
+            Self::VarRead(_) => true,
+            Self::ObjectLiteral(_) => false,
+        }
+    }
 }
 
 impl AstItem for SExpression {
@@ -34,9 +41,6 @@ impl AstItem for SExpression {
             reader: &mut AstParser<'a>,
             env: ParsingPhaseEnv,
         ) -> ParseResult<SExpression> {
-            if let Ok(expr) = reader.parse_optional(env) {
-                return Ok(SExpression::Declaration(expr));
-            }
             if let Ok(expr) = reader.parse_optional(env) {
                 return Ok(SExpression::VarRead(expr));
             }
@@ -78,7 +82,6 @@ impl AstItem for SExpression {
 
     fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
         match self {
-            Self::Declaration(expr) => expr.check(env, errors),
             Self::VarRead(expr) => expr.check(env, errors),
             Self::ObjectLiteral(expr) => expr.check(env, errors),
         }
