@@ -497,3 +497,6 @@ simple_ident_token!(TTrue, "true");
 simple_ident_token!(TFalse, "false");
 simple_ident_token!(TExtends, "extends");
 simple_ident_token!(TTypeof, "typeof");
+simple_ident_token!(TMod, "mod");
+simple_ident_token!(TUse, "use");
+simple_ident_token!(TAs, "as");

@@ -53,6 +53,12 @@ impl<'a> TokenReader<'a> {
             .unwrap_or_else(|| &self.start_cap)
     }
 
+    pub fn prev_prev_span(&self) -> &Span {
+        self.prev_prev_token()
+            .map(|t| &t.span)
+            .unwrap_or_else(|| &self.start_cap)
+    }
+
     pub fn peek<T: TestTokenValue>(&self) -> bool {
         T::test(self)
     }
@@ -66,7 +72,19 @@ impl<'a> TokenReader<'a> {
     }
 
     pub fn prev_token(&self) -> Option<&'a WithSpan<TokenValue>> {
+        if self.index == 0 {
+            return None;
+        }
+
         self.tree.value.get(self.index - 1)
+    }
+
+    pub fn prev_prev_token(&self) -> Option<&'a WithSpan<TokenValue>> {
+        if self.index <= 1 {
+            return None;
+        }
+
+        self.tree.value.get(self.index - 2)
     }
 
     pub fn remaining_len(&self) -> usize {

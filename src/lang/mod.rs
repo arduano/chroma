@@ -4,6 +4,7 @@ use self::tokens::Span;
 
 pub mod ast;
 pub mod tokens;
+pub mod modules;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct WithSpan<T> {

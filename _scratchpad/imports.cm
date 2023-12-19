@@ -1,0 +1,8 @@
+@service("user")
+mod { db: DbService }: {
+  use ./data { db } as data;
+
+  pub fn getUser(id: UserId) {
+    db.getUser(id);
+  }
+}
