@@ -17,11 +17,11 @@ use super::*;
 ///     Result
 /// ```
 #[derive(Debug, Clone, PartialEq)]
-pub struct SBody {
-    pub statements: Vec<Attempted<SBodyStatement>>,
+pub struct SyBody {
+    pub statements: Vec<Attempted<SyBodyStatement>>,
 }
 
-impl AstItem for SBody {
+impl AstItem for SyBody {
     const NAME: &'static str = "body";
 
     fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
@@ -29,10 +29,10 @@ impl AstItem for SBody {
         Self: Sized,
     {
         let mut statements = Vec::new();
-        reader.set_error_recovery_mode(ErrorRecoveryMode::until_token::<TSemicolon>());
+        reader.set_error_recovery_mode(ErrorRecoveryMode::until_token::<TkSemicolon>());
 
         while !reader.is_empty() {
-            let statement = reader.parse_required::<SBodyStatement>(env.outside_nested_expr());
+            let statement = reader.parse_required::<SyBodyStatement>(env.outside_nested_expr());
 
             if let Ok(statement) = &statement {
                 let semi_requirement = statement.statement.needs_semicolon();
@@ -83,14 +83,14 @@ impl AstItem for SBody {
 /// let a = 1;
 /// ```
 #[derive(Debug, Clone, PartialEq)]
-pub struct SBodyStatement {
-    pub statement: Box<SStatement>,
+pub struct SyBodyStatement {
+    pub statement: Box<SyStatement>,
 
     // Result of the semicolon or the span where the semicolon should be
-    pub semicolon: Result<TSemicolon, Span>,
+    pub semicolon: Result<TkSemicolon, Span>,
 }
 
-impl AstItem for SBodyStatement {
+impl AstItem for SyBodyStatement {
     const NAME: &'static str = "body statement";
 
     fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
@@ -98,7 +98,7 @@ impl AstItem for SBodyStatement {
         Self: Sized,
     {
         let statement = reader.parse_required(env.outside_nested_expr())?;
-        let semicolon = reader.parse_optional_token::<TSemicolon>();
+        let semicolon = reader.parse_optional_token::<TkSemicolon>();
 
         let semicolon = match semicolon {
             Ok(semicolon) => Ok(semicolon),
@@ -120,11 +120,11 @@ impl AstItem for SBodyStatement {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct SDeclarationBody {
-    pub statements: Vec<Attempted<SDeclarationBodyItem>>,
+pub struct SyDeclarationBody {
+    pub statements: Vec<Attempted<SyDeclarationBodyItem>>,
 }
 
-impl AstItem for SDeclarationBody {
+impl AstItem for SyDeclarationBody {
     const NAME: &'static str = "declaration body";
 
     fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
@@ -152,18 +152,18 @@ impl AstItem for SDeclarationBody {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct SDeclarationPubVisibility {
-    pub public: TPub,
+pub struct SyDeclarationPubVisibility {
+    pub public: TkPub,
 }
 
-impl AstItem for SDeclarationPubVisibility {
+impl AstItem for SyDeclarationPubVisibility {
     const NAME: &'static str = "declaration visibility";
 
     fn parse<'a>(reader: &mut AstParser<'a>, _env: ParsingPhaseEnv) -> ParseResult<Self>
     where
         Self: Sized,
     {
-        let public = reader.parse_optional_token::<TPub>()?;
+        let public = reader.parse_optional_token::<TkPub>()?;
         Ok(Self { public })
     }
 
@@ -173,19 +173,19 @@ impl AstItem for SDeclarationPubVisibility {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct SDeclarationBodyItem {
-    pub visibility: Option<SDeclarationPubVisibility>,
-    pub item: Attempted<SDeclaration>,
+pub struct SyDeclarationBodyItem {
+    pub visibility: Option<SyDeclarationPubVisibility>,
+    pub item: Attempted<SyDeclaration>,
 }
 
-impl AstItem for SDeclarationBodyItem {
+impl AstItem for SyDeclarationBodyItem {
     const NAME: &'static str = "declaration";
 
     fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
     where
         Self: Sized,
     {
-        let visibility = reader.parse_optional::<SDeclarationPubVisibility>(env);
+        let visibility = reader.parse_optional::<SyDeclarationPubVisibility>(env);
         let visibility = match visibility {
             Ok(visibility) => Some(visibility),
             Err(ParseError::NoMatch) => None,

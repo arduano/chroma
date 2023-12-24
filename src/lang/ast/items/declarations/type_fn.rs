@@ -18,12 +18,12 @@ use crate::lang::{
 /// }
 /// ```
 #[derive(Debug, Clone, PartialEq)]
-pub struct STypeFn {
-    signature: STypeFnSignature,
-    body: Attempted<(TBraces, SBody)>,
+pub struct SyTypeFn {
+    signature: SyTypeFnSignature,
+    body: Attempted<(TkBraces, SyBody)>,
 }
 
-impl AstItem for STypeFn {
+impl AstItem for SyTypeFn {
     const NAME: &'static str = "type function";
 
     fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
@@ -31,7 +31,7 @@ impl AstItem for STypeFn {
         Self: Sized,
     {
         let signature = reader.parse_optional(env)?;
-        let body = reader.parse_required_group::<TBraces, SBody>(env.outside_nested_expr());
+        let body = reader.parse_required_group::<TkBraces, SyBody>(env.outside_nested_expr());
 
         Ok(Self { signature, body })
     }
@@ -53,20 +53,20 @@ impl AstItem for STypeFn {
 /// type fn AddField<Name: const ident, Val: Value>
 /// ```
 #[derive(Debug, Clone, PartialEq)]
-pub struct STypeFnSignature {
+pub struct SyTypeFnSignature {
     pub name: Attempted<TIdent>,
-    pub args: Attempted<STypeArgs>,
+    pub args: Attempted<SyTypeArgs>,
 }
 
-impl AstItem for STypeFnSignature {
+impl AstItem for SyTypeFnSignature {
     const NAME: &'static str = "type function signature";
 
     fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
     where
         Self: Sized,
     {
-        reader.parse_optional_token::<TType>()?;
-        reader.parse_optional_token::<TFn>()?;
+        reader.parse_optional_token::<TkType>()?;
+        reader.parse_optional_token::<TkFn>()?;
 
         let name = reader.parse_required_token();
         let args = reader.parse_required(env);
@@ -89,18 +89,18 @@ impl AstItem for STypeFnSignature {
 /// <Arg1, Arg2: Constraint, Arg3: const Constraint>
 /// ```
 #[derive(Debug, Clone, PartialEq)]
-pub struct STypeArgs {
-    pub args: Vec<Attempted<STypeArg>>,
+pub struct SyTypeArgs {
+    pub args: Vec<Attempted<SyTypeArg>>,
 }
 
-impl AstItem for STypeArgs {
+impl AstItem for SyTypeArgs {
     const NAME: &'static str = "type arguments";
 
     fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
     where
         Self: Sized,
     {
-        reader.parse_optional_token::<TLessThan>()?;
+        reader.parse_optional_token::<TkLessThan>()?;
 
         let mut args = Vec::new();
 
@@ -109,13 +109,13 @@ impl AstItem for STypeArgs {
             let errored = arg.is_err();
             args.push(arg);
 
-            let had_comma = reader.parse_optional_token::<TComma>().is_ok();
+            let had_comma = reader.parse_optional_token::<TkComma>().is_ok();
 
             if errored || !had_comma {
-                reader.parse_required_token::<TGreaterThan>().ok();
+                reader.parse_required_token::<TkGreaterThan>().ok();
                 break;
             } else {
-                if reader.parse_optional_token::<TGreaterThan>().is_ok() {
+                if reader.parse_optional_token::<TkGreaterThan>().is_ok() {
                     break;
                 }
             }
@@ -140,12 +140,12 @@ impl AstItem for STypeArgs {
 /// No constraint `ArgName`\
 /// With constraint: `ArgName: TypeConstraint`
 #[derive(Debug, Clone, PartialEq)]
-pub struct STypeArg {
+pub struct SyTypeArg {
     pub name: TIdent,
-    pub constraint: Option<STypeConstraint>,
+    pub constraint: Option<SyTypeConstraint>,
 }
 
-impl AstItem for STypeArg {
+impl AstItem for SyTypeArg {
     const NAME: &'static str = "type argument";
 
     fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
@@ -154,7 +154,7 @@ impl AstItem for STypeArg {
     {
         let name = reader.parse_required_token()?;
 
-        let has_constraint = reader.parse_optional_token::<TColon>().is_ok();
+        let has_constraint = reader.parse_optional_token::<TkColon>().is_ok();
 
         let constraint = if has_constraint {
             Some(reader.parse_required(env)?)
@@ -179,19 +179,19 @@ impl AstItem for STypeArg {
 /// Non const: `MyType`\
 /// Const: `const MyType`
 #[derive(Debug, Clone, PartialEq)]
-pub struct STypeConstraint {
+pub struct SyTypeConstraint {
     pub is_const: bool,
     pub name: Attempted<TIdent>, // TODO: Fix
 }
 
-impl AstItem for STypeConstraint {
+impl AstItem for SyTypeConstraint {
     const NAME: &'static str = "type constraint";
 
     fn parse<'a>(reader: &mut AstParser<'a>, _env: ParsingPhaseEnv) -> ParseResult<Self>
     where
         Self: Sized,
     {
-        let is_const = reader.parse_optional_token::<TConst>().is_ok();
+        let is_const = reader.parse_optional_token::<TkConst>().is_ok();
 
         Ok(Self {
             is_const,

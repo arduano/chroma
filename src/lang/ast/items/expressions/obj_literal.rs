@@ -1,6 +1,6 @@
 use crate::lang::{ast::helpers::*, tokens::*, CompilerError};
 
-use super::SExpression;
+use super::SyExpression;
 
 /// Represents an object literal.
 ///
@@ -10,19 +10,20 @@ use super::SExpression;
 /// { field1: 1, field2, ...spreadfields, [ident]: "foo" }
 /// ```
 #[derive(Debug, Clone, PartialEq)]
-pub struct SObjectLiteral {
-    braces: TBraces,
+pub struct SyObjectLiteral {
+    braces: TkBraces,
     fields: SObjectLiteralFields,
 }
 
-impl AstItem for SObjectLiteral {
+impl AstItem for SyObjectLiteral {
     const NAME: &'static str = "object literal";
 
     fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
     where
         Self: Sized,
     {
-        let (braces, fields) = reader.parse_optional_group::<TBraces, SObjectLiteralFields>(env)?;
+        let (braces, fields) =
+            reader.parse_optional_group::<TkBraces, SObjectLiteralFields>(env)?;
         Ok(Self { braces, fields })
     }
 
@@ -40,7 +41,7 @@ impl AstItem for SObjectLiteral {
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct SObjectLiteralFields {
-    fields: Vec<Attempted<SObjectLiteralField>>,
+    fields: Vec<Attempted<SyObjectLiteralField>>,
 }
 
 impl AstItem for SObjectLiteralFields {
@@ -51,12 +52,12 @@ impl AstItem for SObjectLiteralFields {
         Self: Sized,
     {
         let mut fields = Vec::new();
-        reader.set_error_recovery_mode(ErrorRecoveryMode::until_token::<TComma>());
+        reader.set_error_recovery_mode(ErrorRecoveryMode::until_token::<TkComma>());
 
         while !reader.is_empty() {
             let field = reader.parse_required(env.inside_nested_expr());
 
-            let comma = reader.parse_optional_token::<TComma>();
+            let comma = reader.parse_optional_token::<TkComma>();
 
             if comma.is_err() && !reader.is_empty() {
                 let span = reader.search_until_token::<TDataLineEndSearch>();
@@ -87,14 +88,14 @@ impl AstItem for SObjectLiteralFields {
 /// Spread: `...spreadfields`
 /// Computed key: `[ident]: "foo"`
 #[derive(Debug, Clone, PartialEq)]
-pub enum SObjectLiteralField {
-    KeyValue(SObjectLiteralKeyValue),
-    KeyVariable(SObjectLiteralKeyVariable),
-    Spread(SObjectLiteralSpread),
-    ComputedKey(SObjectLiteralComputedKey),
+pub enum SyObjectLiteralField {
+    KeyValue(SyObjectLiteralKeyValue),
+    KeyVariable(SyObjectLiteralKeyVariable),
+    Spread(SyObjectLiteralSpread),
+    ComputedKey(SyObjectLiteralComputedKey),
 }
 
-impl AstItem for SObjectLiteralField {
+impl AstItem for SyObjectLiteralField {
     const NAME: &'static str = "object literal field";
 
     fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
@@ -102,16 +103,16 @@ impl AstItem for SObjectLiteralField {
         Self: Sized,
     {
         if let Ok(expr) = reader.parse_optional(env) {
-            return Ok(SObjectLiteralField::KeyValue(expr));
+            return Ok(SyObjectLiteralField::KeyValue(expr));
         }
         if let Ok(expr) = reader.parse_optional(env) {
-            return Ok(SObjectLiteralField::KeyVariable(expr));
+            return Ok(SyObjectLiteralField::KeyVariable(expr));
         }
         if let Ok(expr) = reader.parse_optional(env) {
-            return Ok(SObjectLiteralField::Spread(expr));
+            return Ok(SyObjectLiteralField::Spread(expr));
         }
         if let Ok(expr) = reader.parse_optional(env) {
-            return Ok(SObjectLiteralField::ComputedKey(expr));
+            return Ok(SyObjectLiteralField::ComputedKey(expr));
         }
 
         Err(ParseError::NoMatch)
@@ -135,13 +136,13 @@ impl AstItem for SObjectLiteralField {
 /// field1: 1
 /// ```
 #[derive(Debug, Clone, PartialEq)]
-pub struct SObjectLiteralKeyValue {
+pub struct SyObjectLiteralKeyValue {
     key: TIdent,
-    colon: TColon,
-    value: Box<Attempted<SExpression>>,
+    colon: TkColon,
+    value: Box<Attempted<SyExpression>>,
 }
 
-impl AstItem for SObjectLiteralKeyValue {
+impl AstItem for SyObjectLiteralKeyValue {
     const NAME: &'static str = "object literal key-value field";
 
     fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
@@ -174,11 +175,11 @@ impl AstItem for SObjectLiteralKeyValue {
 /// field2
 /// ```
 #[derive(Debug, Clone, PartialEq)]
-pub struct SObjectLiteralKeyVariable {
+pub struct SyObjectLiteralKeyVariable {
     key: TIdent,
 }
 
-impl AstItem for SObjectLiteralKeyVariable {
+impl AstItem for SyObjectLiteralKeyVariable {
     const NAME: &'static str = "object literal key-variable field";
 
     fn parse<'a>(reader: &mut AstParser<'a>, _env: ParsingPhaseEnv) -> ParseResult<Self>
@@ -202,12 +203,12 @@ impl AstItem for SObjectLiteralKeyVariable {
 /// ...spreadfields
 /// ```
 #[derive(Debug, Clone, PartialEq)]
-pub struct SObjectLiteralSpread {
-    spread: TEpsilon,
-    fields: Box<Attempted<SExpression>>,
+pub struct SyObjectLiteralSpread {
+    spread: TkEpsilon,
+    fields: Box<Attempted<SyExpression>>,
 }
 
-impl AstItem for SObjectLiteralSpread {
+impl AstItem for SyObjectLiteralSpread {
     const NAME: &'static str = "object literal spread field";
 
     fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
@@ -238,14 +239,14 @@ impl AstItem for SObjectLiteralSpread {
 /// [ident]: value
 /// ```
 #[derive(Debug, Clone, PartialEq)]
-pub struct SObjectLiteralComputedKey {
-    key_brackets: TBrackets,
-    key_expression: Box<SExpression>,
-    colon: Attempted<TColon>,
-    value_expression: Box<Attempted<SExpression>>,
+pub struct SyObjectLiteralComputedKey {
+    key_brackets: TkBrackets,
+    key_expression: Box<SyExpression>,
+    colon: Attempted<TkColon>,
+    value_expression: Box<Attempted<SyExpression>>,
 }
 
-impl AstItem for SObjectLiteralComputedKey {
+impl AstItem for SyObjectLiteralComputedKey {
     const NAME: &'static str = "object literal computed key expression";
 
     fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
@@ -253,7 +254,7 @@ impl AstItem for SObjectLiteralComputedKey {
         Self: Sized,
     {
         let (key_brackets, key_expression) =
-            reader.parse_optional_group::<TBrackets, SExpression>(env.inside_nested_expr())?;
+            reader.parse_optional_group::<TkBrackets, SyExpression>(env.inside_nested_expr())?;
         let colon = reader.parse_required_token();
         let value_expression = reader.parse_required(env.inside_nested_expr());
 

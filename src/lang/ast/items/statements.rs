@@ -8,22 +8,22 @@ pub enum SemiRequirement {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum SStatement {
-    Declaration(SDeclaration),
-    Expression(SExpression),
+pub enum SyStatement {
+    Declaration(SyDeclaration),
+    Expression(SyExpression),
 }
 
-impl SStatement {
+impl SyStatement {
     pub fn needs_semicolon(&self) -> SemiRequirement {
         match self {
-            SStatement::Declaration(decl) => {
+            SyStatement::Declaration(decl) => {
                 if decl.needs_semicolon() {
                     SemiRequirement::Always
                 } else {
                     SemiRequirement::Never
                 }
             }
-            SStatement::Expression(expr) => {
+            SyStatement::Expression(expr) => {
                 if expr.needs_semicolon() {
                     SemiRequirement::Expression
                 } else {
@@ -34,7 +34,7 @@ impl SStatement {
     }
 }
 
-impl AstItem for SStatement {
+impl AstItem for SyStatement {
     const NAME: &'static str = "expression";
 
     fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
@@ -44,22 +44,22 @@ impl AstItem for SStatement {
         fn parse_expression_beginning<'a>(
             reader: &mut AstParser<'a>,
             env: ParsingPhaseEnv,
-        ) -> ParseResult<SStatement> {
+        ) -> ParseResult<SyStatement> {
             if let Ok(expr) = reader.parse_optional(env) {
-                return Ok(SStatement::Declaration(expr));
+                return Ok(SyStatement::Declaration(expr));
             }
             if let Ok(expr) = reader.parse_optional(env) {
-                return Ok(SStatement::Expression(expr));
+                return Ok(SyStatement::Expression(expr));
             }
 
             Err(ParseError::NoMatch)
         }
 
         fn process_bottom_up<'a>(
-            expression: SStatement,
+            expression: SyStatement,
             _reader: &mut AstParser<'a>,
             _env: ParsingPhaseEnv,
-        ) -> Result<SStatement, SStatement> {
+        ) -> Result<SyStatement, SyStatement> {
             // let expression = STerminatedExpr::parse_bottom_up(expression, reader, env)?;
             Ok(expression)
         }

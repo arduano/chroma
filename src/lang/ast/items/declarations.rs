@@ -7,13 +7,13 @@ mod module;
 pub use module::*;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum SDeclaration {
-    TypeDefine(STypeDefine),
-    TypeFn(STypeFn),
-    Module(SModule),
+pub enum SyDeclaration {
+    TypeDefine(SyTypeDefine),
+    TypeFn(SyTypeFn),
+    Module(SyModule),
 }
 
-impl SDeclaration {
+impl SyDeclaration {
     pub fn needs_semicolon(&self) -> bool {
         match self {
             Self::TypeDefine(_) => true,
@@ -23,7 +23,7 @@ impl SDeclaration {
     }
 }
 
-impl AstItem for SDeclaration {
+impl AstItem for SyDeclaration {
     const NAME: &'static str = "declaration";
 
     fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
@@ -31,13 +31,13 @@ impl AstItem for SDeclaration {
         Self: Sized,
     {
         if let Ok(expr) = reader.parse_optional(env) {
-            return Ok(SDeclaration::TypeFn(expr));
+            return Ok(SyDeclaration::TypeFn(expr));
         }
         if let Ok(expr) = reader.parse_optional(env) {
-            return Ok(SDeclaration::TypeDefine(expr));
+            return Ok(SyDeclaration::TypeDefine(expr));
         }
         if let Ok(expr) = reader.parse_optional(env) {
-            return Ok(SDeclaration::Module(expr));
+            return Ok(SyDeclaration::Module(expr));
         }
 
         Err(ParseError::NoMatch)
@@ -60,14 +60,14 @@ impl AstItem for SDeclaration {
 /// type Foo = { a: string }
 /// ```
 #[derive(Debug, Clone, PartialEq)]
-pub struct STypeDefine {
-    pub type_token: TType,
+pub struct SyTypeDefine {
+    pub type_token: TkType,
     pub name: TIdent,
-    pub eq_token: TAssign,
-    pub value: Box<Attempted<SExpression>>,
+    pub eq_token: TkAssign,
+    pub value: Box<Attempted<SyExpression>>,
 }
 
-impl AstItem for STypeDefine {
+impl AstItem for SyTypeDefine {
     const NAME: &'static str = "type define";
 
     fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>

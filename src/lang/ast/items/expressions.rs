@@ -7,21 +7,21 @@ trait ExpressionBottomUpParse {
     /// Parse an expression from the bottom up. Returns Ok if the
     /// expression was parsed, Err if it was not.
     fn parse_bottom_up<'a>(
-        expression: SExpression,
+        expression: SyExpression,
         reader: &mut AstParser<'a>,
         env: ParsingPhaseEnv,
-    ) -> Result<SExpression, SExpression>
+    ) -> Result<SyExpression, SyExpression>
     where
         Self: Sized;
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum SExpression {
-    VarRead(SVarRead),
-    ObjectLiteral(SObjectLiteral),
+pub enum SyExpression {
+    VarRead(SyVarRead),
+    ObjectLiteral(SyObjectLiteral),
 }
 
-impl SExpression {
+impl SyExpression {
     pub fn needs_semicolon(&self) -> bool {
         match self {
             Self::VarRead(_) => true,
@@ -30,7 +30,7 @@ impl SExpression {
     }
 }
 
-impl AstItem for SExpression {
+impl AstItem for SyExpression {
     const NAME: &'static str = "expression";
 
     fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
@@ -40,22 +40,22 @@ impl AstItem for SExpression {
         fn parse_expression_beginning<'a>(
             reader: &mut AstParser<'a>,
             env: ParsingPhaseEnv,
-        ) -> ParseResult<SExpression> {
+        ) -> ParseResult<SyExpression> {
             if let Ok(expr) = reader.parse_optional(env) {
-                return Ok(SExpression::VarRead(expr));
+                return Ok(SyExpression::VarRead(expr));
             }
             if let Ok(expr) = reader.parse_optional(env) {
-                return Ok(SExpression::ObjectLiteral(expr));
+                return Ok(SyExpression::ObjectLiteral(expr));
             }
 
             Err(ParseError::NoMatch)
         }
 
         fn process_bottom_up<'a>(
-            expression: SExpression,
+            expression: SyExpression,
             _reader: &mut AstParser<'a>,
             _env: ParsingPhaseEnv,
-        ) -> Result<SExpression, SExpression> {
+        ) -> Result<SyExpression, SyExpression> {
             // let expression = STerminatedExpr::parse_bottom_up(expression, reader, env)?;
             Ok(expression)
         }
@@ -96,11 +96,11 @@ impl AstItem for SExpression {
 /// varname
 /// ```
 #[derive(Debug, Clone, PartialEq)]
-pub struct SVarRead {
+pub struct SyVarRead {
     pub name: TIdent,
 }
 
-impl AstItem for SVarRead {
+impl AstItem for SyVarRead {
     const NAME: &'static str = "variable read";
 
     fn parse<'a>(reader: &mut AstParser<'a>, _env: ParsingPhaseEnv) -> ParseResult<Self>

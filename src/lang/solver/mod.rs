@@ -35,7 +35,7 @@ impl<T: Debug + Sync + Send> Debug for Shared<T> {
     }
 }
 
-impl Clone for Shared<STypeDefine> {
+impl Clone for Shared<SyTypeDefine> {
     fn clone(&self) -> Self {
         Self {
             value: self.value.clone(),
@@ -48,7 +48,7 @@ enum CTypeDef {}
 struct CTypeFn {}
 
 struct LTypeDefineAbstract {
-    ast: STypeDefine,
+    ast: SyTypeDefine,
     type_: async_once_cell::OnceCell<CTypeDef>,
 }
 
@@ -61,5 +61,5 @@ struct LModule {
 }
 
 pub struct KnownFilesMap {
-    files: BTreeMap<PathBuf, Arc<SModule>>,
+    files: BTreeMap<PathBuf, Arc<SyModule>>,
 }

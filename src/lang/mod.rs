@@ -1,6 +1,6 @@
 use std::{backtrace::Backtrace, borrow::Cow, collections::BTreeMap, path::PathBuf, sync::Arc};
 
-use self::{ast::items::STypeDefine, tokens::Span};
+use self::{ast::items::SyTypeDefine, tokens::Span};
 
 pub mod ast;
 pub mod entity_ids;

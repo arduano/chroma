@@ -1,5 +1,5 @@
 use crate::lang::{
-    ast::{helpers::*, items::SDeclarationBody},
+    ast::{helpers::*, items::SyDeclarationBody},
     tokens::*,
 };
 
@@ -14,23 +14,23 @@ use crate::lang::{
 /// }
 /// ```
 #[derive(Debug, Clone, PartialEq)]
-pub struct SModule {
-    pub mod_: TMod,
-    pub colon: TColon,
-    pub body: Attempted<(TBraces, SDeclarationBody)>,
+pub struct SyModule {
+    pub mod_: TkMod,
+    pub colon: TkColon,
+    pub body: Attempted<(TkBraces, SyDeclarationBody)>,
 }
 
-impl AstItem for SModule {
+impl AstItem for SyModule {
     const NAME: &'static str = "object literal";
 
     fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
     where
         Self: Sized,
     {
-        let mod_ = reader.parse_optional_token::<TMod>()?;
-        let colon = reader.parse_optional_token::<TColon>()?;
+        let mod_ = reader.parse_optional_token::<TkMod>()?;
+        let colon = reader.parse_optional_token::<TkColon>()?;
         let body =
-            reader.parse_required_group::<TBraces, SDeclarationBody>(env.outside_nested_expr());
+            reader.parse_required_group::<TkBraces, SyDeclarationBody>(env.outside_nested_expr());
 
         Ok(Self { mod_, colon, body })
     }

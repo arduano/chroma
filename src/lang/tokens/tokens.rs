@@ -440,64 +440,64 @@ macro_rules! group_token {
 // ================
 
 // Groups
-group_token!(TParens, Parens, "parentheses");
-group_token!(TBraces, Braces, "braces");
-group_token!(TBrackets, Brackets, "brackets");
+group_token!(TkParens, Parens, "parentheses");
+group_token!(TkBraces, Braces, "braces");
+group_token!(TkBrackets, Brackets, "brackets");
 
 // Arithmetic
-simple_token!(TPlus, Plus);
-simple_token!(TPlusAssign, Plus, Eq);
-simple_token!(TMinus, Minus);
-simple_token!(TMinusAssign, Minus, Eq);
-simple_token!(TMult, Star);
-simple_token!(TMultAssign, Star, Eq);
-simple_token!(TDiv, Slash);
-simple_token!(TDivAssign, Slash, Eq);
-simple_token!(TModulo, Percent);
-simple_token!(TModuloAssign, Percent, Eq);
+simple_token!(TkPlus, Plus);
+simple_token!(TkPlusAssign, Plus, Eq);
+simple_token!(TkMinus, Minus);
+simple_token!(TkMinusAssign, Minus, Eq);
+simple_token!(TkMult, Star);
+simple_token!(TkMultAssign, Star, Eq);
+simple_token!(TkDiv, Slash);
+simple_token!(TkDivAssign, Slash, Eq);
+simple_token!(TkModulo, Percent);
+simple_token!(TkModuloAssign, Percent, Eq);
 
 // Logic
-simple_token!(TAnd, And, And);
-simple_token!(TBitAnd, And);
-simple_token!(TOr, Or, Or);
-simple_token!(TBitOr, Or);
-simple_token!(TBitXor, Caret);
-simple_token!(TNot, Exclamation);
+simple_token!(TkAnd, And, And);
+simple_token!(TkBitAnd, And);
+simple_token!(TkOr, Or, Or);
+simple_token!(TkBitOr, Or);
+simple_token!(TkBitXor, Caret);
+simple_token!(TkNot, Exclamation);
 
 // Comparison
-simple_token!(TLessThan, Lt);
-simple_token!(TLessThanEq, Lt, Eq);
-simple_token!(TGreaterThan, Gt);
-simple_token!(TGreaterThanEq, Gt, Eq);
-simple_token!(TEquals, Eq, Eq);
-simple_token!(TNotEquals, Exclamation, Eq);
+simple_token!(TkLessThan, Lt);
+simple_token!(TkLessThanEq, Lt, Eq);
+simple_token!(TkGreaterThan, Gt);
+simple_token!(TkGreaterThanEq, Gt, Eq);
+simple_token!(TkEquals, Eq, Eq);
+simple_token!(TkNotEquals, Exclamation, Eq);
 
 // Other
-simple_token!(TAssign, Eq);
-simple_token!(TColon, Colon);
-simple_token!(TSemicolon, Semi);
-simple_token!(TComma, Comma);
-simple_token!(TDot, Dot);
-simple_token!(TEpsilon, Dot, Dot, Dot);
+simple_token!(TkAssign, Eq);
+simple_token!(TkColon, Colon);
+simple_token!(TkSemicolon, Semi);
+simple_token!(TkComma, Comma);
+simple_token!(TkDot, Dot);
+simple_token!(TkEpsilon, Dot, Dot, Dot);
 
 // Named tokens
-simple_ident_token!(TFn, "fn");
-simple_ident_token!(TType, "type");
-simple_ident_token!(TConst, "const");
-simple_ident_token!(TLet, "let");
-simple_ident_token!(TIf, "if");
-simple_ident_token!(TElse, "else");
-simple_ident_token!(TWhile, "while");
-simple_ident_token!(TFor, "for");
-simple_ident_token!(TIn, "in");
-simple_ident_token!(TBreak, "break");
-simple_ident_token!(TContinue, "continue");
-simple_ident_token!(TReturn, "return");
-simple_ident_token!(TTrue, "true");
-simple_ident_token!(TFalse, "false");
-simple_ident_token!(TExtends, "extends");
-simple_ident_token!(TTypeof, "typeof");
-simple_ident_token!(TMod, "mod");
-simple_ident_token!(TUse, "use");
-simple_ident_token!(TAs, "as");
-simple_ident_token!(TPub, "pub");
+simple_ident_token!(TkFn, "fn");
+simple_ident_token!(TkType, "type");
+simple_ident_token!(TkConst, "const");
+simple_ident_token!(TkLet, "let");
+simple_ident_token!(TkIf, "if");
+simple_ident_token!(TkElse, "else");
+simple_ident_token!(TkWhile, "while");
+simple_ident_token!(TkFor, "for");
+simple_ident_token!(TkIn, "in");
+simple_ident_token!(TkBreak, "break");
+simple_ident_token!(TkContinue, "continue");
+simple_ident_token!(TkReturn, "return");
+simple_ident_token!(TkTrue, "true");
+simple_ident_token!(TkFalse, "false");
+simple_ident_token!(TkExtends, "extends");
+simple_ident_token!(TkTypeof, "typeof");
+simple_ident_token!(TkMod, "mod");
+simple_ident_token!(TkUse, "use");
+simple_ident_token!(TkAs, "as");
+simple_ident_token!(TkPub, "pub");
