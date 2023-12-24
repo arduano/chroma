@@ -1,8 +1,4 @@
-use std::{
-    collections::BTreeMap,
-    marker::PhantomData,
-    sync::{Arc, RwLock},
-};
+use std::marker::PhantomData;
 
 struct Id<T>(u32, PhantomData<T>);
 
