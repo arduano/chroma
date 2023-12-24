@@ -12,6 +12,13 @@ use crate::lang::{
 
 mod lang;
 
+// Naming:
+// Tk__ - Tokens
+// Sy__ - AST
+// Lv__ - Lowered AST
+// C__ - Static Compiler Data (e.g. types, generic function descriptions)
+// R__ - Runtime Data (e.g. values, generic function instances)
+
 fn main() {
     let test_file_path = PathBuf::from_str("./test.cm").unwrap();
     let text = std::fs::read_to_string(&test_file_path).unwrap();

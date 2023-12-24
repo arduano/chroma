@@ -1,9 +1,12 @@
-use std::{backtrace::Backtrace, borrow::Cow, sync::Arc};
+use std::{backtrace::Backtrace, borrow::Cow, collections::BTreeMap, path::PathBuf, sync::Arc};
 
-use self::tokens::Span;
+use self::{ast::items::STypeDefine, tokens::Span};
 
 pub mod ast;
+pub mod entity_ids;
+pub mod ident_matcher;
 pub mod modules;
+pub mod solver;
 pub mod tokens;
 
 #[derive(Debug, Clone, PartialEq)]
