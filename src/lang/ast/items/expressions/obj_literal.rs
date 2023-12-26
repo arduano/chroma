@@ -60,7 +60,7 @@ impl AstItem for SObjectLiteralFields {
             let comma = reader.parse_optional_token::<TkComma>();
 
             if comma.is_err() && !reader.is_empty() {
-                let span = reader.search_until_token::<TDataLineEndSearch>();
+                let span = reader.search_until_token::<TkDataLineEndSearch>();
                 reader.add_error(CompilerError::new("Expected ,", span));
             }
 
@@ -137,7 +137,7 @@ impl AstItem for SyObjectLiteralField {
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyObjectLiteralKeyValue {
-    key: TIdent,
+    key: TkIdent,
     colon: TkColon,
     value: Box<Attempted<SyExpression>>,
 }
@@ -176,7 +176,7 @@ impl AstItem for SyObjectLiteralKeyValue {
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyObjectLiteralKeyVariable {
-    key: TIdent,
+    key: TkIdent,
 }
 
 impl AstItem for SyObjectLiteralKeyVariable {

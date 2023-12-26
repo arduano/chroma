@@ -62,7 +62,7 @@ impl AstItem for SyDeclaration {
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyTypeDefine {
     pub type_token: TkType,
-    pub name: TIdent,
+    pub name: TkIdent,
     pub eq_token: TkAssign,
     pub value: Box<Attempted<SyExpression>>,
 }

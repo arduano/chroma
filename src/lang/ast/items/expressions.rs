@@ -97,7 +97,7 @@ impl AstItem for SyExpression {
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyVarRead {
-    pub name: TIdent,
+    pub name: TkIdent,
 }
 
 impl AstItem for SyVarRead {

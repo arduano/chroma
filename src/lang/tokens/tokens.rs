@@ -59,17 +59,17 @@ where
 // ================
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TBlockLineEndSearch {
+pub struct TkBlockLineEndSearch {
     span: Span,
 }
 
-impl TokenItem for TBlockLineEndSearch {
+impl TokenItem for TkBlockLineEndSearch {
     fn span(&self) -> Span {
         self.span.clone()
     }
 }
 
-impl ParseSimpleToken for TBlockLineEndSearch {
+impl ParseSimpleToken for TkBlockLineEndSearch {
     fn parse(reader: &mut TokenReader) -> Option<Self> {
         // Don't trim, as trimming will skip newlines.
         let next_token = reader.next_token()?;
@@ -85,24 +85,24 @@ impl ParseSimpleToken for TBlockLineEndSearch {
     }
 }
 
-impl DisplayStatic for TBlockLineEndSearch {
+impl DisplayStatic for TkBlockLineEndSearch {
     fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, ";")
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TDataLineEndSearch {
+pub struct TkDataLineEndSearch {
     span: Span,
 }
 
-impl TokenItem for TDataLineEndSearch {
+impl TokenItem for TkDataLineEndSearch {
     fn span(&self) -> Span {
         self.span.clone()
     }
 }
 
-impl ParseSimpleToken for TDataLineEndSearch {
+impl ParseSimpleToken for TkDataLineEndSearch {
     fn parse(reader: &mut TokenReader) -> Option<Self> {
         // Don't trim, as trimming will skip newlines.
         let next_token = reader.next_token()?;
@@ -118,7 +118,7 @@ impl ParseSimpleToken for TDataLineEndSearch {
     }
 }
 
-impl DisplayStatic for TDataLineEndSearch {
+impl DisplayStatic for TkDataLineEndSearch {
     fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, ",")
     }
@@ -129,24 +129,24 @@ impl DisplayStatic for TDataLineEndSearch {
 // ========================
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TIdent {
-    span: Span,
-    ident: Arc<str>,
+pub struct TkIdent {
+    pub span: Span,
+    pub ident: Arc<str>,
 }
 
-impl TIdent {
+impl TkIdent {
     pub fn ident(&self) -> &Arc<str> {
         &self.ident
     }
 }
 
-impl TokenItem for TIdent {
+impl TokenItem for TkIdent {
     fn span(&self) -> Span {
         self.span.clone()
     }
 }
 
-impl ParseSimpleToken for TIdent {
+impl ParseSimpleToken for TkIdent {
     fn parse(reader: &mut TokenReader) -> Option<Self> {
         reader.trim_empty();
         let next_token = reader.next_token()?;
@@ -163,31 +163,31 @@ impl ParseSimpleToken for TIdent {
     }
 }
 
-impl DisplayStatic for TIdent {
+impl DisplayStatic for TkIdent {
     fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{{ident}}")
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TInteger {
+pub struct TkInteger {
     span: Span,
     value: i64,
 }
 
-impl TInteger {
+impl TkInteger {
     pub fn value(&self) -> i64 {
         self.value
     }
 }
 
-impl TokenItem for TInteger {
+impl TokenItem for TkInteger {
     fn span(&self) -> Span {
         self.span.clone()
     }
 }
 
-impl ParseSimpleToken for TInteger {
+impl ParseSimpleToken for TkInteger {
     fn parse(reader: &mut TokenReader) -> Option<Self> {
         reader.trim_empty();
         let next_token = reader.next_token()?;
@@ -204,31 +204,31 @@ impl ParseSimpleToken for TInteger {
     }
 }
 
-impl DisplayStatic for TInteger {
+impl DisplayStatic for TkInteger {
     fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{{integer}}")
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TFloat {
+pub struct TkFloat {
     span: Span,
     value: f64,
 }
 
-impl TFloat {
+impl TkFloat {
     pub fn value(&self) -> f64 {
         self.value
     }
 }
 
-impl TokenItem for TFloat {
+impl TokenItem for TkFloat {
     fn span(&self) -> Span {
         self.span.clone()
     }
 }
 
-impl ParseSimpleToken for TFloat {
+impl ParseSimpleToken for TkFloat {
     fn parse(reader: &mut TokenReader) -> Option<Self> {
         reader.trim_empty();
         let next_token = reader.next_token()?;
@@ -245,31 +245,31 @@ impl ParseSimpleToken for TFloat {
     }
 }
 
-impl DisplayStatic for TFloat {
+impl DisplayStatic for TkFloat {
     fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{{float}}")
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TString {
+pub struct TkString {
     span: Span,
     value: Arc<str>,
 }
 
-impl TString {
+impl TkString {
     pub fn value(&self) -> &Arc<str> {
         &self.value
     }
 }
 
-impl TokenItem for TString {
+impl TokenItem for TkString {
     fn span(&self) -> Span {
         self.span.clone()
     }
 }
 
-impl ParseSimpleToken for TString {
+impl ParseSimpleToken for TkString {
     fn parse(reader: &mut TokenReader) -> Option<Self> {
         reader.trim_empty();
         let next_token = reader.next_token()?;
@@ -286,7 +286,7 @@ impl ParseSimpleToken for TString {
     }
 }
 
-impl DisplayStatic for TString {
+impl DisplayStatic for TkString {
     fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{{string}}")
     }

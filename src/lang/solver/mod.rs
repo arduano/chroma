@@ -4,6 +4,8 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use super::ast::items::*;
 
+mod type_system;
+
 struct Shared<T: Sync + Send> {
     value: Arc<T>,
 }

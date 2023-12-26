@@ -54,7 +54,7 @@ impl AstItem for SyTypeFn {
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyTypeFnSignature {
-    pub name: Attempted<TIdent>,
+    pub name: Attempted<TkIdent>,
     pub args: Attempted<SyTypeArgs>,
 }
 
@@ -141,7 +141,7 @@ impl AstItem for SyTypeArgs {
 /// With constraint: `ArgName: TypeConstraint`
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyTypeArg {
-    pub name: TIdent,
+    pub name: TkIdent,
     pub constraint: Option<SyTypeConstraint>,
 }
 
@@ -181,7 +181,7 @@ impl AstItem for SyTypeArg {
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyTypeConstraint {
     pub is_const: bool,
-    pub name: Attempted<TIdent>, // TODO: Fix
+    pub name: Attempted<TkIdent>, // TODO: Fix
 }
 
 impl AstItem for SyTypeConstraint {
