@@ -7,7 +7,6 @@ use crate::lang::{
         helpers::{AstItem, AstParser, ParsingPhaseEnv},
         items::SyModule,
     },
-    entity_ids::KnownItemHandler,
     tokens::{FileRef, TokenReader},
 };
 

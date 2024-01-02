@@ -2,11 +2,7 @@ use std::{
     backtrace::Backtrace,
     borrow::Cow,
     fmt::{Debug, Formatter},
-    future::Future,
-    mem::MaybeUninit,
-    pin::Pin,
-    sync::{atomic::AtomicBool, Arc, Mutex},
-    task::{Context, Poll},
+    sync::Arc,
 };
 
 use self::tokens::Span;
