@@ -1,0 +1,26 @@
+pub fn build() {
+    let service1 = createService<service1>({
+        kind: persistentHttpServer(),
+        env: {
+            std: docker::env,
+        },
+        build: (fns) => buildDocker(fns)
+    });
+
+    let cloudFns = createService<cloudFns>({
+        kind: cloudflareCloudFn(),
+        env: {
+            std: cloudFunctions::env,
+            db: someDbServiceInit
+        },
+        connections: [
+            httpLink(service1)
+        ],
+        build: (fns) => buildCloudFns(fns)
+    })
+
+    return {
+        service1,
+        cloudFns
+    };
+}

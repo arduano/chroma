@@ -7,6 +7,7 @@ use crate::lang::{
         helpers::{AstItem, AstParser, ParsingPhaseEnv},
         items::SyModule,
     },
+    entity_ids::KnownItemHandler,
     tokens::{FileRef, TokenReader},
 };
 
@@ -20,7 +21,8 @@ mod lang;
 // St__ - Static Compiler Data (e.g. types, generic function descriptions)
 // Rt__ - Runtime Data (e.g. values, generic function instances)
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let test_file_path = PathBuf::from_str("./test.cm").unwrap();
     let text = std::fs::read_to_string(&test_file_path).unwrap();
 

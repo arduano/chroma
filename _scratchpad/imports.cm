@@ -1,8 +1,13 @@
-@service("user")
-mod { db: DbService }: {
-  use ./data { db } as data;
+@modenv(service1, { std, db })
 
-  pub fn getUser(id: UserId) {
-    db.getUser(id);
-  }
+// Executed inside "service1" environment, with access to "db"
+remote fn getUser(id: UserId) {
+    db.select<user>().fields<name | email>().where(usr => usr.id.eq(id)).first()
+}
+
+// Executed inside "cloudFns" environment inside "get-user-email", without access to "db"
+@fnenv(cloudFns, "get-user-email", { std })
+remote fn getUserEmail(id: UserId) {
+    let user = getUser(id)?;
+    user.email
 }

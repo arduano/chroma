@@ -6,6 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-async-once-cell = "0.5.3"
+boxcar = "0.2.4"
+futures = "0.3.30"
+futures-intrusive = "0.5.0"
 logos = "0.13.0"
-tokio = "1.35.1"
+tokio = { version = "1.35.1", features = ["full"] }

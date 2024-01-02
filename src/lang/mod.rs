@@ -1,10 +1,19 @@
-use std::{backtrace::Backtrace, borrow::Cow, sync::Arc};
+use std::{
+    backtrace::Backtrace,
+    borrow::Cow,
+    fmt::{Debug, Formatter},
+    future::Future,
+    mem::MaybeUninit,
+    pin::Pin,
+    sync::{atomic::AtomicBool, Arc, Mutex},
+    task::{Context, Poll},
+};
 
 use self::tokens::Span;
 
 pub mod ast;
 pub mod entity_ids;
-pub mod ident_matcher;
+mod ident_matcher;
 pub mod modules;
 pub mod solver;
 pub mod tokens;
@@ -37,6 +46,45 @@ impl CompilerError {
             message: message.into(),
             backtrace: Arc::new(Backtrace::capture()),
             span,
+        }
+    }
+}
+
+struct Shared<T: Sync + Send> {
+    value: Arc<T>,
+}
+
+impl<T: Sync + Send> Shared<T> {
+    pub fn new(value: T) -> Self {
+        Self {
+            value: Arc::new(value),
+        }
+    }
+
+    /// Gets the pointer as usize
+    pub fn id(&self) -> usize {
+        Arc::as_ptr(&self.value) as usize
+    }
+}
+
+impl<T: Sync + Send> std::ops::Deref for Shared<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+
+impl<T: Debug + Sync + Send> Debug for Shared<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("Shared").field(&self.value).finish()
+    }
+}
+
+impl<T: Clone + Send + Sync> Clone for Shared<T> {
+    fn clone(&self) -> Self {
+        Self {
+            value: self.value.clone(),
         }
     }
 }
