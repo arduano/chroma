@@ -7,6 +7,14 @@ pub struct TyString {
     literals_union: LiteralsList<TyStringLiteral>,
 }
 
+impl TyString {
+    pub fn new() -> Self {
+        Self {
+            literals_union: LiteralsList::new(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct TyStringLiteral {
     value: Arc<str>,

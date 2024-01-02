@@ -327,7 +327,7 @@ impl<'a> AstParser<'a> {
         }
 
         debug!(
-            "Error parsing required: {} span {:?}",
+            "Error parsing required token: {} span {:?}",
             T::displayed(),
             error_start.join(&error_end)
         );
@@ -485,6 +485,7 @@ impl<'a> AstParser<'a> {
 
     pub fn parse_required<T: AstItem>(&mut self, env: ParsingPhaseEnv) -> Attempted<T> {
         debug!("Entering required: {}", T::NAME);
+        debug!("MODE: {:?}", &self.curr_frame.current_error_recovery_mode);
 
         let item = self.parse_optional::<T>(env);
 
@@ -494,7 +495,7 @@ impl<'a> AstParser<'a> {
                 return Attempted::Ok(item);
             }
             ParseResult::Err(ParseError::Error) => {
-                debug!("Error parsing required: {}", T::NAME);
+                debug!("Error parsing required item: {}", T::NAME);
                 return Attempted::Err(ParseErrorError);
             }
             ParseResult::Err(ParseError::NoMatch) => {
@@ -537,7 +538,7 @@ impl<'a> AstParser<'a> {
                 }
 
                 debug!(
-                    "Error parsing required: {} span {:?}",
+                    "Error parsing required item: {} span {:?}",
                     T::NAME,
                     error_start.join(&error_end)
                 );

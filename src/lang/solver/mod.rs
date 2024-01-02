@@ -1,12 +1,14 @@
 use std::path::PathBuf;
 use std::{collections::BTreeMap, sync::Arc};
 
-use self::type_system::TyType;
-
 use super::ast::items::*;
 use super::Shared;
 
 mod type_system;
+pub use type_system::*;
+
+mod modules;
+pub use modules::*;
 
 struct DcTypeDefine {
     name: String,
@@ -16,14 +18,6 @@ struct DcTypeDefine {
 struct DcTypeDefineAbstract {
     ast: SyTypeDefine,
     resolved: DcTypeDefine,
-}
-
-enum DcModuleItem {
-    TypeDefine(DcTypeDefineAbstract),
-}
-
-struct DcModule {
-    symbols: BTreeMap<String, Arc<DcModuleItem>>,
 }
 
 pub struct KnownFilesMap {

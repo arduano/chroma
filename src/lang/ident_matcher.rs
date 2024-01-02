@@ -1,14 +1,15 @@
-use std::sync::Arc;
+// use std::{collections::BTreeMap, sync::Arc};
 
-pub enum IdentMatcher {
-    ModuleScope(ModuleScopeIdentMatcher),
-    FunctionScope(FunctionScopeIdentMatcher),
-}
+// use super::{
+//     entity_ids::{Id, KnownItemHandler},
+//     solver::{DcModule, TyType},
+// };
 
-pub struct ModuleScopeIdentMatcher {
-    parent: Arc<ModuleScopeIdentMatcher>,
-}
+// pub enum IdentMatcher {
+//     ModuleScope(ModuleScopeIdentMatcher),
+//     FunctionScope(FunctionScopeIdentMatcher),
+// }
 
-pub struct FunctionScopeIdentMatcher {
-    parent: Arc<ModuleScopeIdentMatcher>,
-}
+// pub struct FunctionScopeIdentMatcher {
+//     parent: Arc<ModuleScopeIdentMatcher>,
+// }

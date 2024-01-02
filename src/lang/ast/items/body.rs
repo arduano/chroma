@@ -135,7 +135,28 @@ impl AstItem for SyDeclarationBody {
         reader.set_error_recovery_mode(ErrorRecoveryMode::until_end());
 
         while !reader.is_empty() {
-            let statement = reader.parse_required(env.outside_nested_expr());
+            let statement =
+                reader.parse_required::<SyDeclarationBodyItem>(env.outside_nested_expr());
+
+            if let Ok(statement) = &statement {
+                let needs_semi = statement.item.needs_semicolon();
+                match needs_semi {
+                    false => {
+                        if let Ok(semicolon) = &statement.semicolon {
+                            reader.add_error(CompilerError::new(
+                                "Unexpected ;",
+                                semicolon.span().clone(),
+                            ));
+                        }
+                    }
+                    true => {
+                        if let Err(span) = &statement.semicolon {
+                            reader.add_error(CompilerError::new("Expected ;", span.clone()));
+                        }
+                    }
+                }
+            }
+
             statements.push(statement);
         }
 
@@ -175,11 +196,14 @@ impl AstItem for SyDeclarationPubVisibility {
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyDeclarationBodyItem {
     pub visibility: Option<SyDeclarationPubVisibility>,
-    pub item: Attempted<SyDeclaration>,
+    pub item: SyDeclaration,
+
+    // Result of the semicolon or the span where the semicolon should be
+    pub semicolon: Result<TkSemicolon, Span>,
 }
 
 impl AstItem for SyDeclarationBodyItem {
-    const NAME: &'static str = "declaration";
+    const NAME: &'static str = "body declaration item";
 
     fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
     where
@@ -192,14 +216,30 @@ impl AstItem for SyDeclarationBodyItem {
             Err(ParseError::Error) => return Err(ParseError::Error),
         };
 
-        let item = reader.parse_required(env);
+        let item = reader.parse_optional(env)?;
 
-        Ok(Self { visibility, item })
+        let semicolon = reader.parse_optional_token::<TkSemicolon>();
+
+        let semicolon = match semicolon {
+            Ok(semicolon) => Ok(semicolon),
+            Err(_) => {
+                let span = reader.input().span().clone();
+                Err(span)
+            }
+        };
+
+        Ok(Self {
+            visibility,
+            item,
+            semicolon,
+        })
     }
 
     fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        if let Ok(item) = &self.item {
-            item.check(env, errors);
+        if let Some(visibility) = &self.visibility {
+            visibility.check(env, errors);
         }
+
+        self.item.check(env, errors);
     }
 }

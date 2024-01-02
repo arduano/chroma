@@ -12,6 +12,18 @@ pub struct TyType {
     kind: Arc<TyTypeKind>,
 }
 
+impl TyType {
+    pub fn new(kind: TyTypeKind) -> Self {
+        Self {
+            kind: Arc::new(kind),
+        }
+    }
+
+    pub fn kind(&self) -> &TyTypeKind {
+        &self.kind
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum TyTypeKind {
     Number(TyNumber),

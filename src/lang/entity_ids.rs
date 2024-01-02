@@ -94,9 +94,16 @@ impl<T> KnownItem<T> {
     }
 }
 
-#[derive(Clone)]
 pub struct KnownItemHandler<T: 'static + Send + Sync> {
     items: Arc<boxcar::Vec<KnownItem<Arc<T>>>>,
+}
+
+impl<T: 'static + Send + Sync> Clone for KnownItemHandler<T> {
+    fn clone(&self) -> Self {
+        Self {
+            items: self.items.clone(),
+        }
+    }
 }
 
 impl<T: 'static + Send + Sync> KnownItemHandler<T> {
@@ -121,7 +128,16 @@ impl<T: 'static + Send + Sync> KnownItemHandler<T> {
         Id::new(index as u32)
     }
 
-    pub async fn get(&self, id: Id<T>) -> Option<Arc<T>> {
+    pub fn allocate_value(&self, value: T) -> Id<T> {
+        let items = self.items.clone();
+        let index = items.push(KnownItem::new());
+
+        items[index].set(Arc::new(value));
+
+        Id::new(index as u32)
+    }
+
+    pub fn get_unless_pending(&self, id: Id<T>) -> Option<Arc<T>> {
         let item = &self.items[id.index() as usize];
         if let Some(item) = item.get() {
             Some(item.clone())
@@ -130,7 +146,7 @@ impl<T: 'static + Send + Sync> KnownItemHandler<T> {
         }
     }
 
-    pub async fn get_complete(&self, id: Id<T>) -> Arc<T> {
+    pub async fn get(&self, id: Id<T>) -> Arc<T> {
         let item = &self.items[id.index() as usize];
         item.wait_then_get().await.clone()
     }
