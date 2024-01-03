@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::lang::{ast::helpers::*, tokens::*, CompilerError, ErrorCollector};
 
 use super::*;

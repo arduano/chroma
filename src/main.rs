@@ -3,7 +3,6 @@ use std::{collections::BTreeMap, path::PathBuf, pin::pin, str::FromStr, sync::Ar
 use futures::StreamExt;
 use lang::{
     entity_ids::{Id, KnownItemHandler},
-    modules,
     solver::{DcModule, DcTypeDefine, ModuleScopeDecl, TyString, TyType, TyTypeKind},
     tokens::parse_file,
 };

@@ -1,7 +1,7 @@
-use std::{collections::BTreeMap, ops::Deref, sync::Arc};
+use std::{collections::BTreeMap, sync::Arc};
 
 use crate::lang::{
-    ast::items::{SyDeclaration, SyDeclarationBody, SyDeclarationBodyItem, SyTypeDefine},
+    ast::items::{SyDeclaration, SyDeclarationBody, SyTypeDefine},
     entity_ids::{Id, KnownItemHandler},
     solver::{analyze_type_expression, IdentMatcher},
     ErrorCollector,
@@ -24,7 +24,7 @@ pub async fn analyze_module(
 ) -> Id<DcModule> {
     modules.clone().allocate_and_fill_with(|mod_id| async move {
         let mut idents = BTreeMap::new();
-        let mut imports = auto_imported_modules;
+        let imports = auto_imported_modules;
 
         let ident_matcher = IdentMatcher::new_module_scope(mod_id, modules.clone());
 
@@ -35,16 +35,12 @@ pub async fn analyze_module(
 
             match &item.item {
                 SyDeclaration::TypeDefine(ty_def) => {
-                    let ty_def2 = ty_def.clone();
-                    let types2 = types.clone();
-                    let ident_matcher2 = ident_matcher.clone();
-                    let error_collector2 = error_collector.clone();
                     let type_id = analyze_type_expression(
-                        Some(ty_def2.name.clone()),
-                        ty_def2.value.clone(),
-                        ident_matcher2,
-                        types2,
-                        error_collector2,
+                        Some(ty_def.name.clone()),
+                        ty_def.value.clone(),
+                        ident_matcher.clone(),
+                        types.clone(),
+                        error_collector.clone(),
                     );
 
                     let def = DcTypeDefine {

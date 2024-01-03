@@ -1,9 +1,4 @@
-use std::{
-    backtrace::Backtrace,
-    borrow::Cow,
-    fmt::{Debug, Formatter},
-    sync::Arc,
-};
+use std::{backtrace::Backtrace, borrow::Cow, fmt::Debug, sync::Arc};
 
 use self::tokens::Span;
 

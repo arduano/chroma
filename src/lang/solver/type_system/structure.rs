@@ -78,11 +78,11 @@ impl TyTypeLogic for TyStruct {
         }
 
         // If one is generic and the other is not, then the intersection is the non generic one.
-        let Some(left) = self.literal.as_ref() else {
+        let Some(_left) = self.literal.as_ref() else {
             return other.clone();
         };
 
-        let Some(right) = other.literal.as_ref() else {
+        let Some(_right) = other.literal.as_ref() else {
             return self.clone();
         };
 

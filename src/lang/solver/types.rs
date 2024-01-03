@@ -1,16 +1,9 @@
-use std::{
-    ops::Deref,
-    pin::{pin, Pin},
-    process::Output,
-    sync::Arc,
-};
-
-use futures::Future;
+use std::{ops::Deref, sync::Arc};
 
 use crate::lang::{
     ast::{
         helpers::Attempted,
-        items::{SyExpression, SyObjectLiteralField, SyTypeDefine},
+        items::{SyExpression, SyObjectLiteralField},
     },
     entity_ids::{Id, KnownItemHandler},
     solver::{ModuleScopeDecl, RuntimeScopeDecl, TyString, TyStructLiteralField},
@@ -18,7 +11,7 @@ use crate::lang::{
     CompilerError, ErrorCollector,
 };
 
-use super::{IdentMatcher, ModuleScopeIdentMatcher, TyStruct, TyType, TyTypeKind};
+use super::{IdentMatcher, TyStruct, TyType, TyTypeKind};
 
 pub fn analyze_type_expression(
     name: Option<TkIdent>,
@@ -92,9 +85,9 @@ pub fn analyze_type_expression(
 
                             add_field(key, value);
                         }
-                        SyObjectLiteralField::KeyVariable(kv) => todo!(),
-                        SyObjectLiteralField::Spread(spread) => todo!(),
-                        SyObjectLiteralField::ComputedKey(kv) => todo!(),
+                        SyObjectLiteralField::KeyVariable(_kv) => todo!(),
+                        SyObjectLiteralField::Spread(_spread) => todo!(),
+                        SyObjectLiteralField::ComputedKey(_kv) => todo!(),
                     }
                 }
 

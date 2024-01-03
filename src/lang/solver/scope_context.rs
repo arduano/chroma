@@ -9,7 +9,7 @@ use crate::lang::{
     tokens::TkIdent,
 };
 
-use super::{DcTypeDefine, TyType};
+use super::DcTypeDefine;
 
 pub enum DcModuleItem {
     TypeDefine(DcTypeDefine),
