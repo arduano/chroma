@@ -46,41 +46,26 @@ impl CompilerError {
     }
 }
 
-struct Shared<T: Sync + Send> {
-    value: Arc<T>,
+#[derive(Clone)]
+pub struct ErrorCollector {
+    errors: Arc<boxcar::Vec<CompilerError>>,
 }
 
-impl<T: Sync + Send> Shared<T> {
-    pub fn new(value: T) -> Self {
+impl ErrorCollector {
+    pub fn new() -> Self {
         Self {
-            value: Arc::new(value),
+            errors: Arc::new(boxcar::Vec::new()),
         }
     }
 
-    /// Gets the pointer as usize
-    pub fn id(&self) -> usize {
-        Arc::as_ptr(&self.value) as usize
+    pub fn push(&self, error: CompilerError) {
+        self.errors.push(error);
     }
-}
 
-impl<T: Sync + Send> std::ops::Deref for Shared<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.value
-    }
-}
-
-impl<T: Debug + Sync + Send> Debug for Shared<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("Shared").field(&self.value).finish()
-    }
-}
-
-impl<T: Clone + Send + Sync> Clone for Shared<T> {
-    fn clone(&self) -> Self {
-        Self {
-            value: self.value.clone(),
-        }
+    pub fn errors(&self) -> Vec<CompilerError> {
+        self.errors
+            .iter()
+            .map(|(_, e)| e.clone())
+            .collect::<Vec<_>>()
     }
 }

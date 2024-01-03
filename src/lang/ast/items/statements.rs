@@ -1,5 +1,5 @@
 use super::*;
-use crate::lang::ast::helpers::*;
+use crate::lang::{ast::helpers::*, ErrorCollector};
 
 pub enum SemiRequirement {
     Never,

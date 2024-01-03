@@ -1,18 +1,21 @@
-use std::{collections::BTreeMap, path::PathBuf, str::FromStr, sync::Arc};
+use std::{collections::BTreeMap, path::PathBuf, pin::pin, str::FromStr, sync::Arc};
 
+use futures::StreamExt;
 use lang::{
     entity_ids::{Id, KnownItemHandler},
     modules,
-    solver::{DcModule, ModuleScopeIdent, TyString, TyType, TyTypeKind},
+    solver::{DcModule, DcTypeDefine, ModuleScopeDecl, TyString, TyType, TyTypeKind},
     tokens::parse_file,
 };
 
 use crate::lang::{
     ast::{
         helpers::{AstItem, AstParser, ParsingPhaseEnv},
-        items::{SyDeclarationBody, SyModule},
+        items::SyDeclarationBody,
     },
-    tokens::{FileRef, TokenReader},
+    solver::analyze_module,
+    tokens::{FileRef, TkIdent, TokenReader},
+    ErrorCollector,
 };
 
 mod lang;
@@ -31,7 +34,15 @@ fn build_std_module(
 ) -> Id<DcModule> {
     let string_id = types.allocate_value(TyType::new(TyTypeKind::String(TyString::new())));
 
-    let symbol_map = BTreeMap::from([(Arc::from("string"), ModuleScopeIdent::Type(string_id))]);
+    let string_decl = DcTypeDefine {
+        ast: None,
+        type_id: string_id,
+    };
+
+    let symbol_map = BTreeMap::from([(
+        Arc::from("string"),
+        Arc::new(ModuleScopeDecl::TypeDecl(string_decl)),
+    )]);
 
     let mod_id = modules.allocate_value(DcModule::from_symbol_map(
         symbol_map,
@@ -56,11 +67,42 @@ async fn main() {
 
     dbg!(&tokens);
 
-    let mut ast_parser = AstParser::new(TokenReader::new(&tokens.tokens));
+    let errors = ErrorCollector::new();
+
+    let mut ast_parser = AstParser::new(TokenReader::new(&tokens.tokens), errors.clone());
 
     let env = ParsingPhaseEnv::new();
     let ast = SyDeclarationBody::parse(&mut ast_parser, env);
 
-    dbg!(ast);
-    dbg!(ast_parser.errors());
+    let modules = KnownItemHandler::new();
+    let types = KnownItemHandler::new();
+
+    let std_mod_id = build_std_module(&modules, &types);
+
+    dbg!(&ast);
+
+    let mod_id = analyze_module(
+        Arc::new(ast.unwrap()),
+        modules.clone(),
+        types.clone(),
+        errors.clone(),
+        vec![std_mod_id],
+    )
+    .await;
+
+    let module = modules.get(mod_id).await;
+
+    let ident = TkIdent::new_from_str("A");
+    let a = module.get_matcher().find(&ident).await;
+    dbg!(a);
+
+    let mut resolved_types = BTreeMap::new();
+    let mut iter = pin!(types.iter());
+    while let Some((id, ty)) = iter.next().await {
+        resolved_types.insert(id, ty);
+    }
+
+    dbg!(&resolved_types);
+
+    dbg!(&errors.errors());
 }

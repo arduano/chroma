@@ -1,4 +1,6 @@
-use crate::lang::{ast::helpers::*, tokens::*, CompilerError};
+use std::sync::Arc;
+
+use crate::lang::{ast::helpers::*, tokens::*, CompilerError, ErrorCollector};
 
 use super::SyExpression;
 
@@ -11,8 +13,8 @@ use super::SyExpression;
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyObjectLiteral {
-    braces: TkBraces,
-    fields: SObjectLiteralFields,
+    pub braces: TkBraces,
+    pub fields: SObjectLiteralFields,
 }
 
 impl AstItem for SyObjectLiteral {
@@ -41,7 +43,7 @@ impl AstItem for SyObjectLiteral {
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct SObjectLiteralFields {
-    fields: Vec<Attempted<SyObjectLiteralField>>,
+    pub fields: Vec<Attempted<SyObjectLiteralField>>,
 }
 
 impl AstItem for SObjectLiteralFields {
@@ -137,9 +139,9 @@ impl AstItem for SyObjectLiteralField {
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyObjectLiteralKeyValue {
-    key: TkIdent,
-    colon: TkColon,
-    value: Box<Attempted<SyExpression>>,
+    pub key: TkIdent,
+    pub colon: TkColon,
+    pub value: Arc<Attempted<SyExpression>>,
 }
 
 impl AstItem for SyObjectLiteralKeyValue {
@@ -156,7 +158,7 @@ impl AstItem for SyObjectLiteralKeyValue {
         Ok(Self {
             key: ident,
             colon,
-            value: Box::new(value),
+            value: Arc::new(value),
         })
     }
 
@@ -176,7 +178,7 @@ impl AstItem for SyObjectLiteralKeyValue {
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyObjectLiteralKeyVariable {
-    key: TkIdent,
+    pub key: TkIdent,
 }
 
 impl AstItem for SyObjectLiteralKeyVariable {
@@ -204,8 +206,8 @@ impl AstItem for SyObjectLiteralKeyVariable {
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyObjectLiteralSpread {
-    spread: TkEpsilon,
-    fields: Box<Attempted<SyExpression>>,
+    pub spread: TkEpsilon,
+    pub fields: Box<Attempted<SyExpression>>,
 }
 
 impl AstItem for SyObjectLiteralSpread {
@@ -240,10 +242,10 @@ impl AstItem for SyObjectLiteralSpread {
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyObjectLiteralComputedKey {
-    key_brackets: TkBrackets,
-    key_expression: Box<SyExpression>,
-    colon: Attempted<TkColon>,
-    value_expression: Box<Attempted<SyExpression>>,
+    pub key_brackets: TkBrackets,
+    pub key_expression: Box<SyExpression>,
+    pub colon: Attempted<TkColon>,
+    pub value_expression: Box<Attempted<SyExpression>>,
 }
 
 impl AstItem for SyObjectLiteralComputedKey {

@@ -138,6 +138,13 @@ impl TkIdent {
     pub fn ident(&self) -> &Arc<str> {
         &self.ident
     }
+
+    pub fn new_from_str(ident: &str) -> Self {
+        Self {
+            span: Span::new_empty(),
+            ident: ident.into(),
+        }
+    }
 }
 
 impl TokenItem for TkIdent {

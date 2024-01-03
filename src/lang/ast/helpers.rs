@@ -1,6 +1,6 @@
 use crate::lang::{
     tokens::{ParseGroupToken, ParseSimpleToken, Span, TokenItem, TokenReader},
-    CompilerError,
+    CompilerError, ErrorCollector,
 };
 
 const DEBUG: bool = true;
@@ -119,28 +119,6 @@ impl ParsingPhaseEnv {
     }
 }
 
-pub struct ErrorCollector {
-    errors: Vec<CompilerError>,
-}
-
-impl ErrorCollector {
-    pub fn new() -> Self {
-        Self { errors: Vec::new() }
-    }
-
-    pub fn push(&mut self, error: CompilerError) {
-        self.errors.push(error);
-    }
-
-    pub fn extend(&mut self, errors: Vec<CompilerError>) {
-        self.errors.extend(errors);
-    }
-
-    pub fn errors(&self) -> &[CompilerError] {
-        &self.errors
-    }
-}
-
 struct ErrorRecoveryTokenMatcher<T: ParseSimpleToken>(std::marker::PhantomData<T>);
 
 impl<T: ParseSimpleToken> std::fmt::Debug for ErrorRecoveryTokenMatcher<T> {
@@ -227,11 +205,11 @@ pub struct AstParser<'a> {
 }
 
 impl<'a> AstParser<'a> {
-    pub fn new(input: TokenReader<'a>) -> Self {
+    pub fn new(input: TokenReader<'a>, errors: ErrorCollector) -> Self {
         Self {
             curr_frame: AstParserFrame::default(),
             input,
-            errors: ErrorCollector::new(),
+            errors,
         }
     }
 
@@ -239,7 +217,7 @@ impl<'a> AstParser<'a> {
         self.input.is_ended()
     }
 
-    pub fn errors(&self) -> &[CompilerError] {
+    pub fn errors(&self) -> Vec<CompilerError> {
         self.errors.errors()
     }
 

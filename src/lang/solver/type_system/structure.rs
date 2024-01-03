@@ -12,10 +12,28 @@ pub struct TyStructLiteral {
     fields: Vec<TyStructLiteralField>,
 }
 
+impl TyStructLiteral {
+    pub fn new(fields: Vec<TyStructLiteralField>) -> Self {
+        Self { fields }
+    }
+
+    pub fn get_field(&self, name: &TkIdent) -> Option<&TyStructLiteralField> {
+        self.fields
+            .iter()
+            .find(|field| field.name.ident == name.ident)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TyStructLiteralField {
-    name: TkIdent,
-    value: TyType,
+    pub name: TkIdent,
+    pub value: TyType,
+}
+
+impl TyStructLiteralField {
+    pub fn new(name: TkIdent, value: TyType) -> Self {
+        Self { name, value }
+    }
 }
 
 impl TyTypeLogic for TyStruct {

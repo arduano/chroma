@@ -1,16 +1,15 @@
+use std::sync::Arc;
+
 use super::*;
-use crate::lang::{ast::helpers::*, tokens::*};
+use crate::lang::{ast::helpers::*, tokens::*, ErrorCollector};
 
 mod type_fn;
 pub use type_fn::*;
-mod module;
-pub use module::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum SyDeclaration {
-    TypeDefine(SyTypeDefine),
-    TypeFn(SyTypeFn),
-    Module(SyModule),
+    TypeDefine(Arc<SyTypeDefine>),
+    TypeFn(Arc<SyTypeFn>),
 }
 
 impl SyDeclaration {
@@ -18,7 +17,6 @@ impl SyDeclaration {
         match self {
             Self::TypeDefine(_) => true,
             Self::TypeFn(_) => false,
-            Self::Module(_) => false,
         }
     }
 }
@@ -31,13 +29,10 @@ impl AstItem for SyDeclaration {
         Self: Sized,
     {
         if let Ok(expr) = reader.parse_optional(env) {
-            return Ok(SyDeclaration::TypeFn(expr));
+            return Ok(SyDeclaration::TypeFn(Arc::new(expr)));
         }
         if let Ok(expr) = reader.parse_optional(env) {
-            return Ok(SyDeclaration::TypeDefine(expr));
-        }
-        if let Ok(expr) = reader.parse_optional(env) {
-            return Ok(SyDeclaration::Module(expr));
+            return Ok(SyDeclaration::TypeDefine(Arc::new(expr)));
         }
 
         Err(ParseError::NoMatch)
@@ -47,7 +42,6 @@ impl AstItem for SyDeclaration {
         match self {
             Self::TypeDefine(expr) => expr.check(env, errors),
             Self::TypeFn(expr) => expr.check(env, errors),
-            Self::Module(expr) => expr.check(env, errors),
         }
     }
 }
@@ -64,7 +58,7 @@ pub struct SyTypeDefine {
     pub type_token: TkType,
     pub name: TkIdent,
     pub eq_token: TkAssign,
-    pub value: Box<Attempted<SyExpression>>,
+    pub value: Arc<Attempted<SyExpression>>,
 }
 
 impl AstItem for SyTypeDefine {
@@ -83,7 +77,7 @@ impl AstItem for SyTypeDefine {
             type_token,
             name,
             eq_token,
-            value: Box::new(value),
+            value: Arc::new(value),
         })
     }
 

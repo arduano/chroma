@@ -1,6 +1,6 @@
 use crate::lang::{
     ast::{helpers::*, items::*},
-    tokens::*,
+    tokens::*, ErrorCollector,
 };
 
 /// Represents a type fn.

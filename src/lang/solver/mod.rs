@@ -2,24 +2,18 @@ use std::path::PathBuf;
 use std::{collections::BTreeMap, sync::Arc};
 
 use super::ast::items::*;
-use super::Shared;
 
 mod type_system;
 pub use type_system::*;
 
+mod scope_context;
+pub use scope_context::*;
+
 mod modules;
 pub use modules::*;
 
-struct DcTypeDefine {
-    name: String,
-    type_: Shared<TyType>,
-}
+mod expressions;
+pub use expressions::*;
 
-struct DcTypeDefineAbstract {
-    ast: SyTypeDefine,
-    resolved: DcTypeDefine,
-}
-
-pub struct KnownFilesMap {
-    files: BTreeMap<PathBuf, Arc<SyModule>>,
-}
+mod types;
+pub use types::*;

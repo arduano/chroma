@@ -1,88 +1,68 @@
-use std::{
-    collections::{BTreeMap, VecDeque},
-    sync::Arc,
-};
+use std::{collections::BTreeMap, ops::Deref, sync::Arc};
 
 use crate::lang::{
+    ast::items::{SyDeclaration, SyDeclarationBody, SyDeclarationBodyItem, SyTypeDefine},
     entity_ids::{Id, KnownItemHandler},
-    tokens::TkIdent,
+    solver::{analyze_type_expression, IdentMatcher},
+    ErrorCollector,
 };
 
-use super::{DcTypeDefineAbstract, TyType};
+use super::{DcModule, ModuleScopeDecl, TyType};
 
-pub enum DcModuleItem {
-    TypeDefine(DcTypeDefineAbstract),
+#[derive(Debug)]
+pub struct DcTypeDefine {
+    pub ast: Option<Arc<SyTypeDefine>>,
+    pub type_id: Id<TyType>,
 }
 
-pub struct DcModule {
-    symbols: ModuleScopeIdentMatcher,
-}
-
-impl DcModule {
-    pub fn get_matcher(&self) -> &ModuleScopeIdentMatcher {
-        &self.symbols
-    }
-
-    pub fn from_symbol_map(
-        idents: BTreeMap<Arc<str>, ModuleScopeIdent>,
-        imports: Vec<Id<DcModule>>,
-        modules: KnownItemHandler<DcModule>,
-    ) -> Self {
-        Self {
-            symbols: ModuleScopeIdentMatcher {
-                idents,
-                imports,
-                modules,
-            },
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum ModuleScopeIdent {
-    Type(Id<TyType>),
-}
-
-struct ModuleScopeIdentMatcherInner {}
-
-pub struct ModuleScopeIdentMatcher {
-    idents: BTreeMap<Arc<str>, ModuleScopeIdent>,
-    imports: Vec<Id<DcModule>>,
+pub async fn analyze_module(
+    ast: Arc<SyDeclarationBody>,
     modules: KnownItemHandler<DcModule>,
-}
+    types: KnownItemHandler<TyType>,
+    error_collector: ErrorCollector,
+    auto_imported_modules: Vec<Id<DcModule>>,
+) -> Id<DcModule> {
+    modules.clone().allocate_and_fill_with(|mod_id| async move {
+        let mut idents = BTreeMap::new();
+        let mut imports = auto_imported_modules;
 
-impl ModuleScopeIdentMatcher {
-    pub async fn find(&self, ident: &TkIdent) -> Option<ModuleScopeIdent> {
-        // First, check if the current module contains the ident
-        if let Some(val) = self.idents.get(&ident.ident).map(|i| i.clone()) {
-            return Some(val);
-        }
+        let ident_matcher = IdentMatcher::new_module_scope(mod_id, modules.clone());
 
-        // Prevent recursion
-        let mut explored_modules = Vec::new();
-
-        // Then, perform BFS along all other imported modules to find the ident
-        let mut stack = VecDeque::new();
-        for &id in self.imports.iter() {
-            stack.push_back(id);
-        }
-
-        while let Some(id) = stack.pop_front() {
-            if explored_modules.contains(&id) {
+        for item in ast.statements.iter() {
+            let Ok(item) = item else {
                 continue;
-            }
-            explored_modules.push(id);
+            };
 
-            let module = self.modules.get(id).await;
-            if let Some(val) = module.symbols.idents.get(&ident.ident).map(|i| i.clone()) {
-                return Some(val);
-            }
+            match &item.item {
+                SyDeclaration::TypeDefine(ty_def) => {
+                    let ty_def2 = ty_def.clone();
+                    let types2 = types.clone();
+                    let ident_matcher2 = ident_matcher.clone();
+                    let error_collector2 = error_collector.clone();
+                    let type_id = types2.clone().allocate_and_fill_with(|_| async move {
+                        analyze_type_expression(
+                            ty_def2.value.clone(),
+                            ident_matcher2,
+                            types2,
+                            error_collector2,
+                        )
+                        .await
+                    });
 
-            for &id in module.symbols.imports.iter() {
-                stack.push_back(id);
+                    let def = DcTypeDefine {
+                        ast: Some(ty_def.clone()),
+                        type_id,
+                    };
+
+                    idents.insert(
+                        ty_def.name.ident.clone(),
+                        Arc::new(ModuleScopeDecl::TypeDecl(def)),
+                    );
+                }
+                SyDeclaration::TypeFn(_) => todo!(),
             }
         }
 
-        None
-    }
+        DcModule::new_from_ast_and_symbol_map(ast.clone(), idents, imports, modules.clone())
+    })
 }

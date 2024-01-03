@@ -66,6 +66,16 @@ impl Span {
         Self { file, range }
     }
 
+    pub fn new_empty() -> Self {
+        Self {
+            file: Arc::new(FileRef {
+                path: PathBuf::new(),
+                contents: String::new(),
+            }),
+            range: FileLocation::new(0, 0, 0)..FileLocation::new(0, 0, 0),
+        }
+    }
+
     pub fn join(&self, other: &Self) -> Self {
         assert!(Arc::ptr_eq(&self.file, &other.file));
 

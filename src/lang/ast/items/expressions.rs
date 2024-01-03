@@ -1,4 +1,4 @@
-use crate::lang::{ast::helpers::*, tokens::*};
+use crate::lang::{ast::helpers::*, tokens::*, ErrorCollector};
 
 mod obj_literal;
 pub use obj_literal::*;

@@ -1,6 +1,6 @@
 use std::{cell::UnsafeCell, marker::PhantomData, mem::MaybeUninit, sync::Arc};
 
-use futures::Future;
+use futures::{stream, Future, Stream, StreamExt};
 use futures_intrusive::sync::ManualResetEvent;
 
 pub struct Id<T>(u32, PhantomData<T>);
@@ -113,9 +113,9 @@ impl<T: 'static + Send + Sync> KnownItemHandler<T> {
         }
     }
 
-    pub fn allocate_and_fill_with<F: Future<Output = T> + Send + Sync>(
+    pub fn allocate_and_fill_with<F: Future<Output = T> + Send>(
         &self,
-        fill: impl 'static + Send + Sync + FnOnce(Id<T>) -> F,
+        fill: impl 'static + Send + FnOnce(Id<T>) -> F,
     ) -> Id<T> {
         let items = self.items.clone();
         let index = items.push(KnownItem::new());
@@ -149,5 +149,12 @@ impl<T: 'static + Send + Sync> KnownItemHandler<T> {
     pub async fn get(&self, id: Id<T>) -> Arc<T> {
         let item = &self.items[id.index() as usize];
         item.wait_then_get().await.clone()
+    }
+
+    pub fn iter(&self) -> impl '_ + Stream<Item = (Id<T>, Arc<T>)> {
+        stream::iter(self.items.iter()).filter_map(|(i, item)| async move {
+            let item = item.wait_then_get().await;
+            Some((Id::new(i as u32), item.clone()))
+        })
     }
 }

@@ -7,14 +7,25 @@ pub use string::*;
 mod structure;
 pub use structure::*;
 
+use crate::lang::{entity_ids::Id, tokens::TkIdent};
+
 #[derive(Debug, Clone)]
 pub struct TyType {
+    name: Option<TkIdent>,
     kind: Arc<TyTypeKind>,
 }
 
 impl TyType {
     pub fn new(kind: TyTypeKind) -> Self {
         Self {
+            name: None,
+            kind: Arc::new(kind),
+        }
+    }
+
+    pub fn new_named(name: TkIdent, kind: TyTypeKind) -> Self {
+        Self {
+            name: Some(name),
             kind: Arc::new(kind),
         }
     }
@@ -29,6 +40,7 @@ pub enum TyTypeKind {
     Number(TyNumber),
     String(TyString),
     Struct(TyStruct),
+    Reference(Id<TyType>),
     Never,
     Unknown,
 }
@@ -89,6 +101,7 @@ impl TyTypeLogic for TyType {
 
     fn get_intersection(&self, other: &Self) -> Self {
         Self {
+            name: None,
             kind: Arc::new(self.kind.get_intersection(&other.kind)),
         }
     }
