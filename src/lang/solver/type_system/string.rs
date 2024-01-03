@@ -13,6 +13,12 @@ impl TyString {
             literals_union: LiteralsList::new(),
         }
     }
+
+    pub fn from_literal(literal: Arc<str>) -> Self {
+        Self {
+            literals_union: LiteralsList::from_literal(TyStringLiteral { value: literal }),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -9,7 +9,6 @@ use self::tokens::Span;
 
 pub mod ast;
 pub mod entity_ids;
-mod ident_matcher;
 pub mod modules;
 pub mod solver;
 pub mod tokens;

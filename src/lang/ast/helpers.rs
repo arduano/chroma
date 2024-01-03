@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::lang::{
     tokens::{ParseGroupToken, ParseSimpleToken, Span, TokenItem, TokenReader},
     CompilerError, ErrorCollector,
@@ -139,11 +141,11 @@ impl<T: ParseSimpleToken> ErrorRecoveryTokenMatch for ErrorRecoveryTokenMatcher<
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ErrorRecoveryMode {
     UntilEnd,
     UntilN(usize),
-    UntilToken(Box<dyn ErrorRecoveryTokenMatch>),
+    UntilToken(Rc<dyn ErrorRecoveryTokenMatch>),
 }
 
 impl ErrorRecoveryMode {
@@ -156,7 +158,7 @@ impl ErrorRecoveryMode {
     }
 
     pub fn until_token<T: 'static + ParseSimpleToken>() -> Self {
-        Self::UntilToken(Box::new(ErrorRecoveryTokenMatcher(
+        Self::UntilToken(Rc::new(ErrorRecoveryTokenMatcher(
             std::marker::PhantomData::<T>,
         )))
     }
@@ -168,9 +170,6 @@ impl ErrorRecoveryMode {
             ErrorRecoveryMode::UntilToken(matcher) => {
                 let mut reader_clone = reader.clone();
                 let matches = matcher.matches(&mut reader_clone);
-                if matches {
-                    reader.skip(1);
-                }
                 matches
             }
         }
@@ -185,7 +184,7 @@ impl ErrorRecoveryMode {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct AstParserFrame {
     current_error_recovery_mode: ErrorRecoveryMode,
 }
@@ -234,7 +233,8 @@ impl<'a> AstParser<'a> {
     }
 
     fn save_frame(&mut self) -> AstParserFrame {
-        let frame = std::mem::replace(&mut self.curr_frame, AstParserFrame::default());
+        let cloned = self.curr_frame.clone();
+        let frame = std::mem::replace(&mut self.curr_frame, cloned);
         frame
     }
 
@@ -453,27 +453,31 @@ impl<'a> AstParser<'a> {
         self.restore_frame(frame);
 
         if item.is_ok() {
-            debug!("Parsed optional: {}", T::NAME);
+            debug!("Parsed optional: {} at {:?}", T::NAME, self.input.span());
         } else {
-            debug!("Skipped optional: {}", T::NAME);
+            debug!("Skipped optional: {} at {:?}", T::NAME, self.input.span());
         }
 
         item
     }
 
     pub fn parse_required<T: AstItem>(&mut self, env: ParsingPhaseEnv) -> Attempted<T> {
-        debug!("Entering required: {}", T::NAME);
+        debug!("Entering required: {} at {:?}", T::NAME, self.input.span());
         debug!("MODE: {:?}", &self.curr_frame.current_error_recovery_mode);
 
         let item = self.parse_optional::<T>(env);
 
         match item {
             ParseResult::Ok(item) => {
-                debug!("Parsed required: {}", T::NAME);
+                debug!("Parsed required: {} at {:?}", T::NAME, self.input.span());
                 return Attempted::Ok(item);
             }
             ParseResult::Err(ParseError::Error) => {
-                debug!("Error parsing required item: {}", T::NAME);
+                debug!(
+                    "Error parsing required item: {} at {:?}",
+                    T::NAME,
+                    self.input.span()
+                );
                 return Attempted::Err(ParseErrorError);
             }
             ParseResult::Err(ParseError::NoMatch) => {

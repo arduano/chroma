@@ -18,6 +18,7 @@ trait ExpressionBottomUpParse {
 #[derive(Debug, Clone, PartialEq)]
 pub enum SyExpression {
     VarRead(SyVarRead),
+    StringLiteral(SyStringLiteral),
     ObjectLiteral(SyObjectLiteral),
 }
 
@@ -25,7 +26,8 @@ impl SyExpression {
     pub fn needs_semicolon(&self) -> bool {
         match self {
             Self::VarRead(_) => true,
-            Self::ObjectLiteral(_) => false,
+            Self::StringLiteral(_) => true,
+            Self::ObjectLiteral(_) => true,
         }
     }
 }
@@ -43,6 +45,9 @@ impl AstItem for SyExpression {
         ) -> ParseResult<SyExpression> {
             if let Ok(expr) = reader.parse_optional(env) {
                 return Ok(SyExpression::VarRead(expr));
+            }
+            if let Ok(expr) = reader.parse_optional(env) {
+                return Ok(SyExpression::StringLiteral(expr));
             }
             if let Ok(expr) = reader.parse_optional(env) {
                 return Ok(SyExpression::ObjectLiteral(expr));
@@ -83,6 +88,7 @@ impl AstItem for SyExpression {
     fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
         match self {
             Self::VarRead(expr) => expr.check(env, errors),
+            Self::StringLiteral(expr) => expr.check(env, errors),
             Self::ObjectLiteral(expr) => expr.check(env, errors),
         }
     }
@@ -110,6 +116,28 @@ impl AstItem for SyVarRead {
         let name = reader.parse_optional_token()?;
 
         Ok(Self { name })
+    }
+
+    fn check(&self, _env: CheckingPhaseEnv, _errors: &mut ErrorCollector) {
+        // N/A
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SyStringLiteral {
+    pub literal: TkString,
+}
+
+impl AstItem for SyStringLiteral {
+    const NAME: &'static str = "string literal";
+
+    fn parse<'a>(reader: &mut AstParser<'a>, _env: ParsingPhaseEnv) -> ParseResult<Self>
+    where
+        Self: Sized,
+    {
+        let literal = reader.parse_optional_token()?;
+
+        Ok(Self { literal })
     }
 
     fn check(&self, _env: CheckingPhaseEnv, _errors: &mut ErrorCollector) {

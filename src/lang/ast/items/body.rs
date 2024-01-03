@@ -134,7 +134,7 @@ impl AstItem for SyDeclarationBody {
         Self: Sized,
     {
         let mut statements = Vec::new();
-        reader.set_error_recovery_mode(ErrorRecoveryMode::until_end());
+        reader.set_error_recovery_mode(ErrorRecoveryMode::until_token::<TkBlockLineEndSearch>());
 
         while !reader.is_empty() {
             let statement =

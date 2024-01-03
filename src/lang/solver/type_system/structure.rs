@@ -1,10 +1,22 @@
-use crate::lang::tokens::TkIdent;
+use crate::lang::{entity_ids::Id, tokens::TkIdent};
 
 use super::{TyType, TyTypeLogic};
 
 #[derive(Debug, Clone)]
 pub struct TyStruct {
     literal: Option<TyStructLiteral>,
+}
+
+impl TyStruct {
+    pub fn new() -> Self {
+        Self { literal: None }
+    }
+
+    pub fn new_literal(fields: Vec<TyStructLiteralField>) -> Self {
+        Self {
+            literal: Some(TyStructLiteral::new(fields)),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -27,11 +39,11 @@ impl TyStructLiteral {
 #[derive(Debug, Clone)]
 pub struct TyStructLiteralField {
     pub name: TkIdent,
-    pub value: TyType,
+    pub value: Id<TyType>,
 }
 
 impl TyStructLiteralField {
-    pub fn new(name: TkIdent, value: TyType) -> Self {
+    pub fn new(name: TkIdent, value: Id<TyType>) -> Self {
         Self { name, value }
     }
 }
@@ -74,23 +86,25 @@ impl TyTypeLogic for TyStruct {
             return self.clone();
         };
 
+        todo!();
+
         // If both are non generic struct types, then the intersection is the fields that are in
         // both (the field types being the intersection of both fields).
-        let mut fields = Vec::new();
-        for left_field in &left.fields {
-            for right_field in &right.fields {
-                if left_field.name.ident == right_field.name.ident {
-                    fields.push(TyStructLiteralField {
-                        name: left_field.name.clone(),
-                        value: left_field.value.get_intersection(&right_field.value),
-                    });
-                    break;
-                }
-            }
-        }
+        // let mut fields = Vec::new();
+        // for left_field in &left.fields {
+        //     for right_field in &right.fields {
+        //         if left_field.name.ident == right_field.name.ident {
+        //             fields.push(TyStructLiteralField {
+        //                 name: left_field.name.clone(),
+        //                 value: left_field.value.get_intersection(&right_field.value),
+        //             });
+        //             break;
+        //         }
+        //     }
+        // }
 
-        TyStruct {
-            literal: Some(TyStructLiteral { fields }),
-        }
+        // TyStruct {
+        //     literal: Some(TyStructLiteral { fields }),
+        // }
     }
 }

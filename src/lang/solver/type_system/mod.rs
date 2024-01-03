@@ -23,9 +23,9 @@ impl TyType {
         }
     }
 
-    pub fn new_named(name: TkIdent, kind: TyTypeKind) -> Self {
+    pub fn new_named(name: Option<TkIdent>, kind: TyTypeKind) -> Self {
         Self {
-            name: Some(name),
+            name,
             kind: Arc::new(kind),
         }
     }
@@ -116,6 +116,12 @@ impl<T: PartialEq + Clone> LiteralsList<T> {
     fn new() -> Self {
         Self {
             literals: [].into(),
+        }
+    }
+
+    pub fn from_literal(literal: T) -> Self {
+        Self {
+            literals: [literal].into(),
         }
     }
 

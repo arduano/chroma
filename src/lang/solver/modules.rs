@@ -39,15 +39,13 @@ pub async fn analyze_module(
                     let types2 = types.clone();
                     let ident_matcher2 = ident_matcher.clone();
                     let error_collector2 = error_collector.clone();
-                    let type_id = types2.clone().allocate_and_fill_with(|_| async move {
-                        analyze_type_expression(
-                            ty_def2.value.clone(),
-                            ident_matcher2,
-                            types2,
-                            error_collector2,
-                        )
-                        .await
-                    });
+                    let type_id = analyze_type_expression(
+                        Some(ty_def2.name.clone()),
+                        ty_def2.value.clone(),
+                        ident_matcher2,
+                        types2,
+                        error_collector2,
+                    );
 
                     let def = DcTypeDefine {
                         ast: Some(ty_def.clone()),
