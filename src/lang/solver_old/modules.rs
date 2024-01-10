@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, sync::Arc};
 use crate::lang::{
     ast::items::{SyDeclaration, SyDeclarationBody, SyTypeDefine},
     entity_ids::{Id, KnownItemHandler},
-    solver::{analyze_type_expression, IdentMatcher},
+    solver_old::{analyze_type_expression, IdentMatcher},
     ErrorCollector,
 };
 

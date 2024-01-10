@@ -1,9 +1,9 @@
-use std::{collections::BTreeMap, path::PathBuf, pin::pin, str::FromStr, sync::Arc};
+use std::{collections::BTreeMap, path::PathBuf, pin::pin, rc::Rc, str::FromStr, sync::Arc};
 
 use futures::StreamExt;
 use lang::{
     entity_ids::{Id, KnownItemHandler},
-    solver::{DcModule, DcTypeDefine, ModuleScopeDecl, TyString, TyType, TyTypeKind},
+    solver_old::{DcModule, DcTypeDefine, ModuleScopeDecl, TyString, TyType, TyTypeKind},
     tokens::parse_file,
 };
 
@@ -12,7 +12,7 @@ use crate::lang::{
         helpers::{AstItem, AstParser, ParsingPhaseEnv},
         items::SyDeclarationBody,
     },
-    solver::analyze_module,
+    solver_old::analyze_module,
     tokens::{FileRef, TkIdent, TokenReader},
     ErrorCollector,
 };
@@ -80,28 +80,32 @@ async fn main() {
 
     dbg!(&ast);
 
-    let mod_id = analyze_module(
-        Arc::new(ast.unwrap()),
-        modules.clone(),
-        types.clone(),
-        errors.clone(),
-        vec![std_mod_id],
-    )
-    .await;
+    // let mod_id = analyze_module(
+    //     Arc::new(ast.unwrap()),
+    //     modules.clone(),
+    //     types.clone(),
+    //     errors.clone(),
+    //     vec![std_mod_id],
+    // )
+    // .await;
 
-    let module = modules.get(mod_id).await;
+    // let module = modules.get(mod_id).await;
 
-    let ident = TkIdent::new_from_str("A");
-    let a = module.get_matcher().find(&ident).await;
-    dbg!(a);
+    // let ident = TkIdent::new_from_str("A");
+    // let a = module.get_matcher().find(&ident).await;
+    // dbg!(a);
 
-    let mut resolved_types = BTreeMap::new();
-    let mut iter = pin!(types.iter());
-    while let Some((id, ty)) = iter.next().await {
-        resolved_types.insert(id, ty);
-    }
+    // let mut resolved_types = BTreeMap::new();
+    // let mut iter = pin!(types.iter());
+    // while let Some((id, ty)) = iter.next().await {
+    //     resolved_types.insert(id, ty);
+    // }
 
-    dbg!(&resolved_types);
+    // dbg!(&resolved_types);
 
     dbg!(&errors.errors());
 }
+
+struct FilesList {}
+
+fn test() {}

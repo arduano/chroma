@@ -1,4 +1,7 @@
-use std::{cell::UnsafeCell, marker::PhantomData, mem::MaybeUninit, sync::Arc};
+use std::{
+    cell::UnsafeCell, collections::BTreeMap, marker::PhantomData, mem::MaybeUninit, rc::Rc,
+    sync::Arc,
+};
 
 use futures::{stream, Future, Stream, StreamExt};
 use futures_intrusive::sync::ManualResetEvent;
@@ -156,5 +159,34 @@ impl<T: 'static + Send + Sync> KnownItemHandler<T> {
             let item = item.wait_then_get().await;
             Some((Id::new(i as u32), item.clone()))
         })
+    }
+}
+
+struct IdSet<T> {
+    id_counter: u32,
+    items: BTreeMap<u32, Rc<T>>,
+}
+
+impl<T> IdSet<T> {
+    fn new() -> Self {
+        Self {
+            id_counter: 0,
+            items: BTreeMap::new(),
+        }
+    }
+
+    fn add(&mut self, item: T) -> Id<T> {
+        let id = Id::new(self.id_counter);
+        self.id_counter += 1;
+        self.items.insert(id.0, Rc::new(item));
+        id
+    }
+
+    fn get(&self, id: Id<T>) -> Option<Rc<T>> {
+        self.items.get(&id.0).cloned()
+    }
+
+    fn gc(&mut self) {
+        self.items.retain(|_, v| Rc::strong_count(v) > 1);
     }
 }

@@ -5,7 +5,7 @@ use self::tokens::Span;
 pub mod ast;
 pub mod entity_ids;
 pub mod modules;
-pub mod solver;
+pub mod solver_old;
 pub mod tokens;
 
 #[derive(Debug, Clone, PartialEq)]

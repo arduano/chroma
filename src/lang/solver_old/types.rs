@@ -6,7 +6,7 @@ use crate::lang::{
         items::{SyExpression, SyObjectLiteralField},
     },
     entity_ids::{Id, KnownItemHandler},
-    solver::{ModuleScopeDecl, RuntimeScopeDecl, TyString, TyStructLiteralField},
+    solver_old::{ModuleScopeDecl, RuntimeScopeDecl, TyString, TyStructLiteralField},
     tokens::TkIdent,
     CompilerError, ErrorCollector,
 };

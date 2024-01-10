@@ -1,0 +1,14 @@
+type fn StringOrNum<T: {}> {
+    if (T extends { a: string }) {
+        return string;
+    } else {
+        return number;
+    }
+}
+
+type fn Test<T1: {}, T2: T1> {
+    type A = StringOrNum<T1>;
+    type B = StringOrNum<T2>;
+
+    // Is A assignable to B?
+}
