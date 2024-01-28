@@ -6,12 +6,13 @@ use std::{
 
 use futures::lock::Mutex;
 
-use self::type_system::TyType;
+use self::{linked_ast::LiType, type_system::TyType};
 
 use super::{
     ast::items::{SyDeclaration, SyDeclarationBodyItem},
     entity_ids::{Id, IdCounter},
     tokens::TkIdent,
+    CompilerError, ErrorCollector,
 };
 
 mod linked_ast;
@@ -86,6 +87,52 @@ impl KnownFiles {
     }
 }
 
+pub struct ItemSet<T> {
+    counter: IdCounter<T>,
+    types: HashMap<Id<T>, T>,
+}
+
+impl<T> ItemSet<T> {
+    pub fn new() -> Self {
+        Self {
+            counter: IdCounter::new(),
+            types: HashMap::new(),
+        }
+    }
+
+    pub fn add_type(&mut self, ty: T) -> Id<T> {
+        let id = self.counter.next();
+        self.types.insert(id, ty);
+        id
+    }
+
+    pub fn allocate_type(&mut self) -> Id<T> {
+        let id = self.counter.next();
+        id
+    }
+
+    pub fn insert_allocated_type(&mut self, id: Id<T>, ty: T) {
+        let existing = self.types.insert(id, ty);
+        assert!(existing.is_none());
+    }
+}
+
+impl<T> std::ops::Index<Id<T>> for ItemSet<T> {
+    type Output = T;
+
+    fn index(&self, index: Id<T>) -> &Self::Output {
+        &self.types[&index]
+    }
+}
+
+impl<T> std::ops::Index<&Id<T>> for ItemSet<T> {
+    type Output = T;
+
+    fn index(&self, index: &Id<T>) -> &Self::Output {
+        &self.types[index]
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeAssignability {
     pub from: Id<TyType>,
@@ -95,36 +142,6 @@ pub struct TypeAssignability {
 impl TypeAssignability {
     pub fn new(from: Id<TyType>, to: Id<TyType>) -> Self {
         Self { from, to }
-    }
-}
-
-pub struct TypeWorld {
-    counter: IdCounter<TyType>,
-    types: HashMap<Id<TyType>, TyType>,
-}
-
-impl TypeWorld {
-    pub fn new() -> Self {
-        Self {
-            counter: IdCounter::new(),
-            types: HashMap::new(),
-        }
-    }
-
-    pub fn add_type(&mut self, ty: TyType) -> Id<TyType> {
-        let id = self.counter.next();
-        self.types.insert(id, ty);
-        id
-    }
-
-    pub fn allocate_type(&mut self) -> Id<TyType> {
-        let id = self.counter.next();
-        id
-    }
-
-    pub fn insert_allocated_type(&mut self, id: Id<TyType>, ty: TyType) {
-        let existing = self.types.insert(id, ty);
-        assert!(existing.is_none());
     }
 }
 
@@ -152,18 +169,18 @@ impl TypeAssignabilityCache {
 }
 
 pub struct TypeAssignabilityQuery<'a> {
-    type_world: &'a TypeWorld,
+    types: &'a ItemSet<TyType>,
     type_assignability: &'a mut TypeAssignabilityCache,
     parent_queries: Vec<TypeAssignability>,
 }
 
 impl<'a> TypeAssignabilityQuery<'a> {
     pub fn new(
-        type_world: &'a TypeWorld,
+        types: &'a ItemSet<TyType>,
         type_assignability: &'a mut TypeAssignabilityCache,
     ) -> Self {
         Self {
-            type_world,
+            types,
             type_assignability,
             parent_queries: Vec::new(),
         }
@@ -197,8 +214,8 @@ impl<'a> TypeAssignabilityQuery<'a> {
         self.parent_queries
             .push(TypeAssignability::new(left, right));
 
-        let left_ty = &self.type_world.types[&left];
-        let right_ty = &self.type_world.types[&right];
+        let left_ty = &self.types.types[&left];
+        let right_ty = &self.types.types[&right];
 
         let assignable = left_ty.check_assignable_to(right_ty, self);
 
@@ -210,12 +227,51 @@ impl<'a> TypeAssignabilityQuery<'a> {
 
 pub struct CompiledFileResults {
     modules: HashMap<(), ModuleNamespace>,
-    types: TypeWorld,
+    linked_type_definitions: ItemSet<LiType>,
+    types: ItemSet<TyType>,
     type_assignability: TypeAssignabilityCache,
+    errors: ErrorCollector,
+}
+
+impl CompiledFileResults {
+    pub fn new() -> Self {
+        Self {
+            modules: HashMap::new(),
+            linked_type_definitions: ItemSet::new(),
+            types: ItemSet::new(),
+            type_assignability: TypeAssignabilityCache::new(),
+            errors: ErrorCollector::new(),
+        }
+    }
+
+    pub fn add_error(&mut self, error: CompilerError) {
+        self.errors.push(error);
+    }
 }
 
 pub struct ModuleNamespace {
     items: HashMap<Arc<str>, ModuleNamespaceItem>,
+}
+
+impl ModuleNamespace {
+    pub fn new() -> Self {
+        Self {
+            items: HashMap::new(),
+        }
+    }
+
+    pub fn add_item(&mut self, item: ModuleNamespaceItem) {
+        let existing = self.items.insert(item.ident.ident.clone(), item);
+        assert!(existing.is_none());
+    }
+
+    pub fn get_ident_kind(&self, ident: &TkIdent) -> Option<ModuleNamespaceItemKind> {
+        Some(self.items.get(&ident.ident)?.kind)
+    }
+
+    pub fn get_item(&self, ident: &Arc<str>) -> Option<&ModuleNamespaceItem> {
+        self.items.get(ident)
+    }
 }
 
 pub struct ModuleNamespaceItem {
@@ -225,5 +281,5 @@ pub struct ModuleNamespaceItem {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ModuleNamespaceItemKind {
-    Type(Id<TyType>),
+    Type(Id<LiType>),
 }

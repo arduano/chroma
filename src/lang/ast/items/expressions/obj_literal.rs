@@ -243,7 +243,7 @@ impl AstItem for SyObjectLiteralSpread {
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyObjectLiteralComputedKey {
     pub key_brackets: TkBrackets,
-    pub key_expression: Box<SyExpression>,
+    pub key_expression: Box<Attempted<SyExpression>>,
     pub colon: Attempted<TkColon>,
     pub value_expression: Box<Attempted<SyExpression>>,
 }
@@ -262,15 +262,16 @@ impl AstItem for SyObjectLiteralComputedKey {
 
         Ok(Self {
             key_brackets,
-            key_expression: Box::new(key_expression),
+            key_expression: Box::new(Ok(key_expression)),
             colon,
             value_expression: Box::new(value_expression),
         })
     }
 
     fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        self.key_expression
-            .check(env.inside_nested_expr().inside_type_only(), errors);
+        if let Ok(expression) = &*self.key_expression {
+            expression.check(env.inside_nested_expr(), errors);
+        }
         if let Ok(expression) = &*self.value_expression {
             expression.check(env.inside_nested_expr(), errors);
         }
