@@ -1,19 +1,19 @@
 use std::{
-    cell::UnsafeCell, collections::BTreeMap, marker::PhantomData, mem::MaybeUninit, rc::Rc,
-    sync::Arc,
+    cell::UnsafeCell, collections::BTreeMap, marker::PhantomData, mem::MaybeUninit,
+    num::NonZeroU32, rc::Rc, sync::Arc,
 };
 
 use futures::{stream, Future, Stream, StreamExt};
 use futures_intrusive::sync::ManualResetEvent;
 
-pub struct Id<T>(u32, PhantomData<T>);
+pub struct Id<T>(NonZeroU32, PhantomData<T>);
 
 impl<T> Id<T> {
-    pub fn new(index: u32) -> Self {
+    pub fn new(index: NonZeroU32) -> Self {
         Self(index, PhantomData)
     }
 
-    pub fn index(&self) -> u32 {
+    pub fn index(&self) -> NonZeroU32 {
         self.0
     }
 }
@@ -60,6 +60,24 @@ impl<T> std::hash::Hash for Id<T> {
     }
 }
 
+pub struct IdCounter<T> {
+    counter: Id<T>,
+}
+
+impl<T> IdCounter<T> {
+    pub fn new() -> Self {
+        Self {
+            counter: Id::new(NonZeroU32::MIN),
+        }
+    }
+
+    pub fn next(&mut self) -> Id<T> {
+        let id = self.counter;
+        self.counter = Id::new(self.counter.0.checked_add(1).unwrap());
+        id
+    }
+}
+
 struct KnownItem<T> {
     ready: ManualResetEvent,
     item: UnsafeCell<MaybeUninit<T>>,
@@ -94,99 +112,5 @@ impl<T> KnownItem<T> {
     pub async fn wait_then_get(&self) -> &T {
         self.ready.wait().await;
         unsafe { (&*self.item.get()).assume_init_ref() }
-    }
-}
-
-pub struct KnownItemHandler<T: 'static + Send + Sync> {
-    items: Arc<boxcar::Vec<KnownItem<Arc<T>>>>,
-}
-
-impl<T: 'static + Send + Sync> Clone for KnownItemHandler<T> {
-    fn clone(&self) -> Self {
-        Self {
-            items: self.items.clone(),
-        }
-    }
-}
-
-impl<T: 'static + Send + Sync> KnownItemHandler<T> {
-    pub fn new() -> Self {
-        Self {
-            items: Arc::new(boxcar::Vec::new()),
-        }
-    }
-
-    pub fn allocate_and_fill_with<F: Future<Output = T> + Send>(
-        &self,
-        fill: impl 'static + Send + FnOnce(Id<T>) -> F,
-    ) -> Id<T> {
-        let items = self.items.clone();
-        let index = items.push(KnownItem::new());
-
-        tokio::spawn(async move {
-            let value = fill(Id::new(index as u32)).await;
-            items[index].set(Arc::new(value));
-        });
-
-        Id::new(index as u32)
-    }
-
-    pub fn allocate_value(&self, value: T) -> Id<T> {
-        let items = self.items.clone();
-        let index = items.push(KnownItem::new());
-
-        items[index].set(Arc::new(value));
-
-        Id::new(index as u32)
-    }
-
-    pub fn get_unless_pending(&self, id: Id<T>) -> Option<Arc<T>> {
-        let item = &self.items[id.index() as usize];
-        if let Some(item) = item.get() {
-            Some(item.clone())
-        } else {
-            None
-        }
-    }
-
-    pub async fn get(&self, id: Id<T>) -> Arc<T> {
-        let item = &self.items[id.index() as usize];
-        item.wait_then_get().await.clone()
-    }
-
-    pub fn iter(&self) -> impl '_ + Stream<Item = (Id<T>, Arc<T>)> {
-        stream::iter(self.items.iter()).filter_map(|(i, item)| async move {
-            let item = item.wait_then_get().await;
-            Some((Id::new(i as u32), item.clone()))
-        })
-    }
-}
-
-struct IdSet<T> {
-    id_counter: u32,
-    items: BTreeMap<u32, Rc<T>>,
-}
-
-impl<T> IdSet<T> {
-    fn new() -> Self {
-        Self {
-            id_counter: 0,
-            items: BTreeMap::new(),
-        }
-    }
-
-    fn add(&mut self, item: T) -> Id<T> {
-        let id = Id::new(self.id_counter);
-        self.id_counter += 1;
-        self.items.insert(id.0, Rc::new(item));
-        id
-    }
-
-    fn get(&self, id: Id<T>) -> Option<Rc<T>> {
-        self.items.get(&id.0).cloned()
-    }
-
-    fn gc(&mut self) {
-        self.items.retain(|_, v| Rc::strong_count(v) > 1);
     }
 }

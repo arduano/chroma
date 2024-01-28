@@ -1,3 +1,5 @@
+use std::{ops::Deref, sync::Arc};
+
 use crate::lang::{ast::helpers::*, tokens::*, CompilerError, ErrorCollector};
 
 use super::*;
@@ -121,7 +123,7 @@ impl AstItem for SyBodyStatement {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyDeclarationBody {
-    pub statements: Vec<Attempted<SyDeclarationBodyItem>>,
+    pub statements: Vec<Attempted<Arc<SyDeclarationBodyItem>>>,
 }
 
 impl AstItem for SyDeclarationBody {
@@ -157,7 +159,7 @@ impl AstItem for SyDeclarationBody {
                 }
             }
 
-            statements.push(statement);
+            statements.push(statement.map(Arc::new));
         }
 
         Ok(Self { statements })
@@ -165,7 +167,7 @@ impl AstItem for SyDeclarationBody {
 
     fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
         for statement in &self.statements {
-            if let Ok(statement) = statement {
+            if let Ok(statement) = statement.deref() {
                 statement.check(env, errors);
             }
         }

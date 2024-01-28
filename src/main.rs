@@ -1,18 +1,15 @@
+#![allow(dead_code)]
+
 use std::{collections::BTreeMap, path::PathBuf, pin::pin, rc::Rc, str::FromStr, sync::Arc};
 
 use futures::StreamExt;
-use lang::{
-    entity_ids::{Id, KnownItemHandler},
-    solver_old::{DcModule, DcTypeDefine, ModuleScopeDecl, TyString, TyType, TyTypeKind},
-    tokens::parse_file,
-};
+use lang::{entity_ids::Id, tokens::parse_file};
 
 use crate::lang::{
     ast::{
         helpers::{AstItem, AstParser, ParsingPhaseEnv},
         items::SyDeclarationBody,
     },
-    solver_old::analyze_module,
     tokens::{FileRef, TkIdent, TokenReader},
     ErrorCollector,
 };
@@ -22,35 +19,35 @@ mod lang;
 // Naming:
 // Tk__ - Tokens
 // Sy__ - AST
+// Li__ - Linked and simplified definitions, resolving any AST names to IDs
 // Ty__ - Raw type system
-// Dc__ - Declarations (e.g. functions/types declared inside a module)
 // St__ - Static Compiler Data (e.g. types, generic function descriptions)
 // Rt__ - Runtime Data (e.g. values, generic function instances)
 
-fn build_std_module(
-    modules: &KnownItemHandler<DcModule>,
-    types: &KnownItemHandler<TyType>,
-) -> Id<DcModule> {
-    let string_id = types.allocate_value(TyType::new(TyTypeKind::String(TyString::new())));
+// fn build_std_module(
+//     modules: &KnownItemHandler<DcModule>,
+//     types: &KnownItemHandler<TyType>,
+// ) -> Id<DcModule> {
+//     let string_id = types.allocate_value(TyType::new(TyTypeKind::String(TyString::new())));
 
-    let string_decl = DcTypeDefine {
-        ast: None,
-        type_id: string_id,
-    };
+//     let string_decl = DcTypeDefine {
+//         ast: None,
+//         type_id: string_id,
+//     };
 
-    let symbol_map = BTreeMap::from([(
-        Arc::from("string"),
-        Arc::new(ModuleScopeDecl::TypeDecl(string_decl)),
-    )]);
+//     let symbol_map = BTreeMap::from([(
+//         Arc::from("string"),
+//         Arc::new(ModuleScopeDecl::TypeDecl(string_decl)),
+//     )]);
 
-    let mod_id = modules.allocate_value(DcModule::from_symbol_map(
-        symbol_map,
-        vec![],
-        modules.clone(),
-    ));
+//     let mod_id = modules.allocate_value(DcModule::from_symbol_map(
+//         symbol_map,
+//         vec![],
+//         modules.clone(),
+//     ));
 
-    mod_id
-}
+//     mod_id
+// }
 
 #[tokio::main]
 async fn main() {
@@ -73,10 +70,10 @@ async fn main() {
     let env = ParsingPhaseEnv::new();
     let ast = SyDeclarationBody::parse(&mut ast_parser, env);
 
-    let modules = KnownItemHandler::new();
-    let types = KnownItemHandler::new();
+    // let modules = KnownItemHandler::new();
+    // let types = KnownItemHandler::new();
 
-    let std_mod_id = build_std_module(&modules, &types);
+    // let std_mod_id = build_std_module(&modules, &types);
 
     dbg!(&ast);
 

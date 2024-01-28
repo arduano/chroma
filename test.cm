@@ -1,10 +1,5 @@
-type fn Test<T, T2> error {
-    type A = {
-        test: A
-    };
+type A = {
+    test: A
+};
 
-    bad expression;
-
-    type B = string;
-}
-
+type B = string;
