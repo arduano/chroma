@@ -3,9 +3,7 @@ use std::collections::HashMap;
 use crate::lang::{
     ast::{
         helpers::Attempted,
-        items::{
-            SyDeclaration, SyDeclarationBody, SyExpression, SyObjectLiteralField, SyTypeDefine,
-        },
+        items::{SyDeclaration, SyDeclarationBody, SyExpression, SyObjectLiteralField},
     },
     entity_ids::Id,
     tokens::TkIdent,
@@ -14,9 +12,7 @@ use crate::lang::{
 
 use self::{
     link_type_expressions::link_type_expression_ast,
-    parse_static_types::{
-        parse_type_from_linked_type, parse_type_from_linked_type_id, TypeFromLinkedTypeCompilation,
-    },
+    parse_static_types::{parse_type_from_linked_type_id, TypeFromLinkedTypeCompilation},
 };
 
 use super::{

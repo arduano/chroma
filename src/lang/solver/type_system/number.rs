@@ -1,6 +1,6 @@
 use crate::lang::solver::TypeAssignabilityQuery;
 
-use super::{LiteralsList, TyTypeLogic};
+use super::TyTypeLogic;
 
 #[derive(Debug, Clone)]
 pub struct TyNumber {
@@ -25,11 +25,11 @@ pub struct TyNumberLiteral {
 }
 
 impl TyTypeLogic for TyNumber {
-    fn check_assignable_to(&self, other: &Self, _query: &mut TypeAssignabilityQuery) -> bool {
+    fn check_assignable_to(&self, _other: &Self, _query: &mut TypeAssignabilityQuery) -> bool {
         todo!()
     }
 
-    fn get_intersection(&self, other: &Self) -> Self {
+    fn get_intersection(&self, _other: &Self) -> Self {
         todo!()
     }
 }

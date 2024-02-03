@@ -1,4 +1,4 @@
-use std::{ops::Deref, sync::Arc};
+use std::sync::Arc;
 
 use crate::lang::{ast::helpers::*, tokens::*, CompilerError, ErrorCollector};
 
@@ -167,7 +167,7 @@ impl AstItem for SyDeclarationBody {
 
     fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
         for statement in &self.statements {
-            if let Ok(statement) = statement.deref() {
+            if let Ok(statement) = statement {
                 statement.check(env, errors);
             }
         }

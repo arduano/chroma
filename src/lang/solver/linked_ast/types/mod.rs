@@ -1,6 +1,5 @@
 use crate::lang::{
     entity_ids::Id,
-    solver::type_system::TyType,
     tokens::{TkIdent, TkInteger, TkString},
 };
 

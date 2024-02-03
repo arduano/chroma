@@ -1,18 +1,16 @@
 use std::{
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{BTreeMap, HashMap},
     path::PathBuf,
     sync::Arc,
 };
 
-use futures::lock::Mutex;
-
 use self::{linked_ast::LiType, type_system::TyType};
 
 use super::{
-    ast::items::{SyDeclaration, SyDeclarationBody, SyDeclarationBodyItem},
+    ast::items::SyDeclarationBody,
     entity_ids::{Id, IdCounter},
     tokens::TkIdent,
-    CompilerError, ErrorCollector,
+    ErrorCollector,
 };
 
 mod linked_ast;

@@ -1,4 +1,4 @@
-use crate::lang::{entity_ids::Id, solver::type_system::TyType, tokens::TkIdent};
+use crate::lang::tokens::TkIdent;
 
 use super::LiType;
 

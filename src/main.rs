@@ -1,9 +1,8 @@
 #![allow(dead_code)]
 
-use std::{collections::BTreeMap, path::PathBuf, pin::pin, rc::Rc, str::FromStr, sync::Arc};
+use std::{path::PathBuf, str::FromStr};
 
-use futures::StreamExt;
-use lang::{entity_ids::Id, tokens::parse_file};
+use lang::tokens::parse_file;
 
 use crate::lang::{
     ast::{
@@ -11,7 +10,7 @@ use crate::lang::{
         items::SyDeclarationBody,
     },
     solver::CompiledFileResults,
-    tokens::{FileRef, TkIdent, TokenReader},
+    tokens::{FileRef, TokenReader},
     ErrorCollector,
 };
 
@@ -72,7 +71,7 @@ async fn main() {
     let ast = SyDeclarationBody::parse(&mut ast_parser, env).unwrap();
 
     let mut compilation = CompiledFileResults::new();
-    let type_ids = compilation.compile_in_ast(&ast);
+    let _type_ids = compilation.compile_in_ast(&ast);
 
     // let modules = KnownItemHandler::new();
     // let types = KnownItemHandler::new();

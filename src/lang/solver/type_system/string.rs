@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::lang::solver::TypeAssignabilityQuery;
 
-use super::{LiteralsList, TyTypeLogic};
+use super::TyTypeLogic;
 
 #[derive(Debug, Clone)]
 pub struct TyString {
@@ -11,9 +11,7 @@ pub struct TyString {
 
 impl TyString {
     pub fn new() -> Self {
-        Self {
-            literal: None,
-        }
+        Self { literal: None }
     }
 
     pub fn from_literal(literal: Arc<str>) -> Self {
@@ -29,11 +27,11 @@ pub struct TyStringLiteral {
 }
 
 impl TyTypeLogic for TyString {
-    fn check_assignable_to(&self, other: &Self, _query: &mut TypeAssignabilityQuery) -> bool {
+    fn check_assignable_to(&self, _other: &Self, _query: &mut TypeAssignabilityQuery) -> bool {
         todo!()
     }
 
-    fn get_intersection(&self, other: &Self) -> Self {
+    fn get_intersection(&self, _other: &Self) -> Self {
         todo!()
     }
 }

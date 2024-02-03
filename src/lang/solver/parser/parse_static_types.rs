@@ -75,8 +75,8 @@ pub fn parse_type_from_linked_type(
 
                         add_field_if_not_exists(field);
                     }
-                    LiStructField::ComputedKeyValue(computed) => todo!(),
-                    LiStructField::FieldSpread(spread) => todo!(),
+                    LiStructField::ComputedKeyValue(_computed) => todo!(),
+                    LiStructField::FieldSpread(_spread) => todo!(),
                 }
             }
 

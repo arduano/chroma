@@ -1,9 +1,5 @@
-use std::{
-    cell::UnsafeCell, collections::BTreeMap, marker::PhantomData, mem::MaybeUninit,
-    num::NonZeroU32, rc::Rc, sync::Arc,
-};
+use std::{cell::UnsafeCell, marker::PhantomData, mem::MaybeUninit, num::NonZeroU32};
 
-use futures::{stream, Future, Stream, StreamExt};
 use futures_intrusive::sync::ManualResetEvent;
 
 pub struct Id<T>(NonZeroU32, PhantomData<T>);
