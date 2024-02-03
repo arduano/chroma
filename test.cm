@@ -1,5 +1,8 @@
 type A = {
-    test: A
+    test: C
 };
+
+type C = D;
+type D = A;
 
 type B = string;

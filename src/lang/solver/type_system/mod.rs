@@ -13,8 +13,8 @@ use super::TypeAssignabilityQuery;
 
 #[derive(Debug, Clone)]
 pub struct TyType {
-    name: Option<TkIdent>,
-    kind: TyTypeKind,
+    pub name: Option<TkIdent>,
+    pub kind: TyTypeKind,
 }
 
 impl TyType {

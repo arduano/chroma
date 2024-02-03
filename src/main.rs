@@ -10,6 +10,7 @@ use crate::lang::{
         helpers::{AstItem, AstParser, ParsingPhaseEnv},
         items::SyDeclarationBody,
     },
+    solver::CompiledFileResults,
     tokens::{FileRef, TkIdent, TokenReader},
     ErrorCollector,
 };
@@ -68,7 +69,10 @@ async fn main() {
     let mut ast_parser = AstParser::new(TokenReader::new(&tokens.tokens), errors.clone());
 
     let env = ParsingPhaseEnv::new();
-    let ast = SyDeclarationBody::parse(&mut ast_parser, env);
+    let ast = SyDeclarationBody::parse(&mut ast_parser, env).unwrap();
+
+    let mut compilation = CompiledFileResults::new();
+    let type_ids = compilation.compile_in_ast(&ast);
 
     // let modules = KnownItemHandler::new();
     // let types = KnownItemHandler::new();
@@ -77,32 +81,16 @@ async fn main() {
 
     dbg!(&ast);
 
-    // let mod_id = analyze_module(
-    //     Arc::new(ast.unwrap()),
-    //     modules.clone(),
-    //     types.clone(),
-    //     errors.clone(),
-    //     vec![std_mod_id],
-    // )
-    // .await;
+    // let types: Vec<_> = type_ids
+    //     .iter()
+    //     .map(|id| (id, &compilation.types[*id]))
+    //     .collect();
 
-    // let module = modules.get(mod_id).await;
-
-    // let ident = TkIdent::new_from_str("A");
-    // let a = module.get_matcher().find(&ident).await;
-    // dbg!(a);
-
-    // let mut resolved_types = BTreeMap::new();
-    // let mut iter = pin!(types.iter());
-    // while let Some((id, ty)) = iter.next().await {
-    //     resolved_types.insert(id, ty);
-    // }
-
-    // dbg!(&resolved_types);
+    // dbg!(types);
+    dbg!(compilation.types);
+    dbg!(compilation.linked_type_definitions);
+    dbg!(compilation.linked_type_to_type_mapping);
 
     dbg!(&errors.errors());
+    dbg!(&compilation.errors.errors());
 }
-
-struct FilesList {}
-
-fn test() {}

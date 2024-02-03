@@ -4,7 +4,7 @@ use super::LiType;
 
 #[derive(Debug, Clone)]
 pub struct LiStruct {
-    pub fields: Vec<LiStructField>,
+    pub entries: Vec<LiStructField>,
 }
 
 #[derive(Debug, Clone)]

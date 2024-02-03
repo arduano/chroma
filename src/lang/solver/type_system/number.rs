@@ -4,22 +4,32 @@ use super::{LiteralsList, TyTypeLogic};
 
 #[derive(Debug, Clone)]
 pub struct TyNumber {
-    literals_union: LiteralsList<TyNumberLiteral>,
+    literal: Option<TyNumberLiteral>,
+}
+
+impl TyNumber {
+    pub fn new() -> Self {
+        Self { literal: None }
+    }
+
+    pub fn from_literal(value: f64) -> Self {
+        Self {
+            literal: Some(TyNumberLiteral { value }),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TyNumberLiteral {
-    value: f64,
+    pub value: f64,
 }
 
 impl TyTypeLogic for TyNumber {
     fn check_assignable_to(&self, other: &Self, _query: &mut TypeAssignabilityQuery) -> bool {
-        self.literals_union.is_assignable_to(&other.literals_union)
+        todo!()
     }
 
     fn get_intersection(&self, other: &Self) -> Self {
-        TyNumber {
-            literals_union: self.literals_union.get_intersection(&other.literals_union),
-        }
+        todo!()
     }
 }

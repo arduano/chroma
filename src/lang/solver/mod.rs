@@ -9,7 +9,7 @@ use futures::lock::Mutex;
 use self::{linked_ast::LiType, type_system::TyType};
 
 use super::{
-    ast::items::{SyDeclaration, SyDeclarationBodyItem},
+    ast::items::{SyDeclaration, SyDeclarationBody, SyDeclarationBodyItem},
     entity_ids::{Id, IdCounter},
     tokens::TkIdent,
     CompilerError, ErrorCollector,
@@ -100,20 +100,30 @@ impl<T> ItemSet<T> {
         }
     }
 
-    pub fn add_type(&mut self, ty: T) -> Id<T> {
+    pub fn get(&self, id: Id<T>) -> Option<&T> {
+        self.types.get(&id)
+    }
+
+    pub fn add_value(&mut self, ty: T) -> Id<T> {
         let id = self.counter.next();
         self.types.insert(id, ty);
         id
     }
 
-    pub fn allocate_type(&mut self) -> Id<T> {
+    pub fn allocate_id(&mut self) -> Id<T> {
         let id = self.counter.next();
         id
     }
 
-    pub fn insert_allocated_type(&mut self, id: Id<T>, ty: T) {
+    pub fn insert_allocated_value(&mut self, id: Id<T>, ty: T) {
         let existing = self.types.insert(id, ty);
         assert!(existing.is_none());
+    }
+}
+
+impl<T: std::fmt::Debug> std::fmt::Debug for ItemSet<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_map().entries(self.types.iter()).finish()
     }
 }
 
@@ -226,11 +236,12 @@ impl<'a> TypeAssignabilityQuery<'a> {
 }
 
 pub struct CompiledFileResults {
-    modules: HashMap<(), ModuleNamespace>,
-    linked_type_definitions: ItemSet<LiType>,
-    types: ItemSet<TyType>,
-    type_assignability: TypeAssignabilityCache,
-    errors: ErrorCollector,
+    pub modules: HashMap<(), ModuleNamespace>,
+    pub linked_type_definitions: ItemSet<LiType>,
+    pub linked_type_to_type_mapping: HashMap<Id<LiType>, Id<TyType>>,
+    pub types: ItemSet<TyType>,
+    pub type_assignability: TypeAssignabilityCache,
+    pub errors: ErrorCollector,
 }
 
 impl CompiledFileResults {
@@ -238,14 +249,36 @@ impl CompiledFileResults {
         Self {
             modules: HashMap::new(),
             linked_type_definitions: ItemSet::new(),
+            linked_type_to_type_mapping: HashMap::new(),
             types: ItemSet::new(),
             type_assignability: TypeAssignabilityCache::new(),
             errors: ErrorCollector::new(),
         }
     }
 
-    pub fn add_error(&mut self, error: CompilerError) {
-        self.errors.push(error);
+    pub fn compile_in_ast(&mut self, ast: &SyDeclarationBody) -> Vec<Id<TyType>> {
+        let mod_results = parser::parse_module_decls(ast, self);
+
+        let namespace_types = mod_results
+            .namespace
+            .items
+            .values()
+            .filter_map(|item| match item.kind {
+                ModuleNamespaceItemKind::Type(id) => Some(id),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+
+        parser::parse_module_data_linking(ast, self, mod_results);
+
+        let mut types = Vec::new();
+
+        for li_type_id in namespace_types {
+            let id = parser::get_type_id_for_linked_type_id(self, li_type_id);
+            types.push(id);
+        }
+
+        types
     }
 }
 

@@ -7,14 +7,20 @@ use crate::lang::{
             SyDeclaration, SyDeclarationBody, SyExpression, SyObjectLiteralField, SyTypeDefine,
         },
     },
+    entity_ids::Id,
     tokens::TkIdent,
     CompilerError,
 };
 
-use self::link_type_expressions::link_type_expression_ast;
+use self::{
+    link_type_expressions::link_type_expression_ast,
+    parse_static_types::{
+        parse_type_from_linked_type, parse_type_from_linked_type_id, TypeFromLinkedTypeCompilation,
+    },
+};
 
 use super::{
-    linked_ast::*, CompiledFileResults, ModuleNamespace, ModuleNamespaceItem,
+    linked_ast::*, type_system::TyType, CompiledFileResults, ModuleNamespace, ModuleNamespaceItem,
     ModuleNamespaceItemKind,
 };
 
@@ -23,13 +29,13 @@ mod parse_static_types;
 
 pub struct ModuleParseResult {
     /// Namespace of the current module
-    namespace: ModuleNamespace,
+    pub namespace: ModuleNamespace,
 
     /// The paths of other modules that this module references, for dependency management.
-    module_path_refs: (),
+    pub module_path_refs: (),
 
     /// Cache of module items to compile later
-    items_to_compile: Vec<ModuleItem>,
+    pub items_to_compile: Vec<ModuleItem>,
 }
 
 pub struct ModuleItem {
@@ -56,7 +62,7 @@ pub fn parse_module_decls(
                 let ident = ty.name.clone();
 
                 let id = ModuleNamespaceItemKind::Type(
-                    compilation.linked_type_definitions.allocate_type(),
+                    compilation.linked_type_definitions.allocate_id(),
                 );
 
                 let item = ModuleNamespaceItem {
@@ -83,7 +89,7 @@ pub fn parse_module_decls(
     }
 }
 
-fn parse_module_data_linking(
+pub fn parse_module_data_linking(
     ast: &SyDeclarationBody,
     compilation: &mut CompiledFileResults,
     mod_results: ModuleParseResult,
@@ -101,15 +107,30 @@ fn parse_module_data_linking(
 
                 let ty = link_type_expression_ast(
                     &declaration_item.value,
+                    Some(declaration_item.name.clone()),
                     compilation,
                     &mod_results.namespace,
                 );
 
                 compilation
                     .linked_type_definitions
-                    .insert_allocated_type(id, ty);
+                    .insert_allocated_value(id, ty);
             }
             _ => todo!(),
         }
     }
+}
+
+pub fn get_type_id_for_linked_type_id(
+    compilation: &mut CompiledFileResults,
+    linked_ty_id: Id<LiType>,
+) -> Id<TyType> {
+    let mut ty_compilation = TypeFromLinkedTypeCompilation {
+        linked_type_definitions: &compilation.linked_type_definitions,
+        linked_type_to_type_mapping: &mut compilation.linked_type_to_type_mapping,
+        types: &mut compilation.types,
+        errors: &mut compilation.errors,
+    };
+
+    parse_type_from_linked_type_id(linked_ty_id, &mut ty_compilation)
 }

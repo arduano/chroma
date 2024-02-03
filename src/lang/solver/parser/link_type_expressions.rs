@@ -6,12 +6,13 @@ fn make_error_li_type() -> LiType {
 
 fn parse_ast_type_var_read(
     ident: &TkIdent,
+    name: Option<TkIdent>,
     compilation: &mut CompiledFileResults,
     namespace: &ModuleNamespace,
 ) -> LiType {
     let item = namespace.get_ident_kind(ident);
     let Some(item) = item else {
-        compilation.add_error(CompilerError::new(
+        compilation.errors.push(CompilerError::new(
             format!("\"{}\" is not defined", &ident.ident),
             ident.span.clone(),
         ));
@@ -21,13 +22,14 @@ fn parse_ast_type_var_read(
 
     match item {
         ModuleNamespaceItemKind::Type(id) => {
-            return LiType::new(LiTypeKind::StaticTypeReference(id))
+            return LiType::new_named(name, LiTypeKind::StaticTypeReference(id))
         }
     }
 }
 
 pub fn link_type_expression_ast(
     ast: &Attempted<SyExpression>,
+    name: Option<TkIdent>,
     compilation: &mut CompiledFileResults,
     namespace: &ModuleNamespace,
 ) -> LiType {
@@ -36,17 +38,23 @@ pub fn link_type_expression_ast(
     };
 
     match ast {
-        SyExpression::VarRead(var) => parse_ast_type_var_read(&var.name, compilation, namespace),
-        SyExpression::StringLiteral(string) => LiType::new(LiTypeKind::String(LiString {
-            string: string.literal.clone(),
-        })),
+        SyExpression::VarRead(var) => {
+            parse_ast_type_var_read(&var.name, name, compilation, namespace)
+        }
+        SyExpression::StringLiteral(string) => LiType::new_named(
+            name,
+            LiTypeKind::String(LiString {
+                string: string.literal.clone(),
+            }),
+        ),
         SyExpression::ObjectLiteral(obj) => {
             let mut fields = Vec::<LiStructField>::new();
 
             for field in obj.fields.fields.iter().flatten() {
                 match field {
                     SyObjectLiteralField::KeyValue(kv) => {
-                        let value = link_type_expression_ast(&kv.value, compilation, namespace);
+                        let value =
+                            link_type_expression_ast(&kv.value, None, compilation, namespace);
 
                         fields.push(LiStructField::KeyValue(LiStructKeyValue {
                             key: kv.key.clone(),
@@ -54,7 +62,7 @@ pub fn link_type_expression_ast(
                         }));
                     }
                     SyObjectLiteralField::KeyVariable(kv) => {
-                        let value = parse_ast_type_var_read(&kv.key, compilation, namespace);
+                        let value = parse_ast_type_var_read(&kv.key, None, compilation, namespace);
 
                         fields.push(LiStructField::KeyValue(LiStructKeyValue {
                             key: kv.key.clone(),
@@ -63,17 +71,25 @@ pub fn link_type_expression_ast(
                     }
                     SyObjectLiteralField::Spread(spread) => {
                         let value =
-                            link_type_expression_ast(&spread.fields, compilation, namespace);
+                            link_type_expression_ast(&spread.fields, None, compilation, namespace);
 
                         fields.push(LiStructField::FieldSpread(LiStructFieldSpread {
                             spread: value,
                         }));
                     }
                     SyObjectLiteralField::ComputedKey(ckv) => {
-                        let key =
-                            link_type_expression_ast(&ckv.key_expression, compilation, namespace);
-                        let value =
-                            link_type_expression_ast(&ckv.value_expression, compilation, namespace);
+                        let key = link_type_expression_ast(
+                            &ckv.key_expression,
+                            None,
+                            compilation,
+                            namespace,
+                        );
+                        let value = link_type_expression_ast(
+                            &ckv.value_expression,
+                            None,
+                            compilation,
+                            namespace,
+                        );
 
                         fields.push(LiStructField::ComputedKeyValue(LiStructComputedKeyValue {
                             key,
@@ -83,7 +99,7 @@ pub fn link_type_expression_ast(
                 }
             }
 
-            LiType::new(LiTypeKind::Struct(LiStruct { fields }))
+            LiType::new_named(name, LiTypeKind::Struct(LiStruct { entries: fields }))
         }
     }
 }

@@ -9,8 +9,8 @@ pub use structure::*;
 
 #[derive(Debug, Clone)]
 pub struct LiType {
-    name: Option<TkIdent>,
-    kind: LiTypeKind,
+    pub name: Option<TkIdent>,
+    pub kind: LiTypeKind,
 }
 
 impl LiType {
