@@ -5,4 +5,4 @@ type A = {
 type C = D;
 type D = A;
 
-type B = "test";
+type B = string;
