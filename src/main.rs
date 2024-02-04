@@ -9,7 +9,8 @@ use crate::lang::{
         helpers::{AstItem, AstParser, ParsingPhaseEnv},
         items::SyDeclarationBody,
     },
-    solver::CompiledFileResults,
+    entity_ids::IdCounter,
+    solver::ModuleGroupCompilation,
     tokens::{FileRef, TokenReader},
     ErrorCollector,
 };
@@ -70,8 +71,10 @@ async fn main() {
     let env = ParsingPhaseEnv::new();
     let ast = SyDeclarationBody::parse(&mut ast_parser, env).unwrap();
 
-    let mut compilation = CompiledFileResults::new();
-    let _type_ids = compilation.compile_in_ast(&ast);
+    let mut module_counter = IdCounter::new();
+
+    let mut compilation = ModuleGroupCompilation::new_without_deps(module_counter.next());
+    let _type_ids = compilation.compile_in_ast(None, &ast);
 
     // let modules = KnownItemHandler::new();
     // let types = KnownItemHandler::new();
@@ -86,9 +89,9 @@ async fn main() {
     //     .collect();
 
     // dbg!(types);
-    dbg!(compilation.types);
     dbg!(compilation.linked_type_definitions);
     dbg!(compilation.linked_type_to_type_mapping);
+    dbg!(compilation.types);
 
     dbg!(&errors.errors());
     dbg!(&compilation.errors.errors());

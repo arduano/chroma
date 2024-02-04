@@ -1,6 +1,5 @@
 use crate::lang::{
-    entity_ids::Id,
-    tokens::{TkIdent, TkInteger, TkString},
+    entity_ids::Id, solver::MId, tokens::{TkIdent, TkInteger, TkString}
 };
 
 mod structure;
@@ -34,7 +33,7 @@ pub enum LiTypeKind {
     Number(LiNumber),
     String(LiString),
     Struct(LiStruct),
-    StaticTypeReference(Id<LiType>),
+    StaticTypeReference(MId<LiType>),
     Unknown,
     Never,
 }

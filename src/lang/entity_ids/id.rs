@@ -1,6 +1,8 @@
-use std::{cell::UnsafeCell, marker::PhantomData, mem::MaybeUninit, num::NonZeroU32};
+use std::{
+    cell::UnsafeCell, collections::HashMap, marker::PhantomData, mem::MaybeUninit, num::NonZeroU32,
+};
 
-use futures_intrusive::sync::ManualResetEvent;
+use super::Id2;
 
 pub struct Id<T>(NonZeroU32, PhantomData<T>);
 
@@ -12,13 +14,16 @@ impl<T> Id<T> {
     pub fn index(&self) -> NonZeroU32 {
         self.0
     }
+
+    pub fn for_group<M>(self, group: Id<M>) -> Id2<M, T> {
+        Id2::new(group, self)
+    }
 }
 
 impl<T> std::fmt::Debug for Id<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple(std::any::type_name::<T>())
-            .field(&self.0)
-            .finish()
+        let name = std::any::type_name::<T>().split("::").last().unwrap();
+        write!(f, "{}({})", name, self.0)
     }
 }
 
@@ -71,42 +76,5 @@ impl<T> IdCounter<T> {
         let id = self.counter;
         self.counter = Id::new(self.counter.0.checked_add(1).unwrap());
         id
-    }
-}
-
-struct KnownItem<T> {
-    ready: ManualResetEvent,
-    item: UnsafeCell<MaybeUninit<T>>,
-}
-
-unsafe impl<T> Send for KnownItem<T> {}
-unsafe impl<T> Sync for KnownItem<T> {}
-
-impl<T> KnownItem<T> {
-    pub fn new() -> Self {
-        Self {
-            ready: ManualResetEvent::new(false),
-            item: UnsafeCell::new(MaybeUninit::uninit()),
-        }
-    }
-
-    pub fn get(&self) -> Option<&T> {
-        if self.ready.is_set() {
-            Some(unsafe { (&*self.item.get()).assume_init_ref() })
-        } else {
-            None
-        }
-    }
-
-    pub fn set(&self, value: T) {
-        unsafe {
-            (&mut *self.item.get()).write(value);
-        }
-        self.ready.set();
-    }
-
-    pub async fn wait_then_get(&self) -> &T {
-        self.ready.wait().await;
-        unsafe { (&*self.item.get()).assume_init_ref() }
     }
 }

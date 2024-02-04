@@ -1,4 +1,8 @@
-use crate::lang::{entity_ids::Id, solver::TypeAssignabilityQuery, tokens::TkIdent};
+use crate::lang::{
+    entity_ids::Id,
+    solver::{MId, TypeAssignabilityQuery},
+    tokens::TkIdent,
+};
 
 use super::{TyType, TyTypeLogic};
 
@@ -39,11 +43,11 @@ impl TyStructLiteral {
 #[derive(Debug, Clone)]
 pub struct TyStructLiteralField {
     pub name: TkIdent,
-    pub value: Id<TyType>,
+    pub value: MId<TyType>,
 }
 
 impl TyStructLiteralField {
-    pub fn new(name: TkIdent, value: Id<TyType>) -> Self {
+    pub fn new(name: TkIdent, value: MId<TyType>) -> Self {
         Self { name, value }
     }
 }

@@ -16,8 +16,8 @@ use self::{
 };
 
 use super::{
-    linked_ast::*, type_system::TyType, CompiledFileResults, ModuleNamespace, ModuleNamespaceItem,
-    ModuleNamespaceItemKind,
+    linked_ast::*, type_system::TyType, MId, ModuleGroupCompilation, ModuleNamespace,
+    ModuleNamespaceItem, ModuleNamespaceItemKind,
 };
 
 mod link_type_expressions;
@@ -41,7 +41,7 @@ pub struct ModuleItem {
 
 pub fn parse_module_decls(
     ast: &SyDeclarationBody,
-    compilation: &mut CompiledFileResults,
+    compilation: &mut ModuleGroupCompilation,
 ) -> ModuleParseResult {
     let module_path_refs = ();
     let mut namespace_items = HashMap::new();
@@ -87,7 +87,7 @@ pub fn parse_module_decls(
 
 pub fn parse_module_data_linking(
     ast: &SyDeclarationBody,
-    compilation: &mut CompiledFileResults,
+    compilation: &mut ModuleGroupCompilation,
     mod_results: ModuleParseResult,
 ) {
     for item in mod_results.items_to_compile {
@@ -118,10 +118,11 @@ pub fn parse_module_data_linking(
 }
 
 pub fn get_type_id_for_linked_type_id(
-    compilation: &mut CompiledFileResults,
-    linked_ty_id: Id<LiType>,
-) -> Id<TyType> {
+    compilation: &mut ModuleGroupCompilation,
+    linked_ty_id: MId<LiType>,
+) -> MId<TyType> {
     let mut ty_compilation = TypeFromLinkedTypeCompilation {
+        current_module_id: compilation.current_module_id,
         linked_type_definitions: &compilation.linked_type_definitions,
         linked_type_to_type_mapping: &mut compilation.linked_type_to_type_mapping,
         types: &mut compilation.types,

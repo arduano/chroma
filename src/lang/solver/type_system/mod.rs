@@ -9,7 +9,7 @@ pub use structure::*;
 
 use crate::lang::{entity_ids::Id, tokens::TkIdent};
 
-use super::TypeAssignabilityQuery;
+use super::{MId, TypeAssignabilityQuery};
 
 #[derive(Debug, Clone)]
 pub struct TyType {
@@ -43,7 +43,7 @@ pub enum TyTypeKind {
     Number(TyNumber),
     String(TyString),
     Struct(TyStruct),
-    Reference(Id<TyType>),
+    Reference(MId<TyType>),
     Never,
     Unknown,
 }

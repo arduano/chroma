@@ -8,7 +8,7 @@ use self::{linked_ast::LiType, type_system::TyType};
 
 use super::{
     ast::items::SyDeclarationBody,
-    entity_ids::{Id, IdCounter},
+    entity_ids::{GroupItemSet, Id, Id2, IdCounter, ItemSet},
     tokens::TkIdent,
     ErrorCollector,
 };
@@ -23,7 +23,7 @@ struct CodeFilePath {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct CodeFile {
+pub struct CodeFile {
     id: Id<CodeFile>,
     path: CodeFilePath,
     text: Arc<str>,
@@ -85,70 +85,14 @@ impl KnownFiles {
     }
 }
 
-pub struct ItemSet<T> {
-    counter: IdCounter<T>,
-    types: HashMap<Id<T>, T>,
-}
-
-impl<T> ItemSet<T> {
-    pub fn new() -> Self {
-        Self {
-            counter: IdCounter::new(),
-            types: HashMap::new(),
-        }
-    }
-
-    pub fn get(&self, id: Id<T>) -> Option<&T> {
-        self.types.get(&id)
-    }
-
-    pub fn add_value(&mut self, ty: T) -> Id<T> {
-        let id = self.counter.next();
-        self.types.insert(id, ty);
-        id
-    }
-
-    pub fn allocate_id(&mut self) -> Id<T> {
-        let id = self.counter.next();
-        id
-    }
-
-    pub fn insert_allocated_value(&mut self, id: Id<T>, ty: T) {
-        let existing = self.types.insert(id, ty);
-        assert!(existing.is_none());
-    }
-}
-
-impl<T: std::fmt::Debug> std::fmt::Debug for ItemSet<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_map().entries(self.types.iter()).finish()
-    }
-}
-
-impl<T> std::ops::Index<Id<T>> for ItemSet<T> {
-    type Output = T;
-
-    fn index(&self, index: Id<T>) -> &Self::Output {
-        &self.types[&index]
-    }
-}
-
-impl<T> std::ops::Index<&Id<T>> for ItemSet<T> {
-    type Output = T;
-
-    fn index(&self, index: &Id<T>) -> &Self::Output {
-        &self.types[index]
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeAssignability {
-    pub from: Id<TyType>,
-    pub to: Id<TyType>,
+    pub from: MId<TyType>,
+    pub to: MId<TyType>,
 }
 
 impl TypeAssignability {
-    pub fn new(from: Id<TyType>, to: Id<TyType>) -> Self {
+    pub fn new(from: MId<TyType>, to: MId<TyType>) -> Self {
         Self { from, to }
     }
 }
@@ -164,27 +108,27 @@ impl TypeAssignabilityCache {
         }
     }
 
-    pub fn get_assignable_to_cache(&self, from: Id<TyType>, to: Id<TyType>) -> Option<bool> {
+    pub fn get_assignable_to_cache(&self, from: MId<TyType>, to: MId<TyType>) -> Option<bool> {
         self.assignability_cache
             .get(&TypeAssignability::new(from, to))
             .copied()
     }
 
-    pub fn set_assignable_to(&mut self, from: Id<TyType>, to: Id<TyType>, assignable: bool) {
+    pub fn set_assignable_to(&mut self, from: MId<TyType>, to: MId<TyType>, assignable: bool) {
         self.assignability_cache
             .insert(TypeAssignability::new(from, to), assignable);
     }
 }
 
 pub struct TypeAssignabilityQuery<'a> {
-    types: &'a ItemSet<TyType>,
+    types: &'a ModItemSet<TyType>,
     type_assignability: &'a mut TypeAssignabilityCache,
     parent_queries: Vec<TypeAssignability>,
 }
 
 impl<'a> TypeAssignabilityQuery<'a> {
     pub fn new(
-        types: &'a ItemSet<TyType>,
+        types: &'a ModItemSet<TyType>,
         type_assignability: &'a mut TypeAssignabilityCache,
     ) -> Self {
         Self {
@@ -194,7 +138,7 @@ impl<'a> TypeAssignabilityQuery<'a> {
         }
     }
 
-    pub fn is_assignable_to(&mut self, left: Id<TyType>, right: Id<TyType>) -> bool {
+    pub fn is_assignable_to(&mut self, left: MId<TyType>, right: MId<TyType>) -> bool {
         if let Some(assignable) = self.type_assignability.get_assignable_to_cache(left, right) {
             return assignable;
         }
@@ -207,7 +151,7 @@ impl<'a> TypeAssignabilityQuery<'a> {
         assignable
     }
 
-    fn is_assignable_to_impl(&mut self, left: Id<TyType>, right: Id<TyType>) -> bool {
+    fn is_assignable_to_impl(&mut self, left: MId<TyType>, right: MId<TyType>) -> bool {
         if left == right {
             return true;
         }
@@ -222,8 +166,8 @@ impl<'a> TypeAssignabilityQuery<'a> {
         self.parent_queries
             .push(TypeAssignability::new(left, right));
 
-        let left_ty = &self.types.types[&left];
-        let right_ty = &self.types.types[&right];
+        let left_ty = &self.types[&left];
+        let right_ty = &self.types[&right];
 
         let assignable = left_ty.check_assignable_to(right_ty, self);
 
@@ -233,28 +177,82 @@ impl<'a> TypeAssignabilityQuery<'a> {
     }
 }
 
-pub struct CompiledFileResults {
-    pub modules: HashMap<(), ModuleNamespace>,
-    pub linked_type_definitions: ItemSet<LiType>,
-    pub linked_type_to_type_mapping: HashMap<Id<LiType>, Id<TyType>>,
-    pub types: ItemSet<TyType>,
+/// A "Module-associated ID", an ID that is associated with a module.
+/// This allows any module to refer to another module's items.
+pub type MId<T> = Id2<ModuleGroupCompilation, T>;
+
+/// A module group ID
+pub type ModId = Id<ModuleGroupCompilation>;
+
+/// A set of items addressed by both their ID, as well as their module group ID.
+pub type ModItemSet<T> = GroupItemSet<ModuleGroupCompilation, T>;
+
+pub struct ModuleGroupCompilation {
+    pub current_module_id: ModId,
+    pub files: Vec<Id<CodeFile>>,
+    pub modules: HashMap<Id<CodeFile>, ModuleNamespace>,
+    pub linked_type_definitions: ModItemSet<LiType>,
+    pub linked_type_to_type_mapping: HashMap<MId<LiType>, MId<TyType>>,
+    pub types: ModItemSet<TyType>,
     pub type_assignability: TypeAssignabilityCache,
     pub errors: ErrorCollector,
 }
 
-impl CompiledFileResults {
-    pub fn new() -> Self {
+impl ModuleGroupCompilation {
+    pub fn new_without_deps(id: ModId) -> Self {
         Self {
+            current_module_id: id,
+            files: Vec::new(),
             modules: HashMap::new(),
-            linked_type_definitions: ItemSet::new(),
+            linked_type_definitions: ModItemSet::new(HashMap::new(), id),
             linked_type_to_type_mapping: HashMap::new(),
-            types: ItemSet::new(),
+            types: ModItemSet::new(HashMap::new(), id),
             type_assignability: TypeAssignabilityCache::new(),
             errors: ErrorCollector::new(),
         }
     }
 
-    pub fn compile_in_ast(&mut self, ast: &SyDeclarationBody) -> Vec<Id<TyType>> {
+    pub fn new(id: ModId, past_compilations: HashMap<ModId, ModuleGroupResult>) -> Self {
+        fn get_module_item_set<T>(
+            past_compilations: &HashMap<ModId, ModuleGroupResult>,
+            query: impl Fn(&ModuleGroupResult) -> &Arc<ItemSet<T>>,
+        ) -> HashMap<ModId, Arc<ItemSet<T>>> {
+            let mut result = HashMap::new();
+
+            for (id, compilation) in past_compilations {
+                result.insert(*id, query(compilation).clone());
+            }
+
+            result
+        }
+
+        Self {
+            current_module_id: id,
+            files: Vec::new(),
+            modules: HashMap::new(),
+            linked_type_definitions: ModItemSet::new(
+                get_module_item_set(&past_compilations, |comp| &comp.linked_type_definitions),
+                id,
+            ),
+            linked_type_to_type_mapping: HashMap::new(),
+            types: ModItemSet::new(
+                get_module_item_set(&past_compilations, |comp| &comp.types),
+                id,
+            ),
+            type_assignability: TypeAssignabilityCache::new(),
+            errors: ErrorCollector::new(),
+        }
+    }
+
+    pub fn compile_in_ast(
+        &mut self,
+        file: Option<Id<CodeFile>>,
+        ast: &SyDeclarationBody,
+    ) -> Vec<MId<TyType>> {
+        if let Some(file) = file {
+            self.files.push(file);
+        }
+
         let mod_results = parser::parse_module_decls(ast, self);
 
         let namespace_types = mod_results
@@ -278,6 +276,17 @@ impl CompiledFileResults {
 
         types
     }
+}
+
+pub struct ModuleGroupResult {
+    pub dependencies: Vec<Id<ModuleGroupResult>>,
+    pub files: Vec<Id<CodeFile>>,
+    pub modules: HashMap<(), ModuleNamespace>,
+    pub linked_type_definitions: Arc<ItemSet<LiType>>,
+    pub linked_type_to_type_mapping: HashMap<Id<LiType>, Id<TyType>>,
+    pub types: Arc<ItemSet<TyType>>,
+    pub type_assignability: TypeAssignabilityCache,
+    pub errors: ErrorCollector,
 }
 
 pub struct ModuleNamespace {
@@ -312,5 +321,5 @@ pub struct ModuleNamespaceItem {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ModuleNamespaceItemKind {
-    Type(Id<LiType>),
+    Type(MId<LiType>),
 }

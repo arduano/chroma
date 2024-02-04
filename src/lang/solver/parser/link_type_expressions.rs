@@ -7,7 +7,7 @@ fn make_error_li_type() -> LiType {
 fn parse_ast_type_var_read(
     ident: &TkIdent,
     name: Option<TkIdent>,
-    compilation: &mut CompiledFileResults,
+    compilation: &mut ModuleGroupCompilation,
     namespace: &ModuleNamespace,
 ) -> LiType {
     let item = namespace.get_ident_kind(ident);
@@ -30,7 +30,7 @@ fn parse_ast_type_var_read(
 pub fn link_type_expression_ast(
     ast: &Attempted<SyExpression>,
     name: Option<TkIdent>,
-    compilation: &mut CompiledFileResults,
+    compilation: &mut ModuleGroupCompilation,
     namespace: &ModuleNamespace,
 ) -> LiType {
     let Ok(ast) = ast else {

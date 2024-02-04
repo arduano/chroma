@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::lang::{
     entity_ids::Id,
-    solver::{type_system::*, ItemSet},
+    solver::{type_system::*, MId, ModItemSet, ModuleGroupCompilation},
     ErrorCollector,
 };
 
@@ -11,16 +11,17 @@ use super::{LiStructField, LiType, LiTypeKind};
 /// A type for encapsulating which parts of this compilation step are mutated
 /// and which parts are immutable. This keeps the compiler happy.
 pub struct TypeFromLinkedTypeCompilation<'a> {
-    pub linked_type_definitions: &'a ItemSet<LiType>,
-    pub linked_type_to_type_mapping: &'a mut HashMap<Id<LiType>, Id<TyType>>,
-    pub types: &'a mut ItemSet<TyType>,
+    pub current_module_id: Id<ModuleGroupCompilation>,
+    pub linked_type_definitions: &'a ModItemSet<LiType>,
+    pub linked_type_to_type_mapping: &'a mut HashMap<MId<LiType>, MId<TyType>>,
+    pub types: &'a mut ModItemSet<TyType>,
     pub errors: &'a mut ErrorCollector,
 }
 
 pub fn parse_type_from_linked_type_id(
-    linked_ty_id: Id<LiType>,
+    linked_ty_id: MId<LiType>,
     compilation: &mut TypeFromLinkedTypeCompilation,
-) -> Id<TyType> {
+) -> MId<TyType> {
     if let Some(existing_type) = compilation.linked_type_to_type_mapping.get(&linked_ty_id) {
         return *existing_type;
     }
@@ -33,11 +34,11 @@ pub fn parse_type_from_linked_type_id(
 
     let linked_ty = &compilation.linked_type_definitions[linked_ty_id];
     let value = parse_type_from_linked_type(linked_ty, compilation);
-    compilation
+    let id = compilation
         .types
         .insert_allocated_value(allocated_id, value);
 
-    allocated_id
+    id
 }
 
 pub fn parse_type_from_linked_type(
