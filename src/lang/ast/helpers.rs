@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::lang::{
-    tokens::{ParseGroupToken, ParseSimpleToken, Span, TokenItem, TokenReader},
+    tokens::{ParseGroupToken, ParseSimpleToken, Span, TokenReader},
     CompilerError, ErrorCollector,
 };
 

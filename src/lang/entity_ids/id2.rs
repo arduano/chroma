@@ -1,7 +1,3 @@
-use std::{
-    cell::UnsafeCell, collections::HashMap, marker::PhantomData, mem::MaybeUninit, num::NonZeroU32,
-};
-
 use super::Id;
 
 pub struct Id2<M, T>(Id<M>, Id<T>);

@@ -1,5 +1,6 @@
 use crate::lang::{
-    entity_ids::Id, solver::MId, tokens::{TkIdent, TkInteger, TkString}
+    solver::MId,
+    tokens::{TkIdent, TkInteger, TkString},
 };
 
 mod structure;

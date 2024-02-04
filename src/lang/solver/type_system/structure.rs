@@ -1,5 +1,4 @@
 use crate::lang::{
-    entity_ids::Id,
     solver::{MId, TypeAssignabilityQuery},
     tokens::TkIdent,
 };

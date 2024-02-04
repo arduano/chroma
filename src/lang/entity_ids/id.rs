@@ -1,6 +1,4 @@
-use std::{
-    cell::UnsafeCell, collections::HashMap, marker::PhantomData, mem::MaybeUninit, num::NonZeroU32,
-};
+use std::{marker::PhantomData, num::NonZeroU32};
 
 use super::Id2;
 

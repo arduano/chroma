@@ -5,7 +5,6 @@ use crate::lang::{
         helpers::Attempted,
         items::{SyDeclaration, SyDeclarationBody, SyExpression, SyObjectLiteralField},
     },
-    entity_ids::Id,
     tokens::TkIdent,
     CompilerError,
 };

@@ -7,7 +7,7 @@ pub use string::*;
 mod structure;
 pub use structure::*;
 
-use crate::lang::{entity_ids::Id, tokens::TkIdent};
+use crate::lang::tokens::TkIdent;
 
 use super::{MId, TypeAssignabilityQuery};
 

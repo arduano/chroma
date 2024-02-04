@@ -1,9 +1,6 @@
-use std::{
-    cell::UnsafeCell, collections::HashMap, marker::PhantomData, mem::MaybeUninit, num::NonZeroU32,
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
-use super::{Id, Id2, IdCounter, ItemSet};
+use super::{Id, Id2, ItemSet};
 
 pub struct GroupItemSet<M, T> {
     other_groups: HashMap<Id<M>, Arc<ItemSet<T>>>,
