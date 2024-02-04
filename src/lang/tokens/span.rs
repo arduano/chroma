@@ -1,9 +1,6 @@
-use std::{num::NonZeroU32, ops::Range, path::PathBuf, sync::Arc};
+use std::{ops::Range, sync::Arc};
 
-use crate::lang::{
-    entity_ids::Id,
-    solver::{CodeFile, CodeFilePath, CodeFileRef},
-};
+use crate::lang::solver::CodeFileRef;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileLocation {
