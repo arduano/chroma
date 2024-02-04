@@ -35,7 +35,7 @@ pub struct ModuleParseResult {
 
 pub struct ModuleItem {
     index_in_body: usize,
-    id: ModuleNamespaceItemKind,
+    kind: ModuleNamespaceItemKind,
 }
 
 pub fn parse_module_decls(
@@ -67,7 +67,7 @@ pub fn parse_module_decls(
 
                 items_to_compile.push(ModuleItem {
                     index_in_body: i,
-                    id,
+                    kind: id,
                 });
                 namespace_items.insert(ident.ident, item);
             }
@@ -94,7 +94,7 @@ pub fn parse_module_data_linking(
             .as_ref()
             .expect("Parse result mismatch");
 
-        match item.id {
+        match item.kind {
             ModuleNamespaceItemKind::Type(id) => {
                 let SyDeclaration::TypeDefine(declaration_item) = &declaration.item else {
                     unreachable!("Parse result mismatch")
@@ -111,7 +111,7 @@ pub fn parse_module_data_linking(
                     .linked_type_definitions
                     .insert_allocated_value(id, ty);
             }
-            _ => todo!(),
+            ModuleNamespaceItemKind::Unknown => {}
         }
     }
 }

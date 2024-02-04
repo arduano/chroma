@@ -2,9 +2,9 @@ use std::{borrow::Cow, sync::Arc};
 
 use logos::{Lexer, Logos};
 
-use crate::lang::{CompilerError, WithSpan};
+use crate::lang::{solver::CodeFileRef, CompilerError, WithSpan};
 
-use super::{FileLocation, FileRef, Span};
+use super::{FileLocation, Span};
 
 #[derive(Logos, Debug, PartialEq)]
 #[logos(subpattern decimal = r"[0-9][_0-9]*")]
@@ -204,7 +204,7 @@ pub struct ParsedTokenTree {
 struct MetaLexer<'a, L: Logos<'a, Source = str>> {
     lexer: Lexer<'a, L>,
 
-    file: Arc<FileRef>,
+    file: Arc<CodeFileRef>,
 
     // Tracking the current location
     line: u32,
@@ -215,7 +215,7 @@ struct MetaLexer<'a, L: Logos<'a, Source = str>> {
 }
 
 impl<'a, L: Logos<'a, Source = str>> MetaLexer<'a, L> {
-    fn new(lexer: Lexer<'a, L>, file: Arc<FileRef>) -> Self {
+    fn new(lexer: Lexer<'a, L>, file: Arc<CodeFileRef>) -> Self {
         Self {
             lexer,
             file: file.clone(),
@@ -286,10 +286,10 @@ impl<'a, L: Logos<'a, Source = str>> MetaLexer<'a, L> {
     }
 }
 
-pub fn parse_file(file: FileRef) -> ParsedTokenTree {
+pub fn parse_file(file: CodeFileRef, contents: &str) -> ParsedTokenTree {
     let file = Arc::new(file);
 
-    let lexer = StringToken::lexer(&file.contents);
+    let lexer = StringToken::lexer(contents);
     let mut meta_lexer = MetaLexer::new(lexer, file.clone());
 
     parse_group(&mut meta_lexer, None)

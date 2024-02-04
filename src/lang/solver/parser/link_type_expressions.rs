@@ -21,6 +21,7 @@ fn parse_ast_type_var_read(
 
     match item {
         ModuleNamespaceItemKind::Type(id) => return LiTypeKind::StaticTypeReference(id),
+        ModuleNamespaceItemKind::Unknown => return LiTypeKind::Unknown,
     }
 }
 

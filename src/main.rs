@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::{path::PathBuf, str::FromStr};
+use std::{collections::HashMap, path::PathBuf, str::FromStr, sync::Arc};
 
 use lang::tokens::parse_file;
 
@@ -10,8 +10,8 @@ use crate::lang::{
         items::SyDeclarationBody,
     },
     entity_ids::IdCounter,
-    solver::ModuleGroupCompilation,
-    tokens::{FileRef, TokenReader},
+    solver::{CodeFilePath, KnownFiles, ModuleGroupCompilation},
+    tokens::TokenReader,
     ErrorCollector,
 };
 
@@ -52,15 +52,17 @@ mod lang;
 
 #[tokio::main]
 async fn main() {
+    let mut known_files = KnownFiles::new();
+
     let test_file_path = PathBuf::from_str("./test.cm").unwrap();
-    let text = std::fs::read_to_string(&test_file_path).unwrap();
+    let text: Arc<str> = std::fs::read_to_string(&test_file_path).unwrap().into();
 
-    let file = FileRef {
-        path: test_file_path.clone(),
-        contents: text.clone(),
-    };
+    let file_id = known_files.add_file(CodeFilePath::from_path(test_file_path), text.clone());
+    let file_ref = known_files.get_ref_for_file_id(file_id);
 
-    let tokens = parse_file(file);
+    let tokens = parse_file(file_ref, &text);
+
+    let mut module_counter = IdCounter::new();
 
     dbg!(&tokens);
 
@@ -71,9 +73,7 @@ async fn main() {
     let env = ParsingPhaseEnv::new();
     let ast = SyDeclarationBody::parse(&mut ast_parser, env).unwrap();
 
-    let mut module_counter = IdCounter::new();
-
-    let mut compilation = ModuleGroupCompilation::new_without_deps(module_counter.next());
+    let mut compilation = ModuleGroupCompilation::new(module_counter.next(), HashMap::new());
     let _type_ids = compilation.compile_in_ast(None, &ast);
 
     // let modules = KnownItemHandler::new();

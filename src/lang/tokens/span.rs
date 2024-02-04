@@ -1,4 +1,9 @@
-use std::{ops::Range, path::PathBuf, sync::Arc};
+use std::{num::NonZeroU32, ops::Range, path::PathBuf, sync::Arc};
+
+use crate::lang::{
+    entity_ids::Id,
+    solver::{CodeFile, CodeFilePath, CodeFileRef},
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileLocation {
@@ -35,23 +40,9 @@ impl PartialOrd for FileLocation {
     }
 }
 
-pub struct FileRef {
-    pub path: PathBuf,
-    pub contents: String,
-}
-
-impl std::fmt::Debug for FileRef {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("FileRef")
-            .field("path", &self.path)
-            .field("contents", &"[omitted]")
-            .finish()
-    }
-}
-
 #[derive(Clone)]
 pub struct Span {
-    pub file: Arc<FileRef>,
+    pub file: Arc<CodeFileRef>,
     pub range: Range<FileLocation>,
 }
 
@@ -62,16 +53,13 @@ impl PartialEq for Span {
 }
 
 impl Span {
-    pub fn new(file: Arc<FileRef>, range: Range<FileLocation>) -> Self {
+    pub fn new(file: Arc<CodeFileRef>, range: Range<FileLocation>) -> Self {
         Self { file, range }
     }
 
     pub fn new_empty() -> Self {
         Self {
-            file: Arc::new(FileRef {
-                path: PathBuf::new(),
-                contents: String::new(),
-            }),
+            file: Arc::new(CodeFileRef::new_empty_internal()),
             range: FileLocation::new(0, 0, 0)..FileLocation::new(0, 0, 0),
         }
     }
@@ -94,12 +82,10 @@ impl std::fmt::Debug for Span {
         let start = self.range.start;
         let end = self.range.end;
 
-        let str = &self.file.contents[start.index as usize..end.index as usize];
-
         write!(
             f,
-            "{:?} {:?} {}:{}-{}:{}",
-            str, self.file.path, start.line, start.column, end.line, end.column
+            "{:?} {}:{}-{}:{}",
+            self.file.path, start.line, start.column, end.line, end.column
         )
     }
 }

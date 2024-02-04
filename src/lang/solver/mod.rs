@@ -1,5 +1,6 @@
 use std::{
     collections::{BTreeMap, HashMap},
+    num::NonZeroU32,
     path::PathBuf,
     sync::Arc,
 };
@@ -15,11 +16,51 @@ use super::{
 
 mod linked_ast;
 mod parser;
+mod type_assignability;
+use type_assignability::*;
 mod type_system;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-struct CodeFilePath {
+pub struct CodeFilePath {
     path: PathBuf,
+}
+
+impl CodeFilePath {
+    pub fn from_path(path: PathBuf) -> Self {
+        Self { path }
+    }
+
+    pub fn from_str(path: &str) -> Self {
+        Self {
+            path: PathBuf::from(path),
+        }
+    }
+
+    pub fn new_empty_internal() -> Self {
+        Self {
+            path: PathBuf::from("internal"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct CodeFileRef {
+    // TODO: In the future, don't store path here, especially when serializing/deserializing.
+    pub path: CodeFilePath,
+    id: Id<CodeFile>,
+}
+
+impl CodeFileRef {
+    pub fn new(path: CodeFilePath, id: Id<CodeFile>) -> Self {
+        Self { path, id }
+    }
+
+    pub fn new_empty_internal() -> Self {
+        Self {
+            path: CodeFilePath::new_empty_internal(),
+            id: Id::new(NonZeroU32::MAX),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -29,27 +70,32 @@ pub struct CodeFile {
     text: Arc<str>,
 }
 
-struct KnownFiles {
+pub struct KnownFiles {
     counter: IdCounter<CodeFile>,
     files: HashMap<Id<CodeFile>, CodeFile>,
     paths: BTreeMap<CodeFilePath, Id<CodeFile>>,
+    std_file_id: Id<CodeFile>,
 }
 
 impl KnownFiles {
     pub fn new() -> Self {
+        let mut counter = IdCounter::new();
+        let std_file_id = counter.next();
+
         Self {
-            counter: IdCounter::new(),
+            counter,
             files: HashMap::new(),
             paths: BTreeMap::new(),
+            std_file_id,
         }
     }
 
-    pub fn add_file(&mut self, path: PathBuf, text: Arc<str>) -> Id<CodeFile> {
+    pub fn add_file(&mut self, path: CodeFilePath, text: Arc<str>) -> Id<CodeFile> {
         let file_id = self.counter.next();
 
         let file = CodeFile {
             id: file_id,
-            path: CodeFilePath { path },
+            path,
             text,
         };
 
@@ -57,6 +103,11 @@ impl KnownFiles {
         self.files.insert(file_id, file);
 
         file_id
+    }
+
+    pub fn get_ref_for_file_id(&self, file_id: Id<CodeFile>) -> CodeFileRef {
+        let file = self.files.get(&file_id).unwrap();
+        CodeFileRef::new(file.path.clone(), file_id)
     }
 
     pub fn update_file(&mut self, file_id: Id<CodeFile>, new_text: Arc<str>) -> Id<CodeFile> {
@@ -83,97 +134,16 @@ impl KnownFiles {
     pub fn get_file_by_path(&self, path: &CodeFilePath) -> &CodeFile {
         self.files.get(&self.paths[path]).unwrap()
     }
-}
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeAssignability {
-    pub from: MId<TyType>,
-    pub to: MId<TyType>,
-}
-
-impl TypeAssignability {
-    pub fn new(from: MId<TyType>, to: MId<TyType>) -> Self {
-        Self { from, to }
-    }
-}
-
-pub struct TypeAssignabilityCache {
-    assignability_cache: HashMap<TypeAssignability, bool>,
-}
-
-impl TypeAssignabilityCache {
-    pub fn new() -> Self {
-        Self {
-            assignability_cache: HashMap::new(),
-        }
-    }
-
-    pub fn get_assignable_to_cache(&self, from: MId<TyType>, to: MId<TyType>) -> Option<bool> {
-        self.assignability_cache
-            .get(&TypeAssignability::new(from, to))
-            .copied()
-    }
-
-    pub fn set_assignable_to(&mut self, from: MId<TyType>, to: MId<TyType>, assignable: bool) {
-        self.assignability_cache
-            .insert(TypeAssignability::new(from, to), assignable);
-    }
-}
-
-pub struct TypeAssignabilityQuery<'a> {
-    types: &'a ModItemSet<TyType>,
-    type_assignability: &'a mut TypeAssignabilityCache,
-    parent_queries: Vec<TypeAssignability>,
-}
-
-impl<'a> TypeAssignabilityQuery<'a> {
-    pub fn new(
-        types: &'a ModItemSet<TyType>,
-        type_assignability: &'a mut TypeAssignabilityCache,
-    ) -> Self {
-        Self {
-            types,
-            type_assignability,
-            parent_queries: Vec::new(),
-        }
-    }
-
-    pub fn is_assignable_to(&mut self, left: MId<TyType>, right: MId<TyType>) -> bool {
-        if let Some(assignable) = self.type_assignability.get_assignable_to_cache(left, right) {
-            return assignable;
+    pub fn make_or_get_std_file(&mut self) -> Id<CodeFile> {
+        let path = CodeFilePath::from_str("$$std");
+        if let Some(std_file_id) = self.paths.get(&path) {
+            return *std_file_id;
         }
 
-        let assignable = self.is_assignable_to_impl(left, right);
+        let std_file_id = self.add_file(path, Arc::from(""));
 
-        self.type_assignability
-            .set_assignable_to(left, right, assignable);
-
-        assignable
-    }
-
-    fn is_assignable_to_impl(&mut self, left: MId<TyType>, right: MId<TyType>) -> bool {
-        if left == right {
-            return true;
-        }
-
-        if self
-            .parent_queries
-            .contains(&TypeAssignability::new(left, right))
-        {
-            return true;
-        }
-
-        self.parent_queries
-            .push(TypeAssignability::new(left, right));
-
-        let left_ty = &self.types[&left];
-        let right_ty = &self.types[&right];
-
-        let assignable = left_ty.check_assignable_to(right_ty, self);
-
-        self.parent_queries.pop();
-
-        assignable
+        std_file_id
     }
 }
 
@@ -281,7 +251,7 @@ impl ModuleGroupCompilation {
 pub struct ModuleGroupResult {
     pub dependencies: Vec<Id<ModuleGroupResult>>,
     pub files: Vec<Id<CodeFile>>,
-    pub modules: HashMap<(), ModuleNamespace>,
+    pub modules: HashMap<Id<CodeFile>, ModuleNamespace>,
     pub linked_type_definitions: Arc<ItemSet<LiType>>,
     pub linked_type_to_type_mapping: HashMap<Id<LiType>, Id<TyType>>,
     pub types: Arc<ItemSet<TyType>>,
@@ -322,4 +292,5 @@ pub struct ModuleNamespaceItem {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ModuleNamespaceItemKind {
     Type(MId<LiType>),
+    Unknown,
 }
