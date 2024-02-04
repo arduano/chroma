@@ -12,7 +12,7 @@ use super::{ast::items::SyDeclarationBody, tokens::TkIdent, ErrorCollector};
 mod entity_ids;
 pub use entity_ids::*;
 mod linked_ast;
-mod parser;
+mod lowering;
 mod type_assignability;
 use type_assignability::*;
 mod type_system;
@@ -220,7 +220,7 @@ impl ModuleGroupCompilation {
             self.files.push(file);
         }
 
-        let mod_results = parser::parse_module_decls(ast, self);
+        let mod_results = lowering::parse_module_decls(ast, self);
 
         let namespace_types = mod_results
             .namespace
@@ -232,12 +232,12 @@ impl ModuleGroupCompilation {
             })
             .collect::<Vec<_>>();
 
-        parser::parse_module_data_linking(ast, self, mod_results);
+        lowering::parse_module_data_linking(ast, self, mod_results);
 
         let mut types = Vec::new();
 
         for li_type_id in namespace_types {
-            let id = parser::get_type_id_for_linked_type_id(self, li_type_id);
+            let id = lowering::get_type_id_for_linked_type_id(self, li_type_id);
             types.push(id);
         }
 
