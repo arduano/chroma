@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 
 use crate::lang::{
-    entity_ids::Id,
-    solver::{type_system::*, MId, ModItemSet, ModuleGroupCompilation},
+    solver::{type_system::*, Id, MId, ModItemSet, ModuleGroupCompilation},
     ErrorCollector,
 };
 

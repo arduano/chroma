@@ -3,8 +3,6 @@ use std::{backtrace::Backtrace, borrow::Cow, fmt::Debug, sync::Arc};
 use self::tokens::Span;
 
 pub mod ast;
-pub mod entity_ids;
-pub mod modules;
 pub mod solver;
 pub mod tokens;
 

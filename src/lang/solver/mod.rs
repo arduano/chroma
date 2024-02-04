@@ -7,13 +7,10 @@ use std::{
 
 use self::{linked_ast::LiType, type_system::TyType};
 
-use super::{
-    ast::items::SyDeclarationBody,
-    entity_ids::{GroupItemSet, Id, Id2, IdCounter, ItemSet},
-    tokens::TkIdent,
-    ErrorCollector,
-};
+use super::{ast::items::SyDeclarationBody, tokens::TkIdent, ErrorCollector};
 
+mod entity_ids;
+pub use entity_ids::*;
 mod linked_ast;
 mod parser;
 mod type_assignability;

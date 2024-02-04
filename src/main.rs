@@ -9,8 +9,7 @@ use crate::lang::{
         helpers::{AstItem, AstParser, ParsingPhaseEnv},
         items::SyDeclarationBody,
     },
-    entity_ids::IdCounter,
-    solver::{CodeFilePath, KnownFiles, ModuleGroupCompilation},
+    solver::{CodeFilePath, IdCounter, KnownFiles, ModuleGroupCompilation},
     tokens::TokenReader,
     ErrorCollector,
 };
