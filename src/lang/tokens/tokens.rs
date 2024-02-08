@@ -486,6 +486,8 @@ simple_token!(TkSemicolon, Semi);
 simple_token!(TkComma, Comma);
 simple_token!(TkDot, Dot);
 simple_token!(TkEpsilon, Dot, Dot, Dot);
+simple_token!(TkAt, At);
+simple_token!(TkHash, Hash);
 
 // Named tokens
 simple_ident_token!(TkFn, "fn");
