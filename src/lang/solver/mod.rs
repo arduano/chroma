@@ -1,9 +1,4 @@
-use std::{
-    collections::{BTreeMap, HashMap, HashSet},
-    num::NonZeroU32,
-    path::PathBuf,
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
 use self::{linked_ast::LiType, type_system::TyType};
 

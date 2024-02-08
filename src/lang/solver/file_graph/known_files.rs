@@ -1,4 +1,9 @@
-use std::{collections::{BTreeMap, HashMap}, num::NonZeroU32, path::PathBuf, sync::Arc};
+use std::{
+    collections::{BTreeMap, HashMap},
+    num::NonZeroU32,
+    path::PathBuf,
+    sync::Arc,
+};
 
 use crate::lang::solver::{Id, IdCounter};
 
