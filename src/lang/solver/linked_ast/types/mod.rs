@@ -41,10 +41,10 @@ pub enum LiTypeKind {
 
 #[derive(Debug, Clone)]
 pub struct LiNumber {
-    pub number: TkInteger,
+    pub literal: Option<TkInteger>,
 }
 
 #[derive(Debug, Clone)]
 pub struct LiString {
-    pub string: TkString,
+    pub literal: Option<TkString>,
 }

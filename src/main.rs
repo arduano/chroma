@@ -53,7 +53,7 @@ mod lang;
 async fn main() {
     let mut known_files = KnownFiles::new();
 
-    let test_file_path = PathBuf::from_str("./std.cm").unwrap();
+    let test_file_path = PathBuf::from_str("./test.cm").unwrap();
     let text: Arc<str> = std::fs::read_to_string(&test_file_path).unwrap().into();
 
     let file_id = known_files.add_file(CodeFilePath::from_path(test_file_path), text.clone());

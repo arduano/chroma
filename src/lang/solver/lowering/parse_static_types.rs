@@ -46,10 +46,18 @@ pub fn parse_type_from_linked_type(
 ) -> TyType {
     let ty_kind = match &linked_ty.kind {
         LiTypeKind::Number(num) => {
-            TyTypeKind::Number(TyNumber::from_literal(num.number.value() as f64))
+            if let Some(literal) = &num.literal {
+                TyTypeKind::Number(TyNumber::from_literal(literal.value() as f64))
+            } else {
+                TyTypeKind::Number(TyNumber::new())
+            }
         }
         LiTypeKind::String(str) => {
-            TyTypeKind::String(TyString::from_literal(str.string.value().clone()))
+            if let Some(literal) = &str.literal {
+                TyTypeKind::String(TyString::from_literal(literal.value().clone()))
+            } else {
+                TyTypeKind::String(TyString::new())
+            }
         }
         LiTypeKind::Struct(structure) => {
             let mut fields = Vec::<TyStructLiteralField>::new();

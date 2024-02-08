@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use super::*;
 
 fn make_error_li_type() -> LiTypeKind {
@@ -9,6 +11,11 @@ fn parse_ast_type_var_read(
     compilation: &mut ModuleGroupCompilation,
     namespace: &ModuleNamespace,
 ) -> LiTypeKind {
+    // Temporary ident overwrites for hardcoded type names
+    if ident.ident.deref() == "string" {
+        return LiTypeKind::String(LiString { literal: None });
+    }
+
     let item = namespace.get_ident_kind(ident);
     let Some(item) = item else {
         compilation.errors.push(CompilerError::new(
@@ -38,7 +45,7 @@ pub fn link_type_expression_ast(
     let kind = match ast {
         SyExpression::VarRead(var) => parse_ast_type_var_read(&var.name, compilation, namespace),
         SyExpression::StringLiteral(string) => LiTypeKind::String(LiString {
-            string: string.literal.clone(),
+            literal: Some(string.literal.clone()),
         }),
         SyExpression::ObjectLiteral(obj) => {
             let mut fields = Vec::<LiStructField>::new();
