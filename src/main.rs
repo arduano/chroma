@@ -53,7 +53,7 @@ mod lang;
 async fn main() {
     let mut known_files = KnownFiles::new();
 
-    let test_file_path = PathBuf::from_str("./test.cm").unwrap();
+    let test_file_path = PathBuf::from_str("./std.cm").unwrap();
     let text: Arc<str> = std::fs::read_to_string(&test_file_path).unwrap().into();
 
     let file_id = known_files.add_file(CodeFilePath::from_path(test_file_path), text.clone());
@@ -75,19 +75,8 @@ async fn main() {
     let mut compilation = ModuleGroupCompilation::new(module_counter.next(), HashMap::new());
     let _type_ids = compilation.compile_in_ast(None, &ast);
 
-    // let modules = KnownItemHandler::new();
-    // let types = KnownItemHandler::new();
-
-    // let std_mod_id = build_std_module(&modules, &types);
-
     dbg!(&ast);
 
-    // let types: Vec<_> = type_ids
-    //     .iter()
-    //     .map(|id| (id, &compilation.types[*id]))
-    //     .collect();
-
-    // dbg!(types);
     dbg!(compilation.linked_type_definitions);
     dbg!(compilation.linked_type_to_type_mapping);
     dbg!(compilation.types);

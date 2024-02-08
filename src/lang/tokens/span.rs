@@ -82,7 +82,7 @@ impl std::fmt::Debug for Span {
         write!(
             f,
             "{:?} {}:{}-{}:{}",
-            self.file.path, start.line, start.column, end.line, end.column
+            self.file.path.path, start.line, start.column, end.line, end.column
         )
     }
 }

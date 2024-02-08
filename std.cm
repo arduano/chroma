@@ -1,0 +1,11 @@
+@internal_type(string)
+type string = string;
+
+@internal_type(int)
+type int = int;
+
+@internal_type(float)
+type float = float;
+
+@internal_type(never)
+type never = never;
