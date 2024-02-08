@@ -117,6 +117,12 @@ enum StringToken {
 
     #[token("|")]
     Or,
+
+    #[token("#")]
+    Hash,
+
+    #[token("@")]
+    At,
 }
 
 pub type TokenList = WithSpan<Arc<[WithSpan<TokenValue>]>>;
@@ -158,6 +164,14 @@ pub enum TokenValue {
     Question,
     And,
     Or,
+    Hash,
+    At,
+}
+
+impl TokenValue {
+    pub fn is_whitespace_or_newline(&self) -> bool {
+        matches!(self, TokenValue::Whitespace | TokenValue::Newline)
+    }
 }
 
 impl std::fmt::Display for TokenValue {
@@ -191,6 +205,8 @@ impl std::fmt::Display for TokenValue {
             TokenValue::Question => write!(f, "?"),
             TokenValue::And => write!(f, "&"),
             TokenValue::Or => write!(f, "|"),
+            TokenValue::Hash => write!(f, "#"),
+            TokenValue::At => write!(f, "@"),
         }
     }
 }
@@ -455,6 +471,8 @@ fn parse_group(lexer: &mut MetaLexer<StringToken>, end: Option<StringToken>) -> 
             StringToken::Comma => make_token(TokenValue::Comma),
             StringToken::Dot => make_token(TokenValue::Dot),
             StringToken::Semi => make_token(TokenValue::Semi),
+            StringToken::Hash => make_token(TokenValue::Hash),
+            StringToken::At => make_token(TokenValue::At),
         };
 
         tokens.push(token);

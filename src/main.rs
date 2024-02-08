@@ -65,9 +65,9 @@ async fn main() {
 
     dbg!(&tokens);
 
-    let errors = ErrorCollector::new();
+    let error_collector = ErrorCollector::new();
 
-    let mut ast_parser = AstParser::new(TokenReader::new(&tokens.tokens), errors.clone());
+    let mut ast_parser = AstParser::new(TokenReader::new(&tokens.tokens), error_collector.clone());
 
     let env = ParsingPhaseEnv::new();
     let ast = SyDeclarationBody::parse(&mut ast_parser, env).unwrap();
@@ -81,6 +81,10 @@ async fn main() {
     dbg!(compilation.linked_type_to_type_mapping);
     dbg!(compilation.types);
 
-    dbg!(&errors.errors());
-    dbg!(&compilation.errors.errors());
+    let mut errors = Vec::new();
+    errors.extend_from_slice(&tokens.errors);
+    errors.extend_from_slice(&error_collector.errors());
+    errors.extend_from_slice(&compilation.errors.errors());
+
+    dbg!(&errors);
 }

@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
 use crate::lang::{
-    tokens::{ParseGroupToken, ParseSimpleToken, Span, TokenReader},
-    CompilerError, ErrorCollector,
+    tokens::{ParseGroupToken, ParseSimpleToken, Span, TokenReader, TokenValue},
+    CompilerError, ErrorCollector, WithSpan,
 };
 
 const DEBUG: bool = true;
@@ -197,6 +197,68 @@ impl Default for AstParserFrame {
     }
 }
 
+struct ErrorSpanBuilder {
+    start: Span,
+    start_without_whitespace: Option<Span>,
+    end: Span,
+    end_without_whitespace: Option<Span>,
+}
+
+fn is_non_whitespace_reader_token(token: Option<&WithSpan<TokenValue>>) -> bool {
+    token
+        .map(|t| !t.value.is_whitespace_or_newline())
+        .unwrap_or(false)
+}
+
+impl ErrorSpanBuilder {
+    pub fn from_reader(reader: &TokenReader) -> Self {
+        let start = reader.span().clone();
+        let end = reader.span().clone();
+
+        let mut start_without_whitespace = None;
+        let mut end_without_whitespace = None;
+
+        if is_non_whitespace_reader_token(reader.next_token()) {
+            start_without_whitespace = Some(start.clone());
+            end_without_whitespace = Some(end.clone());
+        }
+
+        Self {
+            start,
+            start_without_whitespace,
+            end,
+            end_without_whitespace,
+        }
+    }
+
+    pub fn extend_from_reader(&mut self, reader: &TokenReader) {
+        self.end = reader.span().clone();
+
+        if is_non_whitespace_reader_token(reader.next_token()) {
+            if self.start_without_whitespace.is_none() {
+                self.start_without_whitespace = Some(self.end.clone());
+            }
+
+            self.end_without_whitespace = Some(self.end.clone());
+        }
+    }
+
+    pub fn result(&self) -> Span {
+        let start = self
+            .start_without_whitespace
+            .as_ref()
+            .unwrap_or(&self.start)
+            .clone();
+        let end = self
+            .end_without_whitespace
+            .as_ref()
+            .unwrap_or(&self.end)
+            .clone();
+
+        start.join(&end)
+    }
+}
+
 pub struct AstParser<'a> {
     curr_frame: AstParserFrame,
     input: TokenReader<'a>,
@@ -284,8 +346,7 @@ impl<'a> AstParser<'a> {
             return Attempted::Ok(token);
         };
 
-        let error_start = reader_unchanged.span().clone();
-        let mut error_end = error_start.clone();
+        let mut error_span = ErrorSpanBuilder::from_reader(&reader_unchanged);
 
         if !self.input.is_ended() {
             self.input.skip(1);
@@ -295,11 +356,11 @@ impl<'a> AstParser<'a> {
         while !self.input.is_ended() && !self.input.peek::<T>() {
             let lookahead = &self.curr_frame.current_error_recovery_mode;
             if lookahead.should_stop(&mut self.input, i) {
-                error_end = self.input.span().clone();
+                error_span.extend_from_reader(&self.input);
                 break;
             }
 
-            error_end = self.input.span().clone();
+            error_span.extend_from_reader(&self.input);
             self.input.skip(1);
             i += 1;
         }
@@ -307,11 +368,11 @@ impl<'a> AstParser<'a> {
         debug!(
             "Error parsing required token: {} span {:?}",
             T::displayed(),
-            error_start.join(&error_end)
+            error_span.result()
         );
         self.errors.push(CompilerError::new(
             format!("Expected {}", T::displayed(),),
-            error_start.join(&error_end),
+            error_span.result(),
         ));
 
         let token = T::parse(&mut self.input);
@@ -481,8 +542,7 @@ impl<'a> AstParser<'a> {
                 return Attempted::Err(ParseErrorError);
             }
             ParseResult::Err(ParseError::NoMatch) => {
-                let error_start = self.input.span().clone();
-                let mut error_end = error_start.clone();
+                let mut error_span = ErrorSpanBuilder::from_reader(&self.input);
 
                 let prev_reader = self.input.clone();
                 if !self.input.is_ended() {
@@ -496,7 +556,7 @@ impl<'a> AstParser<'a> {
                 while !self.input.is_ended() {
                     let lookahead = &self.curr_frame.current_error_recovery_mode;
                     if lookahead.should_stop(&mut self.input, i) {
-                        error_end = self.input.span().clone();
+                        error_span.extend_from_reader(&self.input);
                         break;
                     }
 
@@ -507,12 +567,12 @@ impl<'a> AstParser<'a> {
                             break;
                         }
                         ParseResult::Err(ParseError::Error) => {
-                            error_end = self.input.span().clone();
+                            error_span.extend_from_reader(&self.input);
                             error = true;
                             break;
                         }
                         ParseResult::Err(ParseError::NoMatch) => {
-                            error_end = self.input.span().clone();
+                            error_span.extend_from_reader(&self.input);
                             self.input.skip(1);
                             i += 1;
                         }
@@ -522,11 +582,11 @@ impl<'a> AstParser<'a> {
                 debug!(
                     "Error parsing required item: {} span {:?}",
                     T::NAME,
-                    error_start.join(&error_end)
+                    error_span.result()
                 );
                 self.errors.push(CompilerError::new(
                     format!("Expected {}", T::NAME,),
-                    error_start.join(&error_end),
+                    error_span.result(),
                 ));
 
                 if let Some(item) = item {
