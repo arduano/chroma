@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::{type_system::TyType, MId, ModItemSet};
+use super::{type_system::TyType, MId, ModItemSet, ModuleGroupCompilation};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeAssignability {
@@ -38,7 +38,7 @@ impl TypeAssignabilityCache {
 }
 
 pub struct TypeAssignabilityQuery<'a> {
-    types: &'a ModItemSet<TyType>,
+    pub types: &'a ModItemSet<TyType>,
     type_assignability: &'a mut TypeAssignabilityCache,
     parent_queries: Vec<TypeAssignability>,
 }
@@ -56,6 +56,8 @@ impl<'a> TypeAssignabilityQuery<'a> {
     }
 
     pub fn is_assignable_to(&mut self, left: MId<TyType>, right: MId<TyType>) -> bool {
+        dbg!(&left, &right);
+
         if let Some(assignable) = self.type_assignability.get_assignable_to_cache(left, right) {
             return assignable;
         }
@@ -92,4 +94,14 @@ impl<'a> TypeAssignabilityQuery<'a> {
 
         assignable
     }
+}
+
+pub fn run_type_assignability_query<'a>(
+    compilation: &'a mut ModuleGroupCompilation,
+    left: MId<TyType>,
+    right: MId<TyType>,
+) -> bool {
+    let mut query =
+        TypeAssignabilityQuery::new(&compilation.types, &mut compilation.type_assignability);
+    query.is_assignable_to(left, right)
 }

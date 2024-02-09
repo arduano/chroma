@@ -70,6 +70,22 @@ impl TyTypeLogic for TyTypeKind {
                 self_struct.check_assignable_to(other_struct, query)
             }
 
+            // Dereference type references
+            (TyTypeKind::Reference(self_ref), TyTypeKind::Reference(other_ref)) => {
+                let self_ty = &query.types[self_ref];
+                let other_ty = &query.types[other_ref];
+
+                self_ty.check_assignable_to(other_ty, query)
+            }
+            (TyTypeKind::Reference(self_ref), _) => {
+                let self_ty = &query.types[self_ref];
+                self_ty.kind.check_assignable_to(other, query)
+            }
+            (_, TyTypeKind::Reference(other_ref)) => {
+                let other_ty = &query.types[other_ref];
+                self.check_assignable_to(&other_ty.kind, query)
+            }
+
             _ => false,
         }
     }

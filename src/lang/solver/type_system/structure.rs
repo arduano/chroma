@@ -63,16 +63,19 @@ impl TyTypeLogic for TyStruct {
             return false;
         };
 
-        // If both are non generic struct types, then self can be assigned to other if all of its
-        // fields are in other.
+        // If both are non generic struct types, then self can be assigned to other if all of other's
+        // fields are in self.
         let self_fields = &self_literal.fields;
         let other_fields = &other_literal.fields;
-        self_fields.iter().all(|self_field| {
-            let other_field = other_fields
-                .iter()
-                .find(|other_field| self_field.name.ident == other_field.name.ident);
 
-            let Some(other_field) = other_field else {
+        dbg!(&self_fields, &other_fields);
+
+        other_fields.iter().all(|other_field| {
+            let self_field = self_fields
+                .iter()
+                .find(|self_field| self_field.name.ident == other_field.name.ident);
+
+            let Some(self_field) = self_field else {
                 return false;
             };
 

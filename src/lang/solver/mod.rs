@@ -8,12 +8,12 @@ mod entity_ids;
 pub use entity_ids::*;
 mod linked_ast;
 mod lowering;
-mod type_assignability;
-use type_assignability::*;
 mod type_system;
 
 mod file_graph;
 pub use file_graph::*;
+mod type_assignability;
+pub use type_assignability::*;
 
 /// A "Module-associated ID", an ID that is associated with a module.
 /// This allows any module to refer to another module's items.

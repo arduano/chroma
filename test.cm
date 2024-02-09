@@ -1,8 +1,17 @@
 type A = {
-    test: C
+    a: {
+        a: {
+            a: C
+        },
+        b: string
+    }
 };
 
 type C = D;
 type D = A;
 
-type B = string;
+type B = {
+    a: {
+        a: B,
+    },
+};

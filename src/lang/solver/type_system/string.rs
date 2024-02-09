@@ -27,8 +27,13 @@ pub struct TyStringLiteral {
 }
 
 impl TyTypeLogic for TyString {
-    fn check_assignable_to(&self, _other: &Self, _query: &mut TypeAssignabilityQuery) -> bool {
-        todo!()
+    fn check_assignable_to(&self, other: &Self, _query: &mut TypeAssignabilityQuery) -> bool {
+        match (&self.literal, &other.literal) {
+            (Some(l), Some(r)) => l == r,
+            (Some(_), None) => true,
+            (None, Some(_)) => false,
+            (None, None) => true,
+        }
     }
 
     fn get_intersection(&self, _other: &Self) -> Self {

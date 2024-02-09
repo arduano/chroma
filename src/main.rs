@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::{collections::HashMap, path::PathBuf, str::FromStr, sync::Arc};
+use std::{collections::HashMap, ops::Deref, path::PathBuf, str::FromStr, sync::Arc};
 
 use lang::tokens::parse_file;
 
@@ -9,7 +9,9 @@ use crate::lang::{
         helpers::{AstItem, AstParser, ParsingPhaseEnv},
         items::SyDeclarationBody,
     },
-    solver::{CodeFilePath, IdCounter, KnownFiles, ModuleGroupCompilation},
+    solver::{
+        run_type_assignability_query, CodeFilePath, IdCounter, KnownFiles, ModuleGroupCompilation,
+    },
     tokens::TokenReader,
     ErrorCollector,
 };
@@ -75,11 +77,31 @@ async fn main() {
     let mut compilation = ModuleGroupCompilation::new(module_counter.next(), HashMap::new());
     let _type_ids = compilation.compile_in_ast(None, &ast);
 
+    let a_type_id = compilation.types.keys().find(|k| {
+        let Some(name) = &compilation.types[k].name else {
+            return false;
+        };
+
+        name.ident.deref() == "A"
+    });
+
+    let b_type_id = compilation.types.keys().find(|k| {
+        let Some(name) = &compilation.types[k].name else {
+            return false;
+        };
+
+        name.ident.deref() == "B"
+    });
+
     dbg!(&ast);
 
-    dbg!(compilation.linked_type_definitions);
-    dbg!(compilation.linked_type_to_type_mapping);
-    dbg!(compilation.types);
+    dbg!(&compilation.linked_type_definitions);
+    dbg!(&compilation.linked_type_to_type_mapping);
+    dbg!(&compilation.types);
+
+    let assignable =
+        run_type_assignability_query(&mut compilation, a_type_id.unwrap(), b_type_id.unwrap());
+    dbg!(assignable);
 
     let mut errors = Vec::new();
     errors.extend_from_slice(&tokens.errors);
