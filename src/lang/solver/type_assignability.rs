@@ -56,8 +56,6 @@ impl<'a> TypeAssignabilityQuery<'a> {
     }
 
     pub fn is_assignable_to(&mut self, left: MId<TyType>, right: MId<TyType>) -> bool {
-        dbg!(&left, &right);
-
         if let Some(assignable) = self.type_assignability.get_assignable_to_cache(left, right) {
             return assignable;
         }

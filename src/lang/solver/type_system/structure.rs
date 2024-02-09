@@ -68,8 +68,6 @@ impl TyTypeLogic for TyStruct {
         let self_fields = &self_literal.fields;
         let other_fields = &other_literal.fields;
 
-        dbg!(&self_fields, &other_fields);
-
         other_fields.iter().all(|other_field| {
             let self_field = self_fields
                 .iter()
