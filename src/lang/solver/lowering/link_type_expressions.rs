@@ -1,5 +1,7 @@
 use std::ops::Deref;
 
+use crate::lang::tokens::{ItemWithSpan, Span};
+
 use super::*;
 
 fn make_error_li_type() -> LiTypeKind {
@@ -39,7 +41,7 @@ pub fn link_type_expression_ast(
     namespace: &ModuleNamespace,
 ) -> LiType {
     let Ok(ast) = ast else {
-        return LiType::new_named(name, make_error_li_type());
+        return LiType::new_named(name, make_error_li_type(), Span::new_empty());
     };
 
     let kind = match ast {
@@ -63,7 +65,7 @@ pub fn link_type_expression_ast(
                     }
                     SyObjectLiteralField::KeyVariable(kv) => {
                         let value_kind = parse_ast_type_var_read(&kv.key, compilation, namespace);
-                        let value = LiType::new(value_kind);
+                        let value = LiType::new(value_kind, kv.key.span.clone());
 
                         fields.push(LiStructField::KeyValue(LiStructKeyValue {
                             key: kv.key.clone(),
@@ -104,5 +106,5 @@ pub fn link_type_expression_ast(
         }
     };
 
-    LiType::new_named(name, kind)
+    LiType::new_named(name, kind, ast.span().clone())
 }

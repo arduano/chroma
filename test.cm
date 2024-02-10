@@ -1,17 +1,32 @@
+// type A = {
+//     a: {
+//         a: {
+//             a: C
+//         },
+//         b: string
+//     }
+// };
+
+// type C = D;
+// type D = A;
+
+// type B = {
+//     a: {
+//         a: B,
+//     },
+// };
+
 type A = {
-    a: {
-        a: {
-            a: C
-        },
-        b: string
-    }
+    foo: string,
+    ...B,
 };
 
-type C = D;
-type D = A;
-
 type B = {
-    a: {
-        a: B,
+    bar: string,
+};
+
+type C = {
+    foo: {
+        ...C
     },
 };

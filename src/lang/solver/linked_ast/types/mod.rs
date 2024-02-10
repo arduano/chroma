@@ -1,6 +1,6 @@
 use crate::lang::{
     solver::MId,
-    tokens::{TkIdent, TkInteger, TkString},
+    tokens::{Span, TkIdent, TkInteger, TkString},
 };
 
 mod structure;
@@ -10,18 +10,24 @@ pub use structure::*;
 pub struct LiType {
     pub name: Option<TkIdent>,
     pub kind: LiTypeKind,
+    pub span: Span,
 }
 
 impl LiType {
-    pub fn new(kind: LiTypeKind) -> Self {
+    pub fn new(kind: LiTypeKind, span: Span) -> Self {
         Self {
             name: None,
             kind: kind,
+            span,
         }
     }
 
-    pub fn new_named(name: Option<TkIdent>, kind: LiTypeKind) -> Self {
-        Self { name, kind: kind }
+    pub fn new_named(name: Option<TkIdent>, kind: LiTypeKind, span: Span) -> Self {
+        Self {
+            name,
+            kind: kind,
+            span,
+        }
     }
 
     pub fn kind(&self) -> &LiTypeKind {

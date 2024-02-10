@@ -53,7 +53,7 @@ pub struct Span {
 
 impl PartialEq for Span {
     fn eq(&self, other: &Self) -> bool {
-        match (self.inner, other.inner) {
+        match (&self.inner, &other.inner) {
             (Some(self_inner), Some(other_inner)) => {
                 self_inner.file.id == other_inner.file.id && self_inner.range == other_inner.range
             }

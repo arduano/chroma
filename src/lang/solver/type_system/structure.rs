@@ -7,7 +7,7 @@ use super::{TyType, TyTypeLogic};
 
 #[derive(Debug, Clone)]
 pub struct TyStruct {
-    literal: Option<TyStructLiteral>,
+    pub literal: Option<TyStructLiteral>,
 }
 
 impl TyStruct {
@@ -24,7 +24,7 @@ impl TyStruct {
 
 #[derive(Debug, Clone)]
 pub struct TyStructLiteral {
-    fields: Vec<TyStructLiteralField>,
+    pub fields: Vec<TyStructLiteralField>,
 }
 
 impl TyStructLiteral {

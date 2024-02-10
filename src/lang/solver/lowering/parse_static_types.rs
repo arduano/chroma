@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use crate::lang::{
     solver::{type_system::*, Id, MId, ModItemSet, ModuleGroupCompilation},
-    ErrorCollector,
+    tokens::Span,
+    CompilerError, ErrorCollector,
 };
 
 use super::{LiStructField, LiType, LiTypeKind};
@@ -83,8 +84,20 @@ pub fn parse_type_from_linked_type(
 
                         add_field_if_not_exists(field);
                     }
+                    LiStructField::FieldSpread(spread) => {
+                        let fields = get_struct_literal_fields_from_ty(
+                            &spread.spread,
+                            &linked_ty.span,
+                            compilation,
+                        );
+
+                        if let Some(fields) = fields {
+                            for field in fields.iter().rev() {
+                                add_field_if_not_exists(field.clone());
+                            }
+                        }
+                    }
                     LiStructField::ComputedKeyValue(_computed) => todo!(),
-                    LiStructField::FieldSpread(_spread) => todo!(),
                 }
             }
 
@@ -114,4 +127,56 @@ pub fn parse_type_from_linked_type(
     };
 
     TyType::new_named(linked_ty.name.clone(), ty_kind)
+}
+
+fn get_struct_literal_fields_from_ty<'a>(
+    ty: &LiType,
+    ref_span: &Span,
+    compilation: &'a mut TypeFromLinkedTypeCompilation,
+) -> Option<&'a Vec<TyStructLiteralField>> {
+    let spread_ty_resolved = parse_type_from_linked_type(&ty, compilation);
+    let mut spread_id = compilation.types.add_value(spread_ty_resolved);
+
+    loop {
+        let spread_ty = &compilation.types.get(spread_id);
+        let Some(spread_ty) = spread_ty else {
+            // Type not resolved yet, therefore this is likely a cyclical spread reference
+            compilation.errors.push(CompilerError::new(
+                "Cyclical type reference in struct spread",
+                ref_span.clone(),
+            ));
+            return None;
+        };
+
+        match &spread_ty.kind {
+            TyTypeKind::Reference(id) => {
+                spread_id = *id;
+            }
+            _ => break,
+        }
+    }
+
+    let spread_ty = &compilation.types[spread_id];
+
+    match &spread_ty.kind {
+        TyTypeKind::Struct(spread_struct) => {
+            let Some(literal) = &spread_struct.literal else {
+                // Not a literal struct, therefore has infinite fields and shouldn't be spread
+                compilation.errors.push(CompilerError::new(
+                    "Expected struct literal in struct spread",
+                    ref_span.clone(),
+                ));
+                return None;
+            };
+
+            Some(&literal.fields)
+        }
+        _ => {
+            compilation.errors.push(CompilerError::new(
+                "Expected struct type in struct spread",
+                ref_span.clone(),
+            ));
+            None
+        }
+    }
 }
