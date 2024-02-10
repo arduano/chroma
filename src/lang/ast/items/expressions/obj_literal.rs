@@ -34,6 +34,12 @@ impl AstItem for SyObjectLiteral {
     }
 }
 
+impl ItemWithSpan for SyObjectLiteral {
+    fn span(&self) -> Span {
+        self.braces.span().join(&self.fields.span())
+    }
+}
+
 /// Represents an object literal's contents.
 ///
 /// # Example
@@ -78,6 +84,12 @@ impl AstItem for SObjectLiteralFields {
                 field.check(env, errors);
             }
         }
+    }
+}
+
+impl ItemWithSpan for SObjectLiteralFields {
+    fn span(&self) -> Span {
+        self.fields.span()
     }
 }
 
@@ -130,6 +142,17 @@ impl AstItem for SyObjectLiteralField {
     }
 }
 
+impl ItemWithSpan for SyObjectLiteralField {
+    fn span(&self) -> Span {
+        match self {
+            Self::KeyValue(expr) => expr.span(),
+            Self::KeyVariable(expr) => expr.span(),
+            Self::Spread(expr) => expr.span(),
+            Self::ComputedKey(expr) => expr.span(),
+        }
+    }
+}
+
 /// Represents an object literal's key-value field.
 ///
 /// # Example
@@ -169,6 +192,15 @@ impl AstItem for SyObjectLiteralKeyValue {
     }
 }
 
+impl ItemWithSpan for SyObjectLiteralKeyValue {
+    fn span(&self) -> Span {
+        self.key
+            .span()
+            .join(&self.colon.span())
+            .join(&self.value.span())
+    }
+}
+
 /// Represents an object literal's key-variable field.
 ///
 /// # Example
@@ -194,6 +226,12 @@ impl AstItem for SyObjectLiteralKeyVariable {
 
     fn check(&self, _env: CheckingPhaseEnv, _errors: &mut ErrorCollector) {
         // N/A
+    }
+}
+
+impl ItemWithSpan for SyObjectLiteralKeyVariable {
+    fn span(&self) -> Span {
+        self.key.span()
     }
 }
 
@@ -230,6 +268,12 @@ impl AstItem for SyObjectLiteralSpread {
         if let Ok(fields) = &*self.fields {
             fields.check(env.inside_nested_expr(), errors);
         }
+    }
+}
+
+impl ItemWithSpan for SyObjectLiteralSpread {
+    fn span(&self) -> Span {
+        self.spread.span().join(&self.fields.span())
     }
 }
 
@@ -275,5 +319,14 @@ impl AstItem for SyObjectLiteralComputedKey {
         if let Ok(expression) = &*self.value_expression {
             expression.check(env.inside_nested_expr(), errors);
         }
+    }
+}
+
+impl ItemWithSpan for SyObjectLiteralComputedKey {
+    fn span(&self) -> Span {
+        self.key_brackets
+            .span()
+            .join(&self.colon.span())
+            .join(&self.value_expression.span())
     }
 }

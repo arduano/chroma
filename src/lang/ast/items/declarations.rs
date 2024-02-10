@@ -46,6 +46,15 @@ impl AstItem for SyDeclaration {
     }
 }
 
+impl ItemWithSpan for SyDeclaration {
+    fn span(&self) -> Span {
+        match self {
+            Self::TypeDefine(expr) => expr.span(),
+            Self::TypeFn(expr) => expr.span(),
+        }
+    }
+}
+
 /// Represents a type declaration.
 ///
 /// # Example
@@ -85,5 +94,14 @@ impl AstItem for SyTypeDefine {
         if let Ok(value) = &*self.value {
             value.check(env.inside_type_only().inside_nested_expr(), errors);
         }
+    }
+}
+
+impl ItemWithSpan for SyTypeDefine {
+    fn span(&self) -> Span {
+        self.type_token
+            .span()
+            .join(&self.eq_token.span())
+            .join(&self.value.span())
     }
 }

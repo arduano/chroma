@@ -30,6 +30,8 @@ impl AstItem for SyBody {
     where
         Self: Sized,
     {
+        let env = env.outside_nested_expr();
+
         let mut statements = Vec::new();
         reader.set_error_recovery_mode(ErrorRecoveryMode::until_token::<TkSemicolon>());
 
@@ -77,6 +79,12 @@ impl AstItem for SyBody {
     }
 }
 
+impl ItemWithSpan for SyBody {
+    fn span(&self) -> Span {
+        self.statements.span()
+    }
+}
+
 /// Represents a statement with a semicolon at the end.
 ///
 /// # Example
@@ -118,6 +126,12 @@ impl AstItem for SyBodyStatement {
 
     fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
         self.statement.check(env.outside_nested_expr(), errors);
+    }
+}
+
+impl ItemWithSpan for SyBodyStatement {
+    fn span(&self) -> Span {
+        self.statement.span().join(&self.semicolon.span())
     }
 }
 
@@ -174,6 +188,12 @@ impl AstItem for SyDeclarationBody {
     }
 }
 
+impl ItemWithSpan for SyDeclarationBody {
+    fn span(&self) -> Span {
+        self.statements.span()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyDeclarationPubVisibility {
     pub public: TkPub,
@@ -192,6 +212,12 @@ impl AstItem for SyDeclarationPubVisibility {
 
     fn check(&self, _env: CheckingPhaseEnv, _errors: &mut ErrorCollector) {
         // N/A
+    }
+}
+
+impl ItemWithSpan for SyDeclarationPubVisibility {
+    fn span(&self) -> Span {
+        self.public.span()
     }
 }
 
@@ -243,5 +269,14 @@ impl AstItem for SyDeclarationBodyItem {
         }
 
         self.item.check(env, errors);
+    }
+}
+
+impl ItemWithSpan for SyDeclarationBodyItem {
+    fn span(&self) -> Span {
+        self.visibility
+            .span()
+            .join(&self.item.span())
+            .join(&self.semicolon.span())
     }
 }

@@ -94,6 +94,16 @@ impl AstItem for SyExpression {
     }
 }
 
+impl ItemWithSpan for SyExpression {
+    fn span(&self) -> Span {
+        match self {
+            Self::VarRead(expr) => expr.span(),
+            Self::StringLiteral(expr) => expr.span(),
+            Self::ObjectLiteral(expr) => expr.span(),
+        }
+    }
+}
+
 /// Represents a simple variable read.
 ///
 /// # Example
@@ -123,6 +133,12 @@ impl AstItem for SyVarRead {
     }
 }
 
+impl ItemWithSpan for SyVarRead {
+    fn span(&self) -> Span {
+        self.name.span()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyStringLiteral {
     pub literal: TkString,
@@ -142,5 +158,11 @@ impl AstItem for SyStringLiteral {
 
     fn check(&self, _env: CheckingPhaseEnv, _errors: &mut ErrorCollector) {
         // N/A
+    }
+}
+
+impl ItemWithSpan for SyStringLiteral {
+    fn span(&self) -> Span {
+        self.literal.span()
     }
 }

@@ -21,7 +21,7 @@ use crate::lang::{
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyTypeFn {
     signature: SyTypeFnSignature,
-    body: Attempted<(TkBraces, SyBody)>,
+    body: Attempted<SyTypeFnBody>,
 }
 
 impl AstItem for SyTypeFn {
@@ -32,7 +32,7 @@ impl AstItem for SyTypeFn {
         Self: Sized,
     {
         let signature = reader.parse_optional(env)?;
-        let body = reader.parse_required_group::<TkBraces, SyBody>(env.outside_nested_expr());
+        let body = reader.parse_required(env.outside_nested_expr());
 
         Ok(Self { signature, body })
     }
@@ -40,9 +40,45 @@ impl AstItem for SyTypeFn {
     fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
         self.signature.check(env, errors);
 
-        if let Ok((_, body)) = &self.body {
+        if let Ok(body) = &self.body {
             body.check(env, errors);
         }
+    }
+}
+
+impl ItemWithSpan for SyTypeFn {
+    fn span(&self) -> Span {
+        self.signature.span().join(&self.body.span())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct SyTypeFnBody {
+    braces: TkBraces,
+    contents: SyBody,
+}
+
+impl AstItem for SyTypeFnBody {
+    const NAME: &'static str = "type function body";
+
+    fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
+    where
+        Self: Sized,
+    {
+        let (braces, contents) =
+            reader.parse_required_group::<TkBraces, SyBody>(env.outside_nested_expr())?;
+
+        Ok(Self { braces, contents })
+    }
+
+    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
+        self.contents.check(env, errors);
+    }
+}
+
+impl ItemWithSpan for SyTypeFnBody {
+    fn span(&self) -> Span {
+        self.braces.span().join(&self.contents.span())
     }
 }
 
@@ -79,6 +115,12 @@ impl AstItem for SyTypeFnSignature {
         if let Ok(args) = &self.args {
             args.check(env.inside_type_only(), errors);
         }
+    }
+}
+
+impl ItemWithSpan for SyTypeFnSignature {
+    fn span(&self) -> Span {
+        self.name.span().join(&self.args.span())
     }
 }
 
@@ -134,6 +176,12 @@ impl AstItem for SyTypeArgs {
     }
 }
 
+impl ItemWithSpan for SyTypeArgs {
+    fn span(&self) -> Span {
+        self.args.span()
+    }
+}
+
 /// Represents a type argument.
 ///
 /// # Example
@@ -173,6 +221,12 @@ impl AstItem for SyTypeArg {
     }
 }
 
+impl ItemWithSpan for SyTypeArg {
+    fn span(&self) -> Span {
+        self.name.span().join(&self.constraint.span())
+    }
+}
+
 /// Represents a type constraint. Usually used in type arguments, e.g. `TypeArg: Constraint`
 ///
 /// # Example
@@ -202,5 +256,11 @@ impl AstItem for SyTypeConstraint {
 
     fn check(&self, _env: CheckingPhaseEnv, _errors: &mut ErrorCollector) {
         // TODO: Check inner constraint type with env.inside_nested_expr()
+    }
+}
+
+impl ItemWithSpan for SyTypeConstraint {
+    fn span(&self) -> Span {
+        self.name.span()
     }
 }

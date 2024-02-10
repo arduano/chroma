@@ -1,7 +1,10 @@
 use std::rc::Rc;
 
 use crate::lang::{
-    tokens::{ParseGroupToken, ParseSimpleToken, Span, TokenReader, TokenValue},
+    tokens::{
+        ItemWithSpan, ParseGroupToken, ParseSimpleToken, ParseSimpleTokenImpl, Span, TokenReader,
+        TokenValue,
+    },
     CompilerError, ErrorCollector, WithSpan,
 };
 
@@ -41,7 +44,7 @@ pub type ParseResult<T> = Result<T, ParseError>;
 pub type ParsedOptional<T> = Result<T, ParseErrorNoMatch>;
 pub type Attempted<T> = Result<T, ParseErrorError>;
 
-pub trait AstItem {
+pub trait AstItem: ItemWithSpan {
     const NAME: &'static str;
 
     fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>

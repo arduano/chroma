@@ -34,7 +34,7 @@ impl CodeFilePath {
 pub struct CodeFileRef {
     // TODO: In the future, don't store path here, especially when serializing/deserializing.
     pub path: CodeFilePath,
-    id: Id<CodeFile>,
+    pub id: Id<CodeFile>,
 }
 
 impl CodeFileRef {

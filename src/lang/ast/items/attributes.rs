@@ -1,11 +1,5 @@
-use crate::lang::{
-    ast::helpers::{
-        AstItem, AstParser, Attempted, CheckingPhaseEnv, ErrorRecoveryMode, ParseResult,
-        ParsingPhaseEnv,
-    },
-    tokens::{TkAt, TkComma, TkDataLineEndSearch, TkIdent, TkParens},
-    CompilerError, ErrorCollector,
-};
+use super::*;
+use crate::lang::{ast::helpers::*, tokens::*, CompilerError, ErrorCollector};
 
 use super::SyExpression;
 
@@ -13,7 +7,7 @@ use super::SyExpression;
 pub struct SyAttribute {
     at: TkAt,
     name: TkIdent,
-    contents: Option<(TkParens, SAttributeFields)>,
+    contents: Option<SyAttributeParams>,
 }
 
 impl AstItem for SyAttribute {
@@ -25,15 +19,52 @@ impl AstItem for SyAttribute {
     {
         let at = reader.parse_optional_token()?;
         let name = reader.parse_optional_token()?;
-        let contents = reader.parse_optional_group(env.inside_nested_expr()).ok();
+        let contents = reader.parse_optional(env.inside_nested_expr()).ok();
 
         Ok(Self { at, name, contents })
     }
 
     fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        if let Some((_, fields)) = &self.contents {
-            fields.check(env.inside_nested_expr(), errors);
+        if let Some(params) = &self.contents {
+            params.check(env.inside_nested_expr(), errors);
         }
+    }
+}
+
+impl ItemWithSpan for SyAttribute {
+    fn span(&self) -> Span {
+        self.at
+            .span()
+            .join(&self.name.span())
+            .join(&self.contents.span())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SyAttributeParams {
+    pub parens: TkParens,
+    pub fields: SAttributeFields,
+}
+
+impl AstItem for SyAttributeParams {
+    const NAME: &'static str = "attribute params";
+
+    fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
+    where
+        Self: Sized,
+    {
+        let (parens, fields) = reader.parse_optional_group(env.inside_nested_expr())?;
+        Ok(Self { parens, fields })
+    }
+
+    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
+        self.fields.check(env.inside_nested_expr(), errors);
+    }
+}
+
+impl ItemWithSpan for SyAttributeParams {
+    fn span(&self) -> Span {
+        self.parens.span()
     }
 }
 
@@ -74,5 +105,11 @@ impl AstItem for SAttributeFields {
                 field.check(env, errors);
             }
         }
+    }
+}
+
+impl ItemWithSpan for SAttributeFields {
+    fn span(&self) -> Span {
+        self.span()
     }
 }

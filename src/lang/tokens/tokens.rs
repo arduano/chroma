@@ -1,29 +1,29 @@
 use std::sync::Arc;
 
-use super::{Span, TokenReader, TokenValue};
+use crate::lang::ast::helpers::AstItem;
+
+use super::{ItemWithSpan, Span, TokenReader, TokenValue};
 
 // ==========
 // = Traits =
 // ==========
 
-pub trait TokenItem {
-    fn span(&self) -> Span;
-}
+pub trait TokenItem: ItemWithSpan {}
 
-pub trait DisplayStatic {
+pub trait TokenDisplayStatic {
     fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result;
     fn displayed() -> StaticDisplay<Self> {
         StaticDisplay(std::marker::PhantomData::<Self>)
     }
 }
 
-pub struct StaticDisplay<T: DisplayStatic + ?Sized>(std::marker::PhantomData<T>);
-impl<T: DisplayStatic> std::fmt::Display for StaticDisplay<T> {
+pub struct StaticDisplay<T: TokenDisplayStatic + ?Sized>(std::marker::PhantomData<T>);
+impl<T: TokenDisplayStatic> std::fmt::Display for StaticDisplay<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         T::display(f)
     }
 }
-impl<T: DisplayStatic> std::fmt::Debug for StaticDisplay<T> {
+impl<T: TokenDisplayStatic> std::fmt::Debug for StaticDisplay<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         T::display(f)
     }
@@ -40,18 +40,37 @@ impl<T: ParseSimpleToken> TestTokenValue for T {
     }
 }
 
-pub trait ParseSimpleToken: TokenItem + DisplayStatic
+pub trait ParseSimpleToken: TokenItem + TokenDisplayStatic
 where
     Self: Sized,
 {
     fn parse(reader: &mut TokenReader) -> Option<Self>;
 }
 
-pub trait ParseGroupToken: TokenItem + DisplayStatic
+pub trait ParseGroupToken: TokenItem + TokenDisplayStatic
 where
     Self: Sized,
 {
     fn parse<'a>(reader: &mut TokenReader<'a>) -> Option<(Self, TokenReader<'a>)>;
+}
+
+/// A helper trait to automatically implement `TokenItem`, `ItemWithSpan`, `ParseSimpleToken` and `DisplayStatic` for simple tokens.
+pub trait ParseSimpleTokenImpl: Sized + ItemWithSpan {
+    fn parse(reader: &mut TokenReader) -> Option<Self>;
+    fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result;
+}
+
+impl<T: ParseSimpleTokenImpl> ParseSimpleToken for T {
+    fn parse(reader: &mut TokenReader) -> Option<Self> {
+        T::parse(reader)
+    }
+}
+
+impl<T: ParseSimpleTokenImpl> TokenItem for T {}
+impl<T: ParseSimpleTokenImpl> TokenDisplayStatic for T {
+    fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        T::display(f)
+    }
 }
 
 // ================
@@ -63,13 +82,7 @@ pub struct TkBlockLineEndSearch {
     span: Span,
 }
 
-impl TokenItem for TkBlockLineEndSearch {
-    fn span(&self) -> Span {
-        self.span.clone()
-    }
-}
-
-impl ParseSimpleToken for TkBlockLineEndSearch {
+impl ParseSimpleTokenImpl for TkBlockLineEndSearch {
     fn parse(reader: &mut TokenReader) -> Option<Self> {
         // Don't trim, as trimming will skip newlines.
         let next_token = reader.next_token()?;
@@ -83,11 +96,15 @@ impl ParseSimpleToken for TkBlockLineEndSearch {
 
         None
     }
-}
 
-impl DisplayStatic for TkBlockLineEndSearch {
     fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, ";")
+    }
+}
+
+impl ItemWithSpan for TkBlockLineEndSearch {
+    fn span(&self) -> Span {
+        self.span.clone()
     }
 }
 
@@ -96,13 +113,7 @@ pub struct TkDataLineEndSearch {
     span: Span,
 }
 
-impl TokenItem for TkDataLineEndSearch {
-    fn span(&self) -> Span {
-        self.span.clone()
-    }
-}
-
-impl ParseSimpleToken for TkDataLineEndSearch {
+impl ParseSimpleTokenImpl for TkDataLineEndSearch {
     fn parse(reader: &mut TokenReader) -> Option<Self> {
         // Don't trim, as trimming will skip newlines.
         let next_token = reader.next_token()?;
@@ -116,11 +127,15 @@ impl ParseSimpleToken for TkDataLineEndSearch {
 
         None
     }
-}
 
-impl DisplayStatic for TkDataLineEndSearch {
     fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, ",")
+    }
+}
+
+impl ItemWithSpan for TkDataLineEndSearch {
+    fn span(&self) -> Span {
+        self.span.clone()
     }
 }
 
@@ -147,13 +162,7 @@ impl TkIdent {
     }
 }
 
-impl TokenItem for TkIdent {
-    fn span(&self) -> Span {
-        self.span.clone()
-    }
-}
-
-impl ParseSimpleToken for TkIdent {
+impl ParseSimpleTokenImpl for TkIdent {
     fn parse(reader: &mut TokenReader) -> Option<Self> {
         reader.trim_empty();
         let next_token = reader.next_token()?;
@@ -168,11 +177,15 @@ impl ParseSimpleToken for TkIdent {
             ident: s.clone(),
         })
     }
-}
 
-impl DisplayStatic for TkIdent {
     fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{{ident}}")
+    }
+}
+
+impl ItemWithSpan for TkIdent {
+    fn span(&self) -> Span {
+        self.span.clone()
     }
 }
 
@@ -188,13 +201,7 @@ impl TkInteger {
     }
 }
 
-impl TokenItem for TkInteger {
-    fn span(&self) -> Span {
-        self.span.clone()
-    }
-}
-
-impl ParseSimpleToken for TkInteger {
+impl ParseSimpleTokenImpl for TkInteger {
     fn parse(reader: &mut TokenReader) -> Option<Self> {
         reader.trim_empty();
         let next_token = reader.next_token()?;
@@ -209,11 +216,15 @@ impl ParseSimpleToken for TkInteger {
             value: *i,
         })
     }
-}
 
-impl DisplayStatic for TkInteger {
     fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{{integer}}")
+    }
+}
+
+impl ItemWithSpan for TkInteger {
+    fn span(&self) -> Span {
+        self.span.clone()
     }
 }
 
@@ -229,13 +240,7 @@ impl TkFloat {
     }
 }
 
-impl TokenItem for TkFloat {
-    fn span(&self) -> Span {
-        self.span.clone()
-    }
-}
-
-impl ParseSimpleToken for TkFloat {
+impl ParseSimpleTokenImpl for TkFloat {
     fn parse(reader: &mut TokenReader) -> Option<Self> {
         reader.trim_empty();
         let next_token = reader.next_token()?;
@@ -250,11 +255,15 @@ impl ParseSimpleToken for TkFloat {
             value: *i,
         })
     }
-}
 
-impl DisplayStatic for TkFloat {
     fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{{float}}")
+    }
+}
+
+impl ItemWithSpan for TkFloat {
+    fn span(&self) -> Span {
+        self.span.clone()
     }
 }
 
@@ -270,13 +279,7 @@ impl TkString {
     }
 }
 
-impl TokenItem for TkString {
-    fn span(&self) -> Span {
-        self.span.clone()
-    }
-}
-
-impl ParseSimpleToken for TkString {
+impl ParseSimpleTokenImpl for TkString {
     fn parse(reader: &mut TokenReader) -> Option<Self> {
         reader.trim_empty();
         let next_token = reader.next_token()?;
@@ -291,11 +294,15 @@ impl ParseSimpleToken for TkString {
             value: s.clone(),
         })
     }
-}
 
-impl DisplayStatic for TkString {
     fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{{string}}")
+    }
+}
+
+impl ItemWithSpan for TkString {
+    fn span(&self) -> Span {
+        self.span.clone()
     }
 }
 
@@ -312,15 +319,9 @@ macro_rules! simple_token {
             const MATCHES: &'static [TokenValue] = &[$(TokenValue::$token),*];
         }
 
-        impl TokenItem for $name {
-            fn span(&self) -> Span {
-                self.0.clone()
-            }
-        }
-
-        impl ParseSimpleToken for $name {
+        impl ParseSimpleTokenImpl for $name {
             fn parse(reader: &mut TokenReader) -> Option<Self> {
-        reader.trim_empty();
+                reader.trim_empty();
                 let matches = Self::MATCHES;
 
                 let next_tokens = reader.remaining_tokens_slice();
@@ -347,15 +348,19 @@ macro_rules! simple_token {
                 reader.skip(matches.len());
                 Some(Self(span))
             }
-        }
 
-        impl DisplayStatic for $name {
             fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 let matches = Self::MATCHES;
                 for token in matches.iter() {
                     write!(f, "{}", token)?;
                 }
                 Ok(())
+            }
+        }
+
+        impl ItemWithSpan for $name {
+            fn span(&self) -> Span {
+                self.0.clone()
             }
         }
     }
@@ -370,13 +375,7 @@ macro_rules! simple_ident_token {
             const MATCHES: &'static str = $matches;
         }
 
-        impl TokenItem for $name {
-            fn span(&self) -> Span {
-                self.0.clone()
-            }
-        }
-
-        impl ParseSimpleToken for $name {
+        impl ParseSimpleTokenImpl for $name {
             fn parse(reader: &mut TokenReader) -> Option<Self> {
                 reader.trim_empty();
                 let next_token = reader.next_token()?;
@@ -392,11 +391,15 @@ macro_rules! simple_ident_token {
                 reader.skip(1);
                 Some(Self(next_token.span.clone()))
             }
-        }
 
-        impl DisplayStatic for $name {
             fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 write!(f, "{}", Self::MATCHES)
+            }
+        }
+
+        impl ItemWithSpan for $name {
+            fn span(&self) -> Span {
+                self.0.clone()
             }
         }
     };
@@ -409,7 +412,8 @@ macro_rules! group_token {
             span: Span,
         }
 
-        impl TokenItem for $name {
+        impl TokenItem for $name {}
+        impl ItemWithSpan for $name {
             fn span(&self) -> Span {
                 self.span.clone()
             }
@@ -434,7 +438,7 @@ macro_rules! group_token {
             }
         }
 
-        impl DisplayStatic for $name {
+        impl TokenDisplayStatic for $name {
             fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 write!(f, "{}", $display)
             }

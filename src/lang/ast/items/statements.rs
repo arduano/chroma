@@ -1,5 +1,5 @@
 use super::*;
-use crate::lang::{ast::helpers::*, ErrorCollector};
+use crate::lang::{ast::helpers::*, tokens::ItemWithSpan, ErrorCollector};
 
 pub enum SemiRequirement {
     Never,
@@ -88,6 +88,15 @@ impl AstItem for SyStatement {
         match self {
             Self::Declaration(expr) => expr.check(env, errors),
             Self::Expression(expr) => expr.check(env.outside_nested_expr(), errors),
+        }
+    }
+}
+
+impl ItemWithSpan for SyStatement {
+    fn span(&self) -> crate::lang::tokens::Span {
+        match self {
+            Self::Declaration(expr) => expr.span(),
+            Self::Expression(expr) => expr.span(),
         }
     }
 }
