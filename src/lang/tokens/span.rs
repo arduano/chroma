@@ -144,7 +144,7 @@ impl<A: ItemWithSpan> ItemWithSpan for Option<A> {
 
 impl<A: ItemWithSpan> ItemWithSpan for Vec<A> {
     fn span(&self) -> Span {
-        let mut iter = self.into_iter();
+        let iter = self.into_iter();
         let mut span = Span::new_empty();
 
         for item in iter {

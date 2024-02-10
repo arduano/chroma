@@ -1,10 +1,7 @@
 use std::rc::Rc;
 
 use crate::lang::{
-    tokens::{
-        ItemWithSpan, ParseGroupToken, ParseSimpleToken, ParseSimpleTokenImpl, Span, TokenReader,
-        TokenValue,
-    },
+    tokens::{ItemWithSpan, ParseGroupToken, ParseSimpleToken, Span, TokenReader, TokenValue},
     CompilerError, ErrorCollector, WithSpan,
 };
 

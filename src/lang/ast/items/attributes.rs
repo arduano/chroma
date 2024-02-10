@@ -1,4 +1,3 @@
-use super::*;
 use crate::lang::{ast::helpers::*, tokens::*, CompilerError, ErrorCollector};
 
 use super::SyExpression;
@@ -110,6 +109,6 @@ impl AstItem for SAttributeFields {
 
 impl ItemWithSpan for SAttributeFields {
     fn span(&self) -> Span {
-        self.span()
+        self.fields.span()
     }
 }
