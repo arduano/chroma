@@ -17,6 +17,9 @@ fn parse_ast_type_var_read(
     if ident.ident.deref() == "string" {
         return LiTypeKind::String(LiString { literal: None });
     }
+    if ident.ident.deref() == "number" {
+        return LiTypeKind::Number(LiNumber { literal: None });
+    }
 
     let item = namespace.get_ident_kind(ident);
     let Some(item) = item else {

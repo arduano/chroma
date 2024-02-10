@@ -64,7 +64,7 @@ pub fn parse_type_from_linked_type(
             let mut fields = Vec::<TyStructLiteralField>::new();
 
             let mut add_field_if_not_exists = |field: TyStructLiteralField| {
-                if fields.iter().any(|f| f.name == field.name) {
+                if fields.iter().any(|f| f.name.ident == field.name.ident) {
                     return;
                 }
 
@@ -87,7 +87,7 @@ pub fn parse_type_from_linked_type(
                     LiStructField::FieldSpread(spread) => {
                         let fields = get_struct_literal_fields_from_ty(
                             &spread.spread,
-                            &linked_ty.span,
+                            &spread.spread.span,
                             compilation,
                         );
 

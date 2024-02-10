@@ -17,16 +17,10 @@
 // };
 
 type A = {
-    foo: string,
     ...B,
+    foo: number,
 };
 
 type B = {
-    bar: string,
-};
-
-type C = {
-    foo: {
-        ...C
-    },
+    foo: string,
 };
