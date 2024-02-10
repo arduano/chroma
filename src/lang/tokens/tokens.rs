@@ -1,7 +1,5 @@
 use std::sync::Arc;
 
-use crate::lang::ast::helpers::AstItem;
-
 use super::{ItemWithSpan, Span, TokenReader, TokenValue};
 
 // ==========
