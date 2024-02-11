@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::lang::solver::TypeAssignabilityQuery;
+use crate::lang::solver::{TypeAssignabilityQuery, TypeSubsetQuery};
 
 use super::TyTypeLogic;
 
@@ -21,6 +21,15 @@ impl TyString {
     }
 }
 
+fn is_assignable(left: &TyString, right: &TyString) -> bool {
+    match (&left.literal, &right.literal) {
+        (Some(l), Some(r)) => l == r,
+        (Some(_), None) => true,
+        (None, Some(_)) => false,
+        (None, None) => true,
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct TyStringLiteral {
     value: Arc<str>,
@@ -28,15 +37,14 @@ pub struct TyStringLiteral {
 
 impl TyTypeLogic for TyString {
     fn check_assignable_to(&self, other: &Self, _query: &mut TypeAssignabilityQuery) -> bool {
-        match (&self.literal, &other.literal) {
-            (Some(l), Some(r)) => l == r,
-            (Some(_), None) => true,
-            (None, Some(_)) => false,
-            (None, None) => true,
-        }
+        is_assignable(self, other)
     }
 
     fn get_intersection(&self, _other: &Self) -> Self {
         todo!()
+    }
+
+    fn is_substate_of(&self, other: &Self, _query: &mut TypeSubsetQuery) -> bool {
+        is_assignable(self, other)
     }
 }

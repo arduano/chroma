@@ -14,6 +14,18 @@ impl TypeAssignability {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TypeSubsetability {
+    pub from: MId<TyType>,
+    pub to: MId<TyType>,
+}
+
+impl TypeSubsetability {
+    pub fn new(from: MId<TyType>, to: MId<TyType>) -> Self {
+        Self { from, to }
+    }
+}
+
 pub struct TypeAssignabilityCache {
     assignability_cache: HashMap<TypeAssignability, bool>,
 }
@@ -87,6 +99,45 @@ impl<'a> TypeAssignabilityQuery<'a> {
         let right_ty = &self.types[&right];
 
         let assignable = left_ty.check_assignable_to(right_ty, self);
+
+        self.parent_queries.pop();
+
+        assignable
+    }
+}
+
+pub struct TypeSubsetQuery<'a> {
+    pub types: &'a ModItemSet<TyType>,
+    parent_queries: Vec<TypeSubsetability>,
+}
+
+impl<'a> TypeSubsetQuery<'a> {
+    pub fn new(types: &'a ModItemSet<TyType>) -> Self {
+        Self {
+            types,
+            parent_queries: Vec::new(),
+        }
+    }
+
+    pub fn is_substate_of(&mut self, left: MId<TyType>, right: MId<TyType>) -> bool {
+        if left == right {
+            return true;
+        }
+
+        if self
+            .parent_queries
+            .contains(&TypeSubsetability::new(left, right))
+        {
+            return true;
+        }
+
+        self.parent_queries
+            .push(TypeSubsetability::new(left, right));
+
+        let left_ty = &self.types[&left];
+        let right_ty = &self.types[&right];
+
+        let assignable = left_ty.is_substate_of(right_ty, self);
 
         self.parent_queries.pop();
 

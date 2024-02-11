@@ -1,5 +1,5 @@
 use crate::lang::{
-    solver::{MId, TypeAssignabilityQuery},
+    solver::{MId, TypeAssignabilityQuery, TypeSubsetQuery},
     tokens::TkIdent,
 };
 
@@ -116,5 +116,50 @@ impl TyTypeLogic for TyStruct {
         // TyStruct {
         //     literal: Some(TyStructLiteral { fields }),
         // }
+    }
+
+    fn is_substate_of(&self, other: &Self, query: &mut TypeSubsetQuery) -> bool {
+        // If other is a generic struct type, then any other struct is a subset of it.
+        let Some(other_literal) = other.literal.as_ref() else {
+            return true;
+        };
+
+        // If self is a generic struct type, then it it can't be a subset of a non generic one.
+        let Some(self_literal) = self.literal.as_ref() else {
+            return false;
+        };
+
+        // If both are non generic struct types, then self is a subset of other if all the fieds are
+        // identical and field values are subsets
+        let self_fields = &self_literal.fields;
+        let other_fields = &other_literal.fields;
+
+        let other_fields_are_substate = other_fields.iter().all(|other_field| {
+            let self_field = self_fields
+                .iter()
+                .find(|self_field| self_field.name.ident == other_field.name.ident);
+
+            let Some(self_field) = self_field else {
+                return false;
+            };
+
+            query.is_substate_of(self_field.value, other_field.value)
+        });
+
+        if !other_fields_are_substate {
+            return false;
+        }
+
+        let no_missing_fields = self_fields.iter().all(|self_field| {
+            other_fields
+                .iter()
+                .any(|other_field| other_field.name.ident == self_field.name.ident)
+        });
+
+        if !no_missing_fields {
+            return false;
+        }
+
+        true
     }
 }

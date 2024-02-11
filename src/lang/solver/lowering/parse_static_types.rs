@@ -1,7 +1,7 @@
 use std::{borrow::Cow, collections::HashMap};
 
 use crate::lang::{
-    ast::items::{SyArithmeticBinaryOp, SyBinaryOp},
+    ast::items::{SyArithmeticBinaryOp, SyBinaryOp, SyBooleanLogicBinaryOp},
     solver::{type_system::*, Id, MId, ModItemSet, ModuleGroupCompilation},
     tokens::{ItemWithSpan, Span},
     CompilerError, ErrorCollector,
@@ -136,27 +136,45 @@ pub fn parse_type_from_linked_type(
 }
 
 /// Resolve type references to get the underlying type
-fn normalize_references<'a>(ty: TyType, types: &'a ModItemSet<TyType>) -> Option<Cow<'a, TyType>> {
+fn normalize_references<'a>(ty: TyType, types: &'a ModItemSet<TyType>) -> Option<TyTypeOrRef> {
     // First, check if the type is a reference or not. Non reference types
     // get returned directly.
-    match &ty.kind {
-        TyTypeKind::Reference(id) => {
-            let mut underlying_type = types.get(*id);
-
-            loop {
-                let Some(ty) = underlying_type else {
-                    return None;
-                };
-
-                match &ty.kind {
-                    TyTypeKind::Reference(id) => {
-                        underlying_type = types.get(*id);
-                    }
-                    _ => return Some(Cow::Borrowed(ty)),
-                }
+    let id = match &ty.kind {
+        TyTypeKind::Reference(id) => id,
+        TyTypeKind::Union(union) => {
+            if union.types.len() != 1 {
+                return Some(TyTypeOrRef::Owned(ty));
+            } else {
+                &union.types[0]
             }
         }
-        _ => Some(Cow::Owned(ty)),
+
+        _ => return Some(TyTypeOrRef::Owned(ty)),
+    };
+
+    let mut underlying_type = types.get(*id);
+    let mut underlying_id = *id;
+
+    loop {
+        let Some(ty) = underlying_type else {
+            return None;
+        };
+
+        match &ty.kind {
+            TyTypeKind::Reference(id) => {
+                underlying_type = types.get(*id);
+                underlying_id = *id;
+            }
+            TyTypeKind::Union(union) => {
+                if union.types.len() != 1 {
+                    return Some(TyTypeOrRef::Ref(underlying_id));
+                } else {
+                    underlying_type = types.get(union.types[0]);
+                    underlying_id = union.types[0];
+                }
+            }
+            _ => return Some(TyTypeOrRef::Ref(underlying_id)),
+        }
     }
 }
 
@@ -181,7 +199,7 @@ fn get_struct_literal_fields_from_ty_and_execute_callback<'a>(
         return;
     };
 
-    match &spread_ty.kind {
+    match &spread_ty.get(&compilation.types).kind {
         TyTypeKind::Struct(spread_struct) => {
             let Some(literal) = &spread_struct.literal else {
                 // Not a literal struct, therefore has infinite fields and shouldn't be spread
@@ -251,12 +269,25 @@ fn resolve_non_union_binary_expression(
     };
 
     macro_rules! invalid_op {
-        () => {{
-            push_invalid_op_error(&left_resolved, &right_resolved);
+        ($compilation:expr) => {{
+            let types = &$compilation.types;
+            push_invalid_op_error(&left_resolved.get(types), &right_resolved.get(types));
             return TyType::new(TyTypeKind::Unknown, operator.span());
         }};
     }
 
+    // Resolve operators that apply to all types, e.g. making unions
+    match operator {
+        SyBinaryOp::BooleanLogic(SyBooleanLogicBinaryOp::Or(_)) => {
+            let union = TyUnion::union_types(left_resolved, right_resolved, compilation.types);
+            return TyType::new(union, expr_span);
+        }
+        _ => {}
+    }
+
+    // Resolve per-type operators
+    let left_resolved = left_resolved.get(compilation.types);
+    let right_resolved = right_resolved.get(compilation.types);
     match (&left_resolved.kind, &right_resolved.kind) {
         (TyTypeKind::Number(self_number), TyTypeKind::Number(other_number)) => match operator {
             SyBinaryOp::Arithmetic(op) => {
@@ -274,7 +305,7 @@ fn resolve_non_union_binary_expression(
                     expr_span,
                 )
             }
-            _ => invalid_op!(),
+            _ => invalid_op!(compilation),
         },
         _ => {
             compilation.errors.push(CompilerError::new(

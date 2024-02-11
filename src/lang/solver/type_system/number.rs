@@ -1,4 +1,4 @@
-use crate::lang::solver::TypeAssignabilityQuery;
+use crate::lang::solver::{TypeAssignabilityQuery, TypeSubsetQuery};
 
 use super::TyTypeLogic;
 
@@ -19,21 +19,30 @@ impl TyNumber {
     }
 }
 
+fn is_assignable(left: &TyNumber, right: &TyNumber) -> bool {
+    match (&left.literal, &right.literal) {
+        (Some(l), Some(r)) => l == r,
+        (Some(_), None) => true,
+        (None, Some(_)) => false,
+        (None, None) => true,
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct TyNumberLiteral {
     pub value: i64,
 }
 
 impl TyTypeLogic for TyNumber {
-    fn check_assignable_to(&self, _other: &Self, _query: &mut TypeAssignabilityQuery) -> bool {
-        match (&self.literal, &_other.literal) {
-            (Some(self_literal), Some(other_literal)) => self_literal.value == other_literal.value,
-            (_, None) => true,
-            _ => false,
-        }
+    fn check_assignable_to(&self, other: &Self, _query: &mut TypeAssignabilityQuery) -> bool {
+        is_assignable(self, other)
     }
 
     fn get_intersection(&self, _other: &Self) -> Self {
         todo!()
+    }
+
+    fn is_substate_of(&self, other: &Self, _query: &mut TypeSubsetQuery) -> bool {
+        is_assignable(self, other)
     }
 }
