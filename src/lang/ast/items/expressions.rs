@@ -24,6 +24,8 @@ trait ExpressionBottomUpParse {
 pub enum SyExpression {
     VarRead(SyVarRead),
     StringLiteral(SyStringLiteral),
+    IntLiteral(SyIntLiteral),
+    FloatLiteral(SyFloatLiteral),
     ObjectLiteral(SyObjectLiteral),
     Binary(SyBinary),
     Invalid,
@@ -34,6 +36,8 @@ impl SyExpression {
         match self {
             Self::VarRead(_) => true,
             Self::StringLiteral(_) => true,
+            Self::IntLiteral(_) => true,
+            Self::FloatLiteral(_) => true,
             Self::ObjectLiteral(_) => true,
             Self::Binary(_) => true,
             Self::Invalid => false,
@@ -55,15 +59,19 @@ impl AstItem for SyExpression {
             reader: &mut AstParser<'a>,
             env: ParsingPhaseEnv,
         ) -> ParseResult<SyExpression> {
-            if let Ok(expr) = reader.parse_optional(env) {
-                return Ok(SyExpression::VarRead(expr));
+            macro_rules! try_parse {
+                ($expr:ident) => {
+                    if let Ok(expr) = reader.parse_optional(env) {
+                        return Ok(SyExpression::$expr(expr));
+                    }
+                };
             }
-            if let Ok(expr) = reader.parse_optional(env) {
-                return Ok(SyExpression::StringLiteral(expr));
-            }
-            if let Ok(expr) = reader.parse_optional(env) {
-                return Ok(SyExpression::ObjectLiteral(expr));
-            }
+
+            try_parse!(VarRead);
+            try_parse!(StringLiteral);
+            try_parse!(IntLiteral);
+            try_parse!(FloatLiteral);
+            try_parse!(ObjectLiteral);
 
             Err(ParseError::NoMatch)
         }
@@ -107,6 +115,8 @@ impl AstItem for SyExpression {
         match self {
             Self::VarRead(expr) => expr.check(env, errors),
             Self::StringLiteral(expr) => expr.check(env, errors),
+            Self::IntLiteral(expr) => expr.check(env, errors),
+            Self::FloatLiteral(expr) => expr.check(env, errors),
             Self::ObjectLiteral(expr) => expr.check(env, errors),
             Self::Binary(expr) => expr.check(env, errors),
             Self::Invalid => {}
@@ -119,6 +129,8 @@ impl ItemWithSpan for SyExpression {
         match self {
             Self::VarRead(expr) => expr.span(),
             Self::StringLiteral(expr) => expr.span(),
+            Self::IntLiteral(expr) => expr.span(),
+            Self::FloatLiteral(expr) => expr.span(),
             Self::ObjectLiteral(expr) => expr.span(),
             Self::Binary(expr) => expr.span(),
             Self::Invalid => Span::new_empty(),
@@ -184,6 +196,62 @@ impl AstItem for SyStringLiteral {
 }
 
 impl ItemWithSpan for SyStringLiteral {
+    fn span(&self) -> Span {
+        self.literal.span()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SyIntLiteral {
+    pub literal: TkInteger,
+}
+
+impl AstItem for SyIntLiteral {
+    const NAME: &'static str = "integer literal";
+
+    fn parse<'a>(reader: &mut AstParser<'a>, _env: ParsingPhaseEnv) -> ParseResult<Self>
+    where
+        Self: Sized,
+    {
+        let literal = reader.parse_optional_token()?;
+
+        Ok(Self { literal })
+    }
+
+    fn check(&self, _env: CheckingPhaseEnv, _errors: &mut ErrorCollector) {
+        // N/A
+    }
+}
+
+impl ItemWithSpan for SyIntLiteral {
+    fn span(&self) -> Span {
+        self.literal.span()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SyFloatLiteral {
+    pub literal: TkFloat,
+}
+
+impl AstItem for SyFloatLiteral {
+    const NAME: &'static str = "float literal";
+
+    fn parse<'a>(reader: &mut AstParser<'a>, _env: ParsingPhaseEnv) -> ParseResult<Self>
+    where
+        Self: Sized,
+    {
+        let literal = reader.parse_optional_token()?;
+
+        Ok(Self { literal })
+    }
+
+    fn check(&self, _env: CheckingPhaseEnv, _errors: &mut ErrorCollector) {
+        // N/A
+    }
+}
+
+impl ItemWithSpan for SyFloatLiteral {
     fn span(&self) -> Span {
         self.literal.span()
     }

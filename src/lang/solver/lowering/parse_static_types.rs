@@ -7,7 +7,7 @@ use crate::lang::{
     CompilerError, ErrorCollector,
 };
 
-use super::{LiBinaryTypeExpression, LiStructField, LiType, LiTypeKind};
+use super::{LiStructField, LiType, LiTypeKind};
 
 /// A type for encapsulating which parts of this compilation step are mutated
 /// and which parts are immutable. This keeps the compiler happy.
@@ -49,7 +49,7 @@ pub fn parse_type_from_linked_type(
     let ty_kind = match &linked_ty.kind {
         LiTypeKind::Number(num) => {
             if let Some(literal) = &num.literal {
-                TyTypeKind::Number(TyNumber::from_literal(literal.value() as f64))
+                TyTypeKind::Number(TyNumber::from_literal(literal.value()))
             } else {
                 TyTypeKind::Number(TyNumber::new())
             }
@@ -123,7 +123,10 @@ pub fn parse_type_from_linked_type(
             TyTypeKind::Reference(ty_id)
         }
         LiTypeKind::BinaryExpression(binary) => {
-            todo!();
+            let left = parse_type_from_linked_type(&binary.left, compilation);
+            let right = parse_type_from_linked_type(&binary.right, compilation);
+
+            resolve_non_union_binary_expression(left, &binary.operator, right, compilation).kind
         }
         LiTypeKind::Unknown => TyTypeKind::Unknown,
         LiTypeKind::Never => TyTypeKind::Never,
@@ -211,7 +214,7 @@ fn get_struct_literal_fields_from_ty_and_execute_callback<'a>(
 
 fn resolve_non_union_binary_expression(
     left: TyType,
-    operator: SyBinaryOp,
+    operator: &SyBinaryOp,
     right: TyType,
     compilation: &mut TypeFromLinkedTypeCompilation,
 ) -> TyType {
@@ -283,7 +286,7 @@ fn resolve_non_union_binary_expression(
     }
 }
 
-fn run_arithmetic_op_on_numbers(left: f64, operator: SyArithmeticBinaryOp, right: f64) -> f64 {
+fn run_arithmetic_op_on_numbers(left: i64, operator: &SyArithmeticBinaryOp, right: i64) -> i64 {
     use SyArithmeticBinaryOp::*;
 
     match operator {

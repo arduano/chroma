@@ -16,6 +16,6 @@
 //     },
 // };
 
-type A = 2;
+type A = 4;
 
-type B = 1 + 1;
+type B = 1 + 1 * 3;

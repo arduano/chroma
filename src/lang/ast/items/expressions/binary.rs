@@ -172,7 +172,7 @@ fn arithmetic_op_precedence(
 
     match (left_prec, right_prec) {
         (Some(left), Some(right)) => {
-            if left <= right {
+            if left >= right {
                 BinaryOpPrecedence::Left
             } else {
                 BinaryOpPrecedence::Right
@@ -297,12 +297,14 @@ impl ItemWithSpan for SyBinary {
     }
 }
 
+#[derive(Debug, Clone)]
 struct ExprWithOp {
     // Option is used for temporarily moving data around because std::replace isn't feasible.
     expression: Option<Box<Attempted<SyExpression>>>,
     op: SyBinaryOp,
 }
 
+#[derive(Debug, Clone)]
 struct BinaryOpChain {
     exprs: Vec<ExprWithOp>,
     // Option is used for temporarily moving data around because std::replace isn't feasible.
@@ -409,6 +411,7 @@ impl ExpressionBottomUpParse for SyBinary {
                 let right = chain.op_at(index);
 
                 let precedence = op_precedence(left, right);
+
                 match precedence {
                     BinaryOpPrecedence::Left => {
                         // Continue
@@ -432,7 +435,7 @@ impl ExpressionBottomUpParse for SyBinary {
 
             // If no right precedences were grouped, then only left remain, so left-group them all.
             if !grouped_right {
-                while chain.ops_len() > 1 {
+                while chain.ops_len() > 0 {
                     chain.group_op(0);
                 }
                 break;

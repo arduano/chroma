@@ -52,6 +52,10 @@ pub fn link_type_expression_ast(
         SyExpression::StringLiteral(string) => LiTypeKind::String(LiString {
             literal: Some(string.literal.clone()),
         }),
+        SyExpression::IntLiteral(int) => LiTypeKind::Number(LiNumber {
+            literal: Some(int.literal.clone()),
+        }),
+        SyExpression::FloatLiteral(_float) => todo!(),
         SyExpression::ObjectLiteral(obj) => {
             let mut fields = Vec::<LiStructField>::new();
 
