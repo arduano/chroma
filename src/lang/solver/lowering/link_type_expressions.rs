@@ -107,6 +107,7 @@ pub fn link_type_expression_ast(
 
             LiTypeKind::Struct(LiStruct { entries: fields })
         }
+        SyExpression::Binary(_) => todo!(),
     };
 
     LiType::new_named(name, kind, ast.span().clone())

@@ -18,7 +18,7 @@ use crate::lang::{
 ///     Result
 /// }
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct SyTypeFn {
     signature: SyTypeFnSignature,
     body: Attempted<SyTypeFnBody>,
@@ -52,7 +52,7 @@ impl ItemWithSpan for SyTypeFn {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 struct SyTypeFnBody {
     braces: TkBraces,
     contents: SyBody,
@@ -89,7 +89,7 @@ impl ItemWithSpan for SyTypeFnBody {
 /// ```no_run
 /// type fn AddField<Name: const ident, Val: Value>
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct SyTypeFnSignature {
     pub name: Attempted<TkIdent>,
     pub args: Attempted<SyTypeArgs>,
@@ -131,7 +131,7 @@ impl ItemWithSpan for SyTypeFnSignature {
 /// ```no_run
 /// <Arg1, Arg2: Constraint, Arg3: const Constraint>
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct SyTypeArgs {
     pub args: Vec<Attempted<SyTypeArg>>,
 }
@@ -188,7 +188,7 @@ impl ItemWithSpan for SyTypeArgs {
 ///
 /// No constraint `ArgName`\
 /// With constraint: `ArgName: TypeConstraint`
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct SyTypeArg {
     pub name: TkIdent,
     pub constraint: Option<SyTypeConstraint>,
@@ -233,7 +233,7 @@ impl ItemWithSpan for SyTypeArg {
 ///
 /// Non const: `MyType`\
 /// Const: `const MyType`
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct SyTypeConstraint {
     pub is_const: bool,
     pub name: Attempted<TkIdent>, // TODO: Fix

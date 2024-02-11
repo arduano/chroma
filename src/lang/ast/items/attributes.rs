@@ -2,7 +2,7 @@ use crate::lang::{ast::helpers::*, tokens::*, CompilerError, ErrorCollector};
 
 use super::SyExpression;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct SyAttribute {
     at: TkAt,
     name: TkIdent,
@@ -39,7 +39,7 @@ impl ItemWithSpan for SyAttribute {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct SyAttributeParams {
     pub parens: TkParens,
     pub fields: SAttributeFields,
@@ -67,7 +67,7 @@ impl ItemWithSpan for SyAttributeParams {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct SAttributeFields {
     pub fields: Vec<Attempted<SyExpression>>,
 }

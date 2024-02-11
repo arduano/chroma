@@ -18,7 +18,7 @@ use super::*;
 ///
 ///     Result
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct SyBody {
     pub statements: Vec<Attempted<SyBodyStatement>>,
 }
@@ -92,7 +92,7 @@ impl ItemWithSpan for SyBody {
 /// ```no_run
 /// let a = 1;
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct SyBodyStatement {
     pub statement: Box<SyStatement>,
 
@@ -135,7 +135,7 @@ impl ItemWithSpan for SyBodyStatement {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct SyDeclarationBody {
     pub statements: Vec<Attempted<Arc<SyDeclarationBodyItem>>>,
 }
@@ -221,7 +221,7 @@ impl ItemWithSpan for SyDeclarationPubVisibility {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct SyDeclarationBodyItem {
     pub visibility: Option<SyDeclarationPubVisibility>,
     pub item: SyDeclaration,

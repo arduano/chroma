@@ -97,12 +97,14 @@ impl CheckingPhaseEnv {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ParsingPhaseEnv {
     pub inside_nested_expr: bool,
+    pub inside_binary_expr: bool,
 }
 
 impl ParsingPhaseEnv {
     pub fn new() -> Self {
         Self {
             inside_nested_expr: false,
+            inside_binary_expr: false,
         }
     }
 
@@ -116,6 +118,20 @@ impl ParsingPhaseEnv {
     pub fn outside_nested_expr(self) -> Self {
         Self {
             inside_nested_expr: false,
+            ..self
+        }
+    }
+
+    pub fn inside_binary_expr(self) -> Self {
+        Self {
+            inside_binary_expr: true,
+            ..self
+        }
+    }
+
+    pub fn outside_binary_expr(self) -> Self {
+        Self {
+            inside_binary_expr: false,
             ..self
         }
     }

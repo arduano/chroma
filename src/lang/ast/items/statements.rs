@@ -7,7 +7,7 @@ pub enum SemiRequirement {
     Always,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum SyStatement {
     Declaration(SyDeclaration),
     Expression(SyExpression),

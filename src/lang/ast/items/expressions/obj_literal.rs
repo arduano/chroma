@@ -1,9 +1,6 @@
 use std::sync::Arc;
 
-use crate::lang::{ast::helpers::*, tokens::*, CompilerError, ErrorCollector};
-
-use super::SyExpression;
-
+use super::*;
 /// Represents an object literal.
 ///
 /// # Example
@@ -11,7 +8,7 @@ use super::SyExpression;
 /// ```no_run
 /// { field1: 1, field2, ...spreadfields, [ident]: "foo" }
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct SyObjectLiteral {
     pub braces: TkBraces,
     pub fields: SObjectLiteralFields,
@@ -47,7 +44,7 @@ impl ItemWithSpan for SyObjectLiteral {
 /// ```no_run
 /// field1: 1, field2, ...spreadfields, [ident]: "foo"
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct SObjectLiteralFields {
     pub fields: Vec<Attempted<SyObjectLiteralField>>,
 }
@@ -101,7 +98,7 @@ impl ItemWithSpan for SObjectLiteralFields {
 /// Key-variable: `field2`
 /// Spread: `...spreadfields`
 /// Computed key: `[ident]: "foo"`
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum SyObjectLiteralField {
     KeyValue(SyObjectLiteralKeyValue),
     KeyVariable(SyObjectLiteralKeyVariable),
@@ -160,7 +157,7 @@ impl ItemWithSpan for SyObjectLiteralField {
 /// ```no_run
 /// field1: 1
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct SyObjectLiteralKeyValue {
     pub key: TkIdent,
     pub colon: TkColon,
@@ -208,7 +205,7 @@ impl ItemWithSpan for SyObjectLiteralKeyValue {
 /// ```no_run
 /// field2
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct SyObjectLiteralKeyVariable {
     pub key: TkIdent,
 }
@@ -242,7 +239,7 @@ impl ItemWithSpan for SyObjectLiteralKeyVariable {
 /// ```no_run
 /// ...spreadfields
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct SyObjectLiteralSpread {
     pub spread: TkEpsilon,
     pub fields: Box<Attempted<SyExpression>>,
@@ -284,7 +281,7 @@ impl ItemWithSpan for SyObjectLiteralSpread {
 /// ```no_run
 /// [ident]: value
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct SyObjectLiteralComputedKey {
     pub key_brackets: TkBrackets,
     pub key_expression: Box<Attempted<SyExpression>>,

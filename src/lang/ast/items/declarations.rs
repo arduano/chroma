@@ -6,7 +6,7 @@ use crate::lang::{ast::helpers::*, tokens::*, ErrorCollector};
 mod type_fn;
 pub use type_fn::*;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum SyDeclaration {
     TypeDefine(Arc<SyTypeDefine>),
     TypeFn(Arc<SyTypeFn>),
@@ -62,7 +62,7 @@ impl ItemWithSpan for SyDeclaration {
 /// ```no_run
 /// type Foo = { a: string }
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct SyTypeDefine {
     pub type_token: TkType,
     pub name: TkIdent,

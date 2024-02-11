@@ -471,6 +471,8 @@ simple_token!(TkBitAnd, And);
 simple_token!(TkOr, Or, Or);
 simple_token!(TkBitOr, Or);
 simple_token!(TkBitXor, Caret);
+simple_token!(TkBitShiftLeft, Lt, Lt);
+simple_token!(TkBitShiftRight, Gt, Gt);
 simple_token!(TkNot, Exclamation);
 
 // Comparison

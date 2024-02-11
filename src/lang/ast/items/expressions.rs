@@ -1,11 +1,16 @@
-use crate::lang::{ast::helpers::*, tokens::*, ErrorCollector};
+use crate::lang::{ast::helpers::*, tokens::*, CompilerError, ErrorCollector};
 
 mod obj_literal;
 pub use obj_literal::*;
+mod unary;
+pub use unary::*;
+mod binary;
+pub use binary::*;
 
 trait ExpressionBottomUpParse {
-    /// Parse an expression from the bottom up. Returns Ok if the
-    /// expression was parsed, Err if it was not.
+    /// Parse an expression from the bottom up. Returns Err if the
+    /// expression was parsed, Ok if it was not.
+    /// TODO: Make this more clear with the Try trait in the future
     fn parse_bottom_up<'a>(
         expression: SyExpression,
         reader: &mut AstParser<'a>,
@@ -15,11 +20,12 @@ trait ExpressionBottomUpParse {
         Self: Sized;
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum SyExpression {
     VarRead(SyVarRead),
     StringLiteral(SyStringLiteral),
     ObjectLiteral(SyObjectLiteral),
+    Binary(SyBinary),
 }
 
 impl SyExpression {
@@ -28,6 +34,7 @@ impl SyExpression {
             Self::VarRead(_) => true,
             Self::StringLiteral(_) => true,
             Self::ObjectLiteral(_) => true,
+            Self::Binary(_) => true,
         }
     }
 }
@@ -39,6 +46,9 @@ impl AstItem for SyExpression {
     where
         Self: Sized,
     {
+        let is_inside_binary = env.inside_binary_expr;
+        let env = env.outside_binary_expr();
+
         fn parse_expression_beginning<'a>(
             reader: &mut AstParser<'a>,
             env: ParsingPhaseEnv,
@@ -58,10 +68,16 @@ impl AstItem for SyExpression {
 
         fn process_bottom_up<'a>(
             expression: SyExpression,
-            _reader: &mut AstParser<'a>,
-            _env: ParsingPhaseEnv,
+            reader: &mut AstParser<'a>,
+            env: ParsingPhaseEnv,
+            inside_binary: bool,
         ) -> Result<SyExpression, SyExpression> {
-            // let expression = STerminatedExpr::parse_bottom_up(expression, reader, env)?;
+            let expression = if !inside_binary {
+                SyBinary::parse_bottom_up(expression, reader, env)?
+            } else {
+                expression
+            };
+
             Ok(expression)
         }
 
@@ -71,7 +87,7 @@ impl AstItem for SyExpression {
         // Then, repeatedly attempt parsing bottom up until no more can be parsed
         let mut expression = beginning;
         loop {
-            match process_bottom_up(expression, reader, env) {
+            match process_bottom_up(expression, reader, env, is_inside_binary) {
                 Ok(unchanged_expression) => {
                     expression = unchanged_expression;
                     break;
@@ -90,6 +106,7 @@ impl AstItem for SyExpression {
             Self::VarRead(expr) => expr.check(env, errors),
             Self::StringLiteral(expr) => expr.check(env, errors),
             Self::ObjectLiteral(expr) => expr.check(env, errors),
+            Self::Binary(expr) => expr.check(env, errors),
         }
     }
 }
@@ -100,6 +117,7 @@ impl ItemWithSpan for SyExpression {
             Self::VarRead(expr) => expr.span(),
             Self::StringLiteral(expr) => expr.span(),
             Self::ObjectLiteral(expr) => expr.span(),
+            Self::Binary(expr) => expr.span(),
         }
     }
 }
