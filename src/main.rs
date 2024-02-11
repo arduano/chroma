@@ -77,21 +77,29 @@ async fn main() {
     let mut compilation = ModuleGroupCompilation::new(module_counter.next(), HashMap::new());
     let _type_ids = compilation.compile_in_ast(None, &ast);
 
-    let a_type_id = compilation.types.keys().find(|k| {
-        let Some(name) = &compilation.types[k].name else {
+    let a_li_type_id = compilation.linked_type_definitions.keys().find(|k| {
+        let Some(name) = &compilation.linked_type_definitions[k].name else {
             return false;
         };
 
         name.ident.deref() == "A"
     });
+    let a_type_id = *compilation
+        .linked_type_to_type_mapping
+        .get(&a_li_type_id.unwrap())
+        .unwrap();
 
-    let b_type_id = compilation.types.keys().find(|k| {
-        let Some(name) = &compilation.types[k].name else {
+    let b_li_type_id = compilation.linked_type_definitions.keys().find(|k| {
+        let Some(name) = &compilation.linked_type_definitions[k].name else {
             return false;
         };
 
         name.ident.deref() == "B"
     });
+    let b_type_id = *compilation
+        .linked_type_to_type_mapping
+        .get(&b_li_type_id.unwrap())
+        .unwrap();
 
     dbg!(&ast);
 
@@ -99,8 +107,7 @@ async fn main() {
     dbg!(&compilation.linked_type_to_type_mapping);
     dbg!(&compilation.types);
 
-    let assignable =
-        run_type_assignability_query(&mut compilation, a_type_id.unwrap(), b_type_id.unwrap());
+    let assignable = run_type_assignability_query(&mut compilation, a_type_id, b_type_id);
     dbg!(assignable);
 
     let mut errors = Vec::new();

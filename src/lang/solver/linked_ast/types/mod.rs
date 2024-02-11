@@ -34,6 +34,10 @@ impl LiType {
     pub fn kind(&self) -> &LiTypeKind {
         &self.kind
     }
+
+    pub fn span(&self) -> Span {
+        self.span.clone()
+    }
 }
 
 #[derive(Debug, Clone)]

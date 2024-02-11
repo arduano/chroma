@@ -2,8 +2,11 @@ use std::collections::HashMap;
 
 use crate::lang::{
     ast::items::{SyArithmeticBinaryOp, SyBinaryOp, SyBooleanLogicBinaryOp},
-    solver::{type_system::*, Id, MId, ModItemSet, ModuleGroupCompilation},
-    tokens::{ItemWithSpan, Span},
+    solver::{
+        type_system::*, Id, Id2OrVal, MId, MIdOrVal, ModItemSet, ModuleGroupCompilation,
+        TyIdOrValWithSpan,
+    },
+    tokens::{ItemWithSpan, Span, TkIdent},
     CompilerError, ErrorCollector,
 };
 
@@ -37,7 +40,7 @@ pub fn parse_type_from_linked_type_id(
     let value = parse_type_from_linked_type(linked_ty, compilation);
     let id = compilation
         .types
-        .insert_allocated_value(allocated_id, value);
+        .insert_for_allocated_value(allocated_id, value.ty);
 
     id
 }
@@ -45,7 +48,7 @@ pub fn parse_type_from_linked_type_id(
 pub fn parse_type_from_linked_type(
     linked_ty: &LiType,
     compilation: &mut TypeFromLinkedTypeCompilation,
-) -> TyType {
+) -> TyIdOrValWithSpan {
     let ty_kind = match &linked_ty.kind {
         LiTypeKind::Number(num) => {
             if let Some(literal) = &num.literal {
@@ -76,7 +79,7 @@ pub fn parse_type_from_linked_type(
                 match entry {
                     LiStructField::KeyValue(kv) => {
                         let value = parse_type_from_linked_type(&kv.value, compilation);
-                        let value_id = compilation.types.add_value(value);
+                        let value_id = compilation.types.get_id_for_val_or_id(value.ty);
 
                         let field = TyStructLiteralField {
                             name: kv.key.clone(),
@@ -105,77 +108,26 @@ pub fn parse_type_from_linked_type(
         }
         LiTypeKind::StaticTypeReference(linked_ty_id) => {
             let mut ty_id = parse_type_from_linked_type_id(*linked_ty_id, compilation);
-
-            loop {
-                let underlying_type = &compilation.types.get(ty_id);
-                let Some(underlying_type) = underlying_type else {
-                    break;
-                };
-
-                match &underlying_type.kind {
-                    TyTypeKind::Reference(id) => {
-                        ty_id = *id;
-                    }
-                    _ => break,
-                }
-            }
-
-            TyTypeKind::Reference(ty_id)
+            return TyIdOrValWithSpan::new_id(ty_id, linked_ty.span());
         }
         LiTypeKind::BinaryExpression(binary) => {
             let left = parse_type_from_linked_type(&binary.left, compilation);
             let right = parse_type_from_linked_type(&binary.right, compilation);
 
-            resolve_non_union_binary_expression(left, &binary.operator, right, compilation).kind
+            return resolve_non_union_binary_expression(
+                left,
+                &binary.operator,
+                right,
+                linked_ty.name.clone(),
+                compilation,
+            );
         }
         LiTypeKind::Unknown => TyTypeKind::Unknown,
         LiTypeKind::Never => TyTypeKind::Never,
     };
 
-    TyType::new_named(linked_ty.name.clone(), ty_kind, linked_ty.span.clone())
-}
-
-/// Resolve type references to get the underlying type
-fn normalize_references<'a>(ty: TyType, types: &'a ModItemSet<TyType>) -> Option<TyTypeOrRef> {
-    // First, check if the type is a reference or not. Non reference types
-    // get returned directly.
-    let id = match &ty.kind {
-        TyTypeKind::Reference(id) => id,
-        TyTypeKind::Union(union) => {
-            if union.types.len() != 1 {
-                return Some(TyTypeOrRef::Owned(ty));
-            } else {
-                &union.types[0]
-            }
-        }
-
-        _ => return Some(TyTypeOrRef::Owned(ty)),
-    };
-
-    let mut underlying_type = types.get(*id);
-    let mut underlying_id = *id;
-
-    loop {
-        let Some(ty) = underlying_type else {
-            return None;
-        };
-
-        match &ty.kind {
-            TyTypeKind::Reference(id) => {
-                underlying_type = types.get(*id);
-                underlying_id = *id;
-            }
-            TyTypeKind::Union(union) => {
-                if union.types.len() != 1 {
-                    return Some(TyTypeOrRef::Ref(underlying_id));
-                } else {
-                    underlying_type = types.get(union.types[0]);
-                    underlying_id = union.types[0];
-                }
-            }
-            _ => return Some(TyTypeOrRef::Ref(underlying_id)),
-        }
-    }
+    let ty = TyType::new_named(linked_ty.name.clone(), ty_kind, linked_ty.span());
+    TyIdOrValWithSpan::new_val(ty, linked_ty.span())
 }
 
 // I really tried avoiding a callback system here, but ownership semantics make it much much more verbose.
@@ -188,7 +140,9 @@ fn get_struct_literal_fields_from_ty_and_execute_callback<'a>(
     callback: impl FnOnce(&Vec<TyStructLiteralField>),
 ) {
     let spread_ty_resolved = parse_type_from_linked_type(&ty, compilation);
-    let spread_ty = normalize_references(spread_ty_resolved, compilation.types);
+    let spread_ty = compilation
+        .types
+        .get_val_for_val_or_id(&spread_ty_resolved.ty);
 
     let Some(spread_ty) = spread_ty else {
         // Type not resolved yet, therefore this is likely a cyclical spread reference
@@ -199,7 +153,7 @@ fn get_struct_literal_fields_from_ty_and_execute_callback<'a>(
         return;
     };
 
-    match &spread_ty.get(&compilation.types).kind {
+    match &spread_ty.kind {
         TyTypeKind::Struct(spread_struct) => {
             let Some(literal) = &spread_struct.literal else {
                 // Not a literal struct, therefore has infinite fields and shouldn't be spread
@@ -231,36 +185,43 @@ fn get_struct_literal_fields_from_ty_and_execute_callback<'a>(
 // }
 
 fn resolve_non_union_binary_expression(
-    left: TyType,
+    left: TyIdOrValWithSpan,
     operator: &SyBinaryOp,
-    right: TyType,
+    right: TyIdOrValWithSpan,
+    name: Option<TkIdent>,
     compilation: &mut TypeFromLinkedTypeCompilation,
-) -> TyType {
+) -> TyIdOrValWithSpan {
+    let left_ty = compilation.types.get_val_for_val_or_id(&left.ty);
+    let right_ty = compilation.types.get_val_for_val_or_id(&right.ty);
+
+    let joined_span = left.span.join(&right.span);
+
+    let Some(left_ty) = left_ty else {
+        compilation.errors.push(CompilerError::new(
+            "Recursive type computations are not allowed",
+            left.span.clone(),
+        ));
+        return TyIdOrValWithSpan::new_val(
+            TyType::new(TyTypeKind::Unknown, joined_span.clone()),
+            joined_span,
+        );
+    };
+
+    let Some(right_ty) = right_ty else {
+        compilation.errors.push(CompilerError::new(
+            "Recursive type computations are not allowed",
+            right.span.clone(),
+        ));
+        return TyIdOrValWithSpan::new_val(
+            TyType::new(TyTypeKind::Unknown, joined_span.clone()),
+            joined_span,
+        );
+    };
+
     let op_span = operator.span();
     let expr_span = left.span.join(&right.span);
-    let left_span = left.span.clone();
-    let right_span = right.span.clone();
 
-    let left_resolved = normalize_references(left, compilation.types);
-    let right_resolved = normalize_references(right, compilation.types);
-
-    let Some(left_resolved) = left_resolved else {
-        compilation.errors.push(CompilerError::new(
-            "Recursive type computations are not allowed",
-            left_span.clone(),
-        ));
-        return TyType::new(TyTypeKind::Unknown, left_span);
-    };
-
-    let Some(right_resolved) = right_resolved else {
-        compilation.errors.push(CompilerError::new(
-            "Recursive type computations are not allowed",
-            right_span.clone(),
-        ));
-        return TyType::new(TyTypeKind::Unknown, right_span);
-    };
-
-    let push_invalid_op_error = |left: &TyType, right: &TyType| {
+    let push_invalid_op_error = || {
         compilation.errors.push(CompilerError::new(
             "Invalid binary operation for types",
             left.span.join(&right.span),
@@ -270,49 +231,57 @@ fn resolve_non_union_binary_expression(
 
     macro_rules! invalid_op {
         ($compilation:expr) => {{
-            let types = &$compilation.types;
-            push_invalid_op_error(&left_resolved.get(types), &right_resolved.get(types));
-            return TyType::new(TyTypeKind::Unknown, operator.span());
+            push_invalid_op_error();
+            let ty = TyType::new(TyTypeKind::Unknown, operator.span());
+            return TyIdOrValWithSpan::new_val(ty, expr_span);
         }};
     }
 
     // Resolve operators that apply to all types, e.g. making unions
     match operator {
         SyBinaryOp::BooleanLogic(SyBooleanLogicBinaryOp::Or(_)) => {
-            let union = TyUnion::union_types(left_resolved, right_resolved, compilation.types);
-            return TyType::new(union, expr_span);
+            let union = TyUnion::union_types(
+                left,
+                right,
+                expr_span.clone(),
+                name.clone(),
+                compilation.types,
+                compilation.errors,
+            );
+            return union;
         }
         _ => {}
     }
 
     // Resolve per-type operators
-    let left_resolved = left_resolved.get(compilation.types);
-    let right_resolved = right_resolved.get(compilation.types);
-    match (&left_resolved.kind, &right_resolved.kind) {
+    match (&left_ty.kind, &right_ty.kind) {
         (TyTypeKind::Number(self_number), TyTypeKind::Number(other_number)) => match operator {
             SyBinaryOp::Arithmetic(op) => {
                 let left_lit = &self_number.literal;
                 let right_lit = &other_number.literal;
 
                 let (Some(left_lit), Some(right_lit)) = (left_lit, right_lit) else {
-                    return TyType::new(TyTypeKind::Number(TyNumber::new()), expr_span);
+                    let ty = TyType::new(TyTypeKind::Number(TyNumber::new()), expr_span.clone());
+                    return TyIdOrValWithSpan::new_val(ty, expr_span);
                 };
 
                 let result = run_arithmetic_op_on_numbers(left_lit.value, op, right_lit.value);
 
-                TyType::new(
+                let ty = TyType::new(
                     TyTypeKind::Number(TyNumber::from_literal(result)),
-                    expr_span,
-                )
+                    expr_span.clone(),
+                );
+                return TyIdOrValWithSpan::new_val(ty, expr_span);
             }
             _ => invalid_op!(compilation),
         },
         _ => {
             compilation.errors.push(CompilerError::new(
                 "Invalid binary operation for types",
-                expr_span,
+                expr_span.clone(),
             ));
-            TyType::new(TyTypeKind::Unknown, op_span)
+            let ty = TyType::new(TyTypeKind::Unknown, op_span);
+            return TyIdOrValWithSpan::new_val(ty, expr_span);
         }
     }
 }

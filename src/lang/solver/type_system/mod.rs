@@ -49,7 +49,6 @@ pub enum TyTypeKind {
     Number(TyNumber),
     String(TyString),
     Struct(TyStruct),
-    Reference(MId<TyType>),
     Union(TyUnion),
     Never,
     Unknown,
@@ -80,22 +79,6 @@ impl TyTypeLogic for TyTypeKind {
             }
             (TyTypeKind::Struct(self_struct), TyTypeKind::Struct(other_struct)) => {
                 self_struct.check_assignable_to(other_struct, query)
-            }
-
-            // Dereference type references
-            (TyTypeKind::Reference(self_ref), TyTypeKind::Reference(other_ref)) => {
-                let self_ty = &query.types[self_ref];
-                let other_ty = &query.types[other_ref];
-
-                self_ty.check_assignable_to(other_ty, query)
-            }
-            (TyTypeKind::Reference(self_ref), _) => {
-                let self_ty = &query.types[self_ref];
-                self_ty.kind.check_assignable_to(other, query)
-            }
-            (_, TyTypeKind::Reference(other_ref)) => {
-                let other_ty = &query.types[other_ref];
-                self.check_assignable_to(&other_ty.kind, query)
             }
 
             (TyTypeKind::Union(self_union), TyTypeKind::Union(other_union)) => {
@@ -152,22 +135,6 @@ impl TyTypeLogic for TyTypeKind {
                 self_struct.is_substate_of(other_struct, query)
             }
 
-            // Dereference type references
-            (TyTypeKind::Reference(self_ref), TyTypeKind::Reference(other_ref)) => {
-                let self_ty = &query.types[self_ref];
-                let other_ty = &query.types[other_ref];
-
-                self_ty.is_substate_of(other_ty, query)
-            }
-            (TyTypeKind::Reference(self_ref), _) => {
-                let self_ty = &query.types[self_ref];
-                self_ty.kind.is_substate_of(other, query)
-            }
-            (_, TyTypeKind::Reference(other_ref)) => {
-                let other_ty = &query.types[other_ref];
-                self.is_substate_of(&other_ty.kind, query)
-            }
-
             (TyTypeKind::Union(self_union), TyTypeKind::Union(other_union)) => {
                 self_union.is_substate_of(other_union, query)
             }
@@ -203,67 +170,4 @@ pub enum TyTypeOrBorrowRef<'a> {
     Owned(TyType),
     Borrowed(&'a TyType),
     Ref(MId<TyType>),
-}
-
-impl<'a> TyTypeOrBorrowRef<'a> {
-    pub fn get<'b: 'a>(&'b self, types: &'b ModItemSet<TyType>) -> &'b TyType {
-        match self {
-            TyTypeOrBorrowRef::Owned(ty) => ty,
-            TyTypeOrBorrowRef::Borrowed(ty) => ty,
-            TyTypeOrBorrowRef::Ref(id) => &types[id],
-        }
-    }
-
-    pub fn to_id(self, types: &mut ModItemSet<TyType>) -> MId<TyType> {
-        match self {
-            TyTypeOrBorrowRef::Owned(ty) => types.add_value(ty),
-            TyTypeOrBorrowRef::Borrowed(_ty) => panic!("Can't convert borrowed type to id"),
-            TyTypeOrBorrowRef::Ref(id) => id,
-        }
-    }
-
-    pub fn to_nonborrowed(self) -> TyTypeOrRef {
-        match self {
-            TyTypeOrBorrowRef::Owned(ty) => TyTypeOrRef::Owned(ty),
-            TyTypeOrBorrowRef::Borrowed(_ty) => {
-                panic!("Can't convert borrowed type to nonborrowed")
-            }
-            TyTypeOrBorrowRef::Ref(id) => TyTypeOrRef::Ref(id),
-        }
-    }
-}
-
-pub enum TyTypeOrRef {
-    Owned(TyType),
-    Ref(MId<TyType>),
-}
-
-impl TyTypeOrRef {
-    pub fn get<'a>(&'a self, types: &'a ModItemSet<TyType>) -> &'a TyType {
-        match self {
-            TyTypeOrRef::Owned(ty) => ty,
-            TyTypeOrRef::Ref(id) => &types[id],
-        }
-    }
-
-    pub fn to_id(self, types: &mut ModItemSet<TyType>) -> MId<TyType> {
-        match self {
-            TyTypeOrRef::Owned(ty) => types.add_value(ty),
-            TyTypeOrRef::Ref(id) => id,
-        }
-    }
-
-    pub fn to_borrowable(self) -> TyTypeOrBorrowRef<'static> {
-        match self {
-            TyTypeOrRef::Owned(ty) => TyTypeOrBorrowRef::Owned(ty),
-            TyTypeOrRef::Ref(id) => TyTypeOrBorrowRef::Ref(id),
-        }
-    }
-
-    pub fn to_borrowed<'a>(&'a self) -> TyTypeOrBorrowRef<'a> {
-        match self {
-            TyTypeOrRef::Owned(ty) => TyTypeOrBorrowRef::Borrowed(ty),
-            TyTypeOrRef::Ref(id) => TyTypeOrBorrowRef::Ref(*id),
-        }
-    }
 }

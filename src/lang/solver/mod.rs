@@ -2,7 +2,11 @@ use std::{collections::HashMap, sync::Arc};
 
 use self::{linked_ast::LiType, type_system::TyType};
 
-use super::{ast::items::SyDeclarationBody, tokens::TkIdent, ErrorCollector};
+use super::{
+    ast::items::SyDeclarationBody,
+    tokens::{Span, TkIdent},
+    ErrorCollector,
+};
 
 mod entity_ids;
 pub use entity_ids::*;
@@ -19,11 +23,56 @@ pub use type_assignability::*;
 /// This allows any module to refer to another module's items.
 pub type MId<T> = Id2<ModuleGroupCompilation, T>;
 
+/// Same as MId, but can either contain a value or an ID.
+pub type MIdOrVal<T> = Id2OrVal<ModuleGroupCompilation, T>;
+
 /// A module group ID
 pub type ModId = Id<ModuleGroupCompilation>;
 
 /// A set of items addressed by both their ID, as well as their module group ID.
-pub type ModItemSet<T> = GroupItemSet<ModuleGroupCompilation, T>;
+pub type ModItemSet<T> = GroupItemSetWithRefs<ModuleGroupCompilation, T>;
+
+#[derive(Debug, Clone)]
+pub struct TyIdOrValWithSpan {
+    pub span: Span,
+    pub ty: MIdOrVal<TyType>,
+}
+
+impl TyIdOrValWithSpan {
+    pub fn new(ty: MIdOrVal<TyType>, span: Span) -> Self {
+        Self { span, ty }
+    }
+
+    pub fn new_val(ty: TyType, span: Span) -> Self {
+        Self {
+            span,
+            ty: MIdOrVal::Val(ty),
+        }
+    }
+
+    pub fn new_id(ty: MId<TyType>, span: Span) -> Self {
+        Self {
+            span,
+            ty: MIdOrVal::Id(ty),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TypeIdWithSpan {
+    pub span: Span,
+    pub id: MId<TyType>,
+}
+
+impl TypeIdWithSpan {
+    pub fn new(ty: MId<TyType>, span: Span) -> Self {
+        Self { span, id: ty }
+    }
+
+    pub fn as_type_id_or_val(&self) -> TyIdOrValWithSpan {
+        TyIdOrValWithSpan::new_id(self.id, self.span.clone())
+    }
+}
 
 pub struct ModuleGroupCompilation {
     pub current_module_id: ModId,
@@ -120,9 +169,9 @@ pub struct ModuleGroupResult {
     pub dependencies: Vec<Id<ModuleGroupResult>>,
     pub files: Vec<Id<CodeFile>>,
     pub modules: HashMap<Id<CodeFile>, ModuleNamespace>,
-    pub linked_type_definitions: Arc<ItemSet<LiType>>,
+    pub linked_type_definitions: Arc<ItemSet<MIdOrVal<LiType>>>,
     pub linked_type_to_type_mapping: HashMap<Id<LiType>, Id<TyType>>,
-    pub types: Arc<ItemSet<TyType>>,
+    pub types: Arc<ItemSet<MIdOrVal<TyType>>>,
     pub type_assignability: TypeAssignabilityCache,
     pub errors: ErrorCollector,
 }

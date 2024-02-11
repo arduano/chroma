@@ -19,6 +19,10 @@ impl<T> ItemSet<T> {
         self.items.get(&id)
     }
 
+    pub fn get_mut(&mut self, id: Id<T>) -> Option<&mut T> {
+        self.items.get_mut(&id)
+    }
+
     pub fn add_value(&mut self, val: T) -> Id<T> {
         let id = self.counter.next();
         self.items.insert(id, val);

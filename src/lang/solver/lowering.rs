@@ -109,7 +109,7 @@ pub fn parse_module_data_linking(
 
                 compilation
                     .linked_type_definitions
-                    .insert_allocated_value(id, ty);
+                    .insert_val_for_allocated_value(id, ty);
             }
             ModuleNamespaceItemKind::Unknown => {}
         }

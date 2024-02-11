@@ -1,21 +1,22 @@
-use crate::lang::solver::{MId, ModItemSet, TypeAssignabilityQuery, TypeSubsetQuery};
+use crate::lang::{
+    solver::{
+        MId, MIdOrVal, ModItemSet, TyIdOrValWithSpan, TypeAssignabilityQuery, TypeIdWithSpan,
+        TypeSubsetQuery,
+    },
+    tokens::{Span, TkIdent},
+    CompilerError, ErrorCollector,
+};
 
-use super::{TyType, TyTypeKind, TyTypeLogic, TyTypeOrBorrowRef, TyTypeOrRef};
+use super::{TyType, TyTypeKind, TyTypeLogic};
 
 #[derive(Debug, Clone)]
 pub struct TyUnion {
     /// List of references to union types.
     /// This list can't contain other unions.
-    pub types: Vec<MId<TyType>>,
+    pub types: Vec<TypeIdWithSpan>,
 }
 
-fn is_type_subset_of(
-    ty: &TyTypeOrBorrowRef,
-    ty2: &TyTypeOrBorrowRef,
-    types: &ModItemSet<TyType>,
-) -> bool {
-    let ty = ty.get(types);
-    let ty2 = ty2.get(types);
+fn is_type_subset_of(ty: &TyType, ty2: &TyType, types: &ModItemSet<TyType>) -> bool {
     if !ty.is_substate_of(ty2, &mut TypeSubsetQuery::new(types)) {
         return false;
     }
@@ -23,17 +24,16 @@ fn is_type_subset_of(
 }
 
 fn is_type_subset_of_union(
-    ty: &TyTypeOrBorrowRef,
-    union_list: &Vec<MId<TyType>>,
+    ty: &TyType,
+    union_list: &Vec<TypeIdWithSpan>,
     types: &ModItemSet<TyType>,
 ) -> bool {
     if union_list.len() == 0 {
         return false;
     }
 
-    let ty = ty.get(types);
     for union_ty in union_list {
-        let union_ty = &types[union_ty];
+        let union_ty = &types[union_ty.id];
         if !ty.is_substate_of(union_ty, &mut TypeSubsetQuery::new(types)) {
             return false;
         }
@@ -42,8 +42,8 @@ fn is_type_subset_of_union(
 }
 
 fn is_type_subset_of_union_with_query(
-    ty: &TyTypeOrBorrowRef,
-    union_list: &Vec<MId<TyType>>,
+    ty: &TyType,
+    union_list: &Vec<TypeIdWithSpan>,
     types: &ModItemSet<TyType>,
     subset_query: &mut TypeSubsetQuery,
 ) -> bool {
@@ -51,9 +51,8 @@ fn is_type_subset_of_union_with_query(
         return false;
     }
 
-    let ty = ty.get(types);
     for union_ty in union_list {
-        let union_ty = &types[union_ty];
+        let union_ty = &types[union_ty.id];
         if !ty.is_substate_of(union_ty, subset_query) {
             return false;
         }
@@ -62,17 +61,16 @@ fn is_type_subset_of_union_with_query(
 }
 
 fn is_type_assignable_to_union(
-    ty: &TyTypeOrBorrowRef,
-    union_list: &Vec<MId<TyType>>,
+    ty: &TyType,
+    union_list: &Vec<TypeIdWithSpan>,
     assignability: &mut TypeAssignabilityQuery,
 ) -> bool {
     if union_list.len() == 0 {
         return false;
     }
 
-    let ty = ty.get(assignability.types);
     for union_ty in union_list {
-        let union_ty = &assignability.types[union_ty];
+        let union_ty = &assignability.types[union_ty.id];
 
         if ty.check_assignable_to(union_ty, assignability) {
             return true;
@@ -86,75 +84,85 @@ impl TyUnion {
         Self { types: Vec::new() }
     }
 
-    pub fn new_with_types(types: Vec<MId<TyType>>) -> Self {
+    pub fn new_with_types(types: Vec<TypeIdWithSpan>) -> Self {
         Self { types }
     }
 
-    fn insert_type(&mut self, ty_ref: TyTypeOrRef, types: &mut ModItemSet<TyType>) {
-        let ty = ty_ref.get(types);
+    fn insert_type(
+        &mut self,
+        ty_ref: TyIdOrValWithSpan,
+        types: &mut ModItemSet<TyType>,
+        errors: &mut ErrorCollector,
+    ) {
+        let ty = types.get_val_for_val_or_id(&ty_ref.ty);
+
+        let Some(ty) = ty else {
+            // Recursive expression found, illegal
+            errors.push(CompilerError::new("Recursive type union", ty_ref.span));
+            return;
+        };
 
         if let TyTypeKind::Union(union) = &ty.kind {
             // Cloning here to keep the borrow checker happy
             let union_types_cloned = union.types.clone();
-            for &ty in &union_types_cloned {
-                self.insert_type(TyTypeOrRef::Ref(ty), types);
+            for ty in &union_types_cloned {
+                self.insert_type(ty.as_type_id_or_val(), types, errors);
             }
             return;
         }
 
         // If it's already a substate, ignore
-        if is_type_subset_of_union(&ty_ref.to_borrowed(), &self.types, types) {
+        if is_type_subset_of_union(&ty, &self.types, types) {
             return;
         }
 
         // If it's a superset of any of the types, remove the types
         let mut i = 0;
         while i < self.types.len() {
-            if is_type_subset_of(
-                &TyTypeOrBorrowRef::Ref(self.types[i]),
-                &ty_ref.to_borrowed(),
-                types,
-            ) {
+            let union_ty = &types.get(self.types[i].id);
+
+            let Some(union_ty) = union_ty else {
+                // Recursive expression found, illegal
+                errors.push(CompilerError::new(
+                    "Recursive type union",
+                    ty_ref.span.clone(),
+                ));
+                i += 1;
+                continue;
+            };
+
+            if is_type_subset_of(&union_ty, &ty, types) {
                 self.types.remove(i);
             } else {
                 i += 1;
             }
         }
 
+        let id = types.get_id_for_val_or_id(ty_ref.ty);
+
         // Insert the type
-        self.types.push(ty_ref.to_id(types));
-    }
-
-    pub fn join_unions(left: &Self, right: &Self, types: &mut ModItemSet<TyType>) -> TyTypeKind {
-        let mut new_union = TyUnion::new();
-        for &ty in &left.types {
-            new_union.insert_type(TyTypeOrRef::Ref(ty), types);
-        }
-        for &ty in &right.types {
-            new_union.insert_type(TyTypeOrRef::Ref(ty), types);
-        }
-
-        if new_union.types.len() == 1 {
-            TyTypeKind::Reference(new_union.types[0])
-        } else {
-            TyTypeKind::Union(new_union)
-        }
+        self.types.push(TypeIdWithSpan::new(id, ty_ref.span));
     }
 
     pub fn union_types(
-        left: TyTypeOrRef,
-        right: TyTypeOrRef,
+        left: TyIdOrValWithSpan,
+        right: TyIdOrValWithSpan,
+        span: Span,
+        name: Option<TkIdent>,
         types: &mut ModItemSet<TyType>,
-    ) -> TyTypeKind {
+        errors: &mut ErrorCollector,
+    ) -> TyIdOrValWithSpan {
         let mut new_union = TyUnion::new();
-        new_union.insert_type(left, types);
-        new_union.insert_type(right, types);
+        new_union.insert_type(left, types, errors);
+        new_union.insert_type(right, types, errors);
 
         if new_union.types.len() == 1 {
-            // TODO: Avoid reference indirection if possible
-            TyTypeKind::Reference(new_union.types[0])
+            let ty = &new_union.types[0];
+            TyIdOrValWithSpan::new_id(ty.id, ty.span.clone())
         } else {
-            TyTypeKind::Union(new_union)
+            let kind = TyTypeKind::Union(new_union);
+            let ty = TyType::new_named(name, kind, span.clone());
+            TyIdOrValWithSpan::new_val(ty, span)
         }
     }
 
@@ -165,7 +173,7 @@ impl TyUnion {
     ) -> bool {
         // Every type in self must be assignable to other
         for ty in &self.types {
-            let ty = &query.types[ty];
+            let ty = &query.types[ty.id];
             if !ty.kind.check_assignable_to(other, query) {
                 return false;
             }
@@ -183,7 +191,7 @@ impl TyUnion {
     ) -> bool {
         // Other must be assignable to at least one type in self
         for ty in &self.types {
-            let ty = &query.types[ty];
+            let ty = &query.types[ty.id];
             if other.check_assignable_to(&ty.kind, query) {
                 return true;
             }
@@ -195,7 +203,7 @@ impl TyUnion {
     pub fn is_substate_of_single(&self, other: &TyTypeKind, query: &mut TypeSubsetQuery) -> bool {
         // Every type in self must be a subset of other
         for ty in &self.types {
-            let ty = &query.types[ty];
+            let ty = &query.types[ty.id];
             if !ty.kind.is_substate_of(other, query) {
                 return false;
             }
@@ -211,7 +219,7 @@ impl TyUnion {
     ) -> bool {
         // Other must be a subset of at least one type in self
         for ty in &self.types {
-            let ty = &query.types[ty];
+            let ty = &query.types[ty.id];
             if other.is_substate_of(&ty.kind, query) {
                 return true;
             }
@@ -225,8 +233,8 @@ impl TyTypeLogic for TyUnion {
     fn check_assignable_to(&self, other: &Self, query: &mut TypeAssignabilityQuery) -> bool {
         // Every type in self must be assignable to at least one type in other
         for ty in &self.types {
-            let ty = &query.types[ty];
-            if is_type_assignable_to_union(&TyTypeOrBorrowRef::Borrowed(ty), &other.types, query) {
+            let ty = &query.types[ty.id];
+            if is_type_assignable_to_union(&ty, &other.types, query) {
                 continue;
             }
 
@@ -239,13 +247,8 @@ impl TyTypeLogic for TyUnion {
     fn is_substate_of(&self, other: &Self, query: &mut TypeSubsetQuery) -> bool {
         // Every type in self must be a subset of at least one type in other
         for ty in &self.types {
-            let ty = &query.types[ty];
-            if is_type_subset_of_union_with_query(
-                &TyTypeOrBorrowRef::Borrowed(ty),
-                &other.types,
-                query.types,
-                query,
-            ) {
+            let ty = &query.types[ty.id];
+            if is_type_subset_of_union_with_query(&ty, &other.types, query.types, query) {
                 continue;
             }
 
