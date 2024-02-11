@@ -9,7 +9,7 @@ pub use union::*;
 
 use crate::lang::tokens::{Span, TkIdent};
 
-use super::{MId, ModItemSet, TypeAssignabilityQuery, TypeSubsetQuery};
+use super::{MId, TypeAssignabilityQuery, TypeSubsetQuery};
 
 #[derive(Debug, Clone)]
 pub struct TyType {

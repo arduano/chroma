@@ -2,10 +2,7 @@ use std::collections::HashMap;
 
 use crate::lang::{
     ast::items::{SyArithmeticBinaryOp, SyBinaryOp, SyBooleanLogicBinaryOp},
-    solver::{
-        type_system::*, Id, Id2OrVal, MId, MIdOrVal, ModItemSet, ModuleGroupCompilation,
-        TyIdOrValWithSpan,
-    },
+    solver::{type_system::*, Id, MId, ModItemSet, ModuleGroupCompilation, TyIdOrValWithSpan},
     tokens::{ItemWithSpan, Span, TkIdent},
     CompilerError, ErrorCollector,
 };
@@ -107,7 +104,7 @@ pub fn parse_type_from_linked_type(
             TyTypeKind::Struct(TyStruct::new_literal(fields))
         }
         LiTypeKind::StaticTypeReference(linked_ty_id) => {
-            let mut ty_id = parse_type_from_linked_type_id(*linked_ty_id, compilation);
+            let ty_id = parse_type_from_linked_type_id(*linked_ty_id, compilation);
             return TyIdOrValWithSpan::new_id(ty_id, linked_ty.span());
         }
         LiTypeKind::BinaryExpression(binary) => {

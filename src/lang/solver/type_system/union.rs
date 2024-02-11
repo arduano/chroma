@@ -1,7 +1,6 @@
 use crate::lang::{
     solver::{
-        MId, MIdOrVal, ModItemSet, TyIdOrValWithSpan, TypeAssignabilityQuery, TypeIdWithSpan,
-        TypeSubsetQuery,
+        ModItemSet, TyIdOrValWithSpan, TypeAssignabilityQuery, TypeIdWithSpan, TypeSubsetQuery,
     },
     tokens::{Span, TkIdent},
     CompilerError, ErrorCollector,

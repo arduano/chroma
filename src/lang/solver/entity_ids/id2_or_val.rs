@@ -1,4 +1,4 @@
-use super::{Id, Id2};
+use super::Id2;
 
 pub enum Id2OrVal<M, T> {
     Id(Id2<M, T>),

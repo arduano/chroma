@@ -24,7 +24,7 @@ impl<M, T> GroupItemSetWithRefs<M, T> {
         }
     }
 
-    pub fn get(&self, mut id: Id2<M, T>) -> Option<&T> {
+    pub fn get(&self, id: Id2<M, T>) -> Option<&T> {
         let mut id = port_id_in(id);
         loop {
             match self.item_set.get(id) {
