@@ -241,7 +241,6 @@ fn resolve_binary_expression(
                         union1_ty.as_type_id_or_val(),
                         operator,
                         union2_ty.as_type_id_or_val(),
-                        name.clone(),
                         compilation,
                     );
 
@@ -276,14 +275,12 @@ fn resolve_binary_expression(
                         other_ty.clone(),
                         operator,
                         union_ty.as_type_id_or_val(),
-                        name.clone(),
                         compilation,
                     ),
                     Side::Right => resolve_non_union_binary_expression(
                         union_ty.as_type_id_or_val(),
                         operator,
                         other_ty.clone(),
-                        name.clone(),
                         compilation,
                     ),
                 };
@@ -300,7 +297,7 @@ fn resolve_binary_expression(
                 return TyIdOrValWithSpan::new_val(ty, expr_span);
             }
         }
-        (_, _) => resolve_non_union_binary_expression(left, operator, right, name, compilation),
+        (_, _) => resolve_non_union_binary_expression(left, operator, right, compilation),
     }
 }
 
@@ -308,7 +305,6 @@ fn resolve_non_union_binary_expression(
     left: TyIdOrValWithSpan,
     operator: &SyBinaryOp,
     right: TyIdOrValWithSpan,
-    name: Option<TkIdent>,
     compilation: &mut TypeFromLinkedTypeCompilation,
 ) -> TyIdOrValWithSpan {
     let left_ty = compilation.types.get_val_for_val_or_id(&left.ty);
