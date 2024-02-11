@@ -60,7 +60,7 @@ impl_binary_op!(SyArithmeticBinaryOp, "arithmetic binary operator", {
     Minus(TkMinus);
     Mult(TkMult);
     Div(TkDiv);
-    Mod(TkMod);
+    Mod(TkModulo);
 });
 
 impl_binary_op!(SyComparativeBinaryOp, "comparative binary operator", {

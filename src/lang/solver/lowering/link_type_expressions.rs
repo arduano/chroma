@@ -121,6 +121,9 @@ pub fn link_type_expression_ast(
                 operator: binary.operator.clone(),
             })
         }
+        SyExpression::Parentheses(expr) => {
+            return link_type_expression_ast(&expr.expression, name, compilation, namespace);
+        }
         SyExpression::Invalid => LiTypeKind::Unknown,
     };
 

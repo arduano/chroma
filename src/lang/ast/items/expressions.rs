@@ -27,6 +27,7 @@ pub enum SyExpression {
     IntLiteral(SyIntLiteral),
     FloatLiteral(SyFloatLiteral),
     ObjectLiteral(SyObjectLiteral),
+    Parentheses(SyParenthesizedExpr),
     Binary(SyBinary),
     Invalid,
 }
@@ -39,6 +40,7 @@ impl SyExpression {
             Self::IntLiteral(_) => true,
             Self::FloatLiteral(_) => true,
             Self::ObjectLiteral(_) => true,
+            Self::Parentheses(_) => true,
             Self::Binary(_) => true,
             Self::Invalid => false,
         }
@@ -72,6 +74,7 @@ impl AstItem for SyExpression {
             try_parse!(IntLiteral);
             try_parse!(FloatLiteral);
             try_parse!(ObjectLiteral);
+            try_parse!(Parentheses);
 
             Err(ParseError::NoMatch)
         }
@@ -118,6 +121,7 @@ impl AstItem for SyExpression {
             Self::IntLiteral(expr) => expr.check(env, errors),
             Self::FloatLiteral(expr) => expr.check(env, errors),
             Self::ObjectLiteral(expr) => expr.check(env, errors),
+            Self::Parentheses(expr) => expr.check(env, errors),
             Self::Binary(expr) => expr.check(env, errors),
             Self::Invalid => {}
         }
@@ -132,6 +136,7 @@ impl ItemWithSpan for SyExpression {
             Self::IntLiteral(expr) => expr.span(),
             Self::FloatLiteral(expr) => expr.span(),
             Self::ObjectLiteral(expr) => expr.span(),
+            Self::Parentheses(expr) => expr.span(),
             Self::Binary(expr) => expr.span(),
             Self::Invalid => Span::new_empty(),
         }
@@ -254,5 +259,39 @@ impl AstItem for SyFloatLiteral {
 impl ItemWithSpan for SyFloatLiteral {
     fn span(&self) -> Span {
         self.literal.span()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct SyParenthesizedExpr {
+    pub parentheses: TkParens,
+    pub expression: Box<Attempted<SyExpression>>,
+}
+
+impl AstItem for SyParenthesizedExpr {
+    const NAME: &'static str = "parenthesized expression";
+
+    fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
+    where
+        Self: Sized,
+    {
+        let (parentheses, expression) = reader.parse_optional_group(env)?;
+
+        Ok(Self {
+            parentheses,
+            expression: Box::new(Ok(expression)),
+        })
+    }
+
+    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
+        if let Ok(expression) = &*self.expression {
+            expression.check(env, errors);
+        }
+    }
+}
+
+impl ItemWithSpan for SyParenthesizedExpr {
+    fn span(&self) -> Span {
+        self.parentheses.span()
     }
 }

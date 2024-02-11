@@ -111,7 +111,7 @@ pub fn parse_type_from_linked_type(
             let left = parse_type_from_linked_type(&binary.left, compilation);
             let right = parse_type_from_linked_type(&binary.right, compilation);
 
-            return resolve_non_union_binary_expression(
+            return resolve_binary_expression(
                 left,
                 &binary.operator,
                 right,
@@ -173,13 +173,136 @@ fn get_struct_literal_fields_from_ty_and_execute_callback<'a>(
     }
 }
 
-// fn resolve_binary_expression(
-//     compilation: &mut TypeFromLinkedTypeCompilation,
-//     binary: &LiBinaryTypeExpression,
-// ) -> TyType {
-//     let left = parse_type_from_linked_type(&binary.left, compilation);
-//     let right = parse_type_from_linked_type(&binary.right, compilation);
-// }
+/// Resolve a binary expression while accounting for unions. Any union types will be resolved
+/// item-wise and then combined together again.
+fn resolve_binary_expression(
+    left: TyIdOrValWithSpan,
+    operator: &SyBinaryOp,
+    right: TyIdOrValWithSpan,
+    name: Option<TkIdent>,
+    compilation: &mut TypeFromLinkedTypeCompilation,
+) -> TyIdOrValWithSpan {
+    let left_ty = compilation.types.get_val_for_val_or_id(&left.ty);
+    let right_ty = compilation.types.get_val_for_val_or_id(&right.ty);
+
+    let expr_span = left.span.join(&right.span);
+
+    let Some(left_ty) = left_ty else {
+        compilation.errors.push(CompilerError::new(
+            "Recursive type computations are not allowed",
+            left.span.clone(),
+        ));
+        return TyIdOrValWithSpan::new_val(
+            TyType::new(TyTypeKind::Unknown, expr_span.clone()),
+            expr_span,
+        );
+    };
+
+    let Some(right_ty) = right_ty else {
+        compilation.errors.push(CompilerError::new(
+            "Recursive type computations are not allowed",
+            right.span.clone(),
+        ));
+        return TyIdOrValWithSpan::new_val(
+            TyType::new(TyTypeKind::Unknown, expr_span.clone()),
+            expr_span,
+        );
+    };
+
+    // Resolve unions first
+    match operator {
+        SyBinaryOp::BooleanLogic(SyBooleanLogicBinaryOp::Or(_)) => {
+            let union = TyUnion::union_types(
+                left,
+                right,
+                expr_span.clone(),
+                name.clone(),
+                compilation.types,
+                compilation.errors,
+            );
+            return union;
+        }
+        _ => {}
+    }
+
+    enum Side {
+        Left,
+        Right,
+    }
+
+    match ((&left_ty.kind, Side::Left), (&right_ty.kind, Side::Right)) {
+        ((TyTypeKind::Union(union1), _), (TyTypeKind::Union(union2), _)) => {
+            let mut new_union = TyUnion::new();
+            let union1_types = union1.types.clone(); // Keep the borrow checker happy
+            let union2_types = union2.types.clone(); // Keep the borrow checker happy
+            for union1_ty in &union1_types {
+                for union2_ty in &union2_types {
+                    let resolved = resolve_non_union_binary_expression(
+                        union1_ty.as_type_id_or_val(),
+                        operator,
+                        union2_ty.as_type_id_or_val(),
+                        name.clone(),
+                        compilation,
+                    );
+
+                    new_union.insert_type(resolved, compilation.types, compilation.errors);
+                }
+            }
+
+            if new_union.types.len() == 1 {
+                let ty = &new_union.types[0];
+                return TyIdOrValWithSpan::new_id(ty.id, ty.span.clone());
+            } else {
+                let kind = TyTypeKind::Union(new_union);
+                let ty = TyType::new_named(name, kind, expr_span.clone());
+                return TyIdOrValWithSpan::new_val(ty, expr_span);
+            }
+        }
+        ((_, side), (TyTypeKind::Union(union), _)) | ((TyTypeKind::Union(union), _), (_, side)) => {
+            let mut new_union = TyUnion::new();
+            let union_types = union.types.clone(); // Keep the borrow checker happy
+
+            // Get the other type, and ensure that it has an ID so we don't have to clone a non-id type a lot.
+            let other_ty = match side {
+                Side::Left => left,
+                Side::Right => right,
+            };
+            let other_ty_id = compilation.types.get_id_for_val_or_id(other_ty.ty);
+            let other_ty = TyIdOrValWithSpan::new_id(other_ty_id, other_ty.span);
+
+            for union_ty in &union_types {
+                let resolved = match side {
+                    Side::Left => resolve_non_union_binary_expression(
+                        other_ty.clone(),
+                        operator,
+                        union_ty.as_type_id_or_val(),
+                        name.clone(),
+                        compilation,
+                    ),
+                    Side::Right => resolve_non_union_binary_expression(
+                        union_ty.as_type_id_or_val(),
+                        operator,
+                        other_ty.clone(),
+                        name.clone(),
+                        compilation,
+                    ),
+                };
+
+                new_union.insert_type(resolved, compilation.types, compilation.errors);
+            }
+
+            if new_union.types.len() == 1 {
+                let ty = &new_union.types[0];
+                return TyIdOrValWithSpan::new_id(ty.id, ty.span.clone());
+            } else {
+                let kind = TyTypeKind::Union(new_union);
+                let ty = TyType::new_named(name, kind, expr_span.clone());
+                return TyIdOrValWithSpan::new_val(ty, expr_span);
+            }
+        }
+        (_, _) => resolve_non_union_binary_expression(left, operator, right, name, compilation),
+    }
+}
 
 fn resolve_non_union_binary_expression(
     left: TyIdOrValWithSpan,
@@ -220,10 +343,10 @@ fn resolve_non_union_binary_expression(
 
     let push_invalid_op_error = || {
         compilation.errors.push(CompilerError::new(
-            "Invalid binary operation for types",
-            left.span.join(&right.span),
+            "Invalid binary operation for types (2)",
+            joined_span.clone(),
         ));
-        TyType::new(TyTypeKind::Unknown, left.span.join(&right.span))
+        TyType::new(TyTypeKind::Unknown, joined_span)
     };
 
     macro_rules! invalid_op {
@@ -232,22 +355,6 @@ fn resolve_non_union_binary_expression(
             let ty = TyType::new(TyTypeKind::Unknown, operator.span());
             return TyIdOrValWithSpan::new_val(ty, expr_span);
         }};
-    }
-
-    // Resolve operators that apply to all types, e.g. making unions
-    match operator {
-        SyBinaryOp::BooleanLogic(SyBooleanLogicBinaryOp::Or(_)) => {
-            let union = TyUnion::union_types(
-                left,
-                right,
-                expr_span.clone(),
-                name.clone(),
-                compilation.types,
-                compilation.errors,
-            );
-            return union;
-        }
-        _ => {}
     }
 
     // Resolve per-type operators
@@ -274,7 +381,7 @@ fn resolve_non_union_binary_expression(
         },
         _ => {
             compilation.errors.push(CompilerError::new(
-                "Invalid binary operation for types",
+                "Invalid binary operation for types (1)",
                 expr_span.clone(),
             ));
             let ty = TyType::new(TyTypeKind::Unknown, op_span);

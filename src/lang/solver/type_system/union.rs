@@ -87,7 +87,7 @@ impl TyUnion {
         Self { types }
     }
 
-    fn insert_type(
+    pub fn insert_type(
         &mut self,
         ty_ref: TyIdOrValWithSpan,
         types: &mut ModItemSet<TyType>,
@@ -152,6 +152,7 @@ impl TyUnion {
         errors: &mut ErrorCollector,
     ) -> TyIdOrValWithSpan {
         let mut new_union = TyUnion::new();
+
         new_union.insert_type(left, types, errors);
         new_union.insert_type(right, types, errors);
 
