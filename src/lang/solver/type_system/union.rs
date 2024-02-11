@@ -1,7 +1,4 @@
-use crate::lang::{
-    solver::{MId, ModItemSet, TypeAssignabilityQuery, TypeSubsetQuery},
-    tokens::TkIdent,
-};
+use crate::lang::solver::{MId, ModItemSet, TypeAssignabilityQuery, TypeSubsetQuery};
 
 use super::{TyType, TyTypeKind, TyTypeLogic, TyTypeOrBorrowRef, TyTypeOrRef};
 
@@ -258,7 +255,7 @@ impl TyTypeLogic for TyUnion {
         true
     }
 
-    fn get_intersection(&self, other: &Self) -> Self {
+    fn get_intersection(&self, _other: &Self) -> Self {
         todo!()
     }
 }

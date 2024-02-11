@@ -217,7 +217,7 @@ impl<'a> TyTypeOrBorrowRef<'a> {
     pub fn to_id(self, types: &mut ModItemSet<TyType>) -> MId<TyType> {
         match self {
             TyTypeOrBorrowRef::Owned(ty) => types.add_value(ty),
-            TyTypeOrBorrowRef::Borrowed(ty) => panic!("Can't convert borrowed type to id"),
+            TyTypeOrBorrowRef::Borrowed(_ty) => panic!("Can't convert borrowed type to id"),
             TyTypeOrBorrowRef::Ref(id) => id,
         }
     }
@@ -225,7 +225,9 @@ impl<'a> TyTypeOrBorrowRef<'a> {
     pub fn to_nonborrowed(self) -> TyTypeOrRef {
         match self {
             TyTypeOrBorrowRef::Owned(ty) => TyTypeOrRef::Owned(ty),
-            TyTypeOrBorrowRef::Borrowed(ty) => panic!("Can't convert borrowed type to nonborrowed"),
+            TyTypeOrBorrowRef::Borrowed(_ty) => {
+                panic!("Can't convert borrowed type to nonborrowed")
+            }
             TyTypeOrBorrowRef::Ref(id) => TyTypeOrRef::Ref(id),
         }
     }
