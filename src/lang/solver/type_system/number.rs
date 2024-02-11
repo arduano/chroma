@@ -4,7 +4,7 @@ use super::TyTypeLogic;
 
 #[derive(Debug, Clone)]
 pub struct TyNumber {
-    literal: Option<TyNumberLiteral>,
+    pub literal: Option<TyNumberLiteral>,
 }
 
 impl TyNumber {

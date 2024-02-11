@@ -7,26 +7,28 @@ pub use string::*;
 mod structure;
 pub use structure::*;
 
-use crate::lang::tokens::TkIdent;
+use crate::lang::tokens::{Span, TkIdent};
 
 use super::{MId, TypeAssignabilityQuery};
 
 #[derive(Debug, Clone)]
 pub struct TyType {
     pub name: Option<TkIdent>,
+    pub span: Span,
     pub kind: TyTypeKind,
 }
 
 impl TyType {
-    pub fn new(kind: TyTypeKind) -> Self {
+    pub fn new(kind: TyTypeKind, span: Span) -> Self {
         Self {
             name: None,
-            kind: kind,
+            kind,
+            span,
         }
     }
 
-    pub fn new_named(name: Option<TkIdent>, kind: TyTypeKind) -> Self {
-        Self { name, kind: kind }
+    pub fn new_named(name: Option<TkIdent>, kind: TyTypeKind, span: Span) -> Self {
+        Self { name, kind, span }
     }
 
     pub fn kind(&self) -> &TyTypeKind {
@@ -122,6 +124,7 @@ impl TyTypeLogic for TyType {
         Self {
             name: None,
             kind: self.kind.get_intersection(&other.kind),
+            span: Span::new_empty(),
         }
     }
 }

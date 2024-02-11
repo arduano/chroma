@@ -1,4 +1,5 @@
 use crate::lang::{
+    ast::items::SyBinaryOp,
     solver::MId,
     tokens::{Span, TkIdent, TkInteger, TkString},
 };
@@ -41,6 +42,7 @@ pub enum LiTypeKind {
     String(LiString),
     Struct(LiStruct),
     StaticTypeReference(MId<LiType>),
+    BinaryExpression(LiBinaryTypeExpression),
     Unknown,
     Never,
 }
@@ -53,4 +55,11 @@ pub struct LiNumber {
 #[derive(Debug, Clone)]
 pub struct LiString {
     pub literal: Option<TkString>,
+}
+
+#[derive(Debug, Clone)]
+pub struct LiBinaryTypeExpression {
+    pub left: Box<LiType>,
+    pub right: Box<LiType>,
+    pub operator: SyBinaryOp,
 }

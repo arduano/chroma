@@ -6,7 +6,9 @@ use super::{ItemWithSpan, Span, TokenReader, TokenValue};
 // = Traits =
 // ==========
 
-pub trait TokenItem: ItemWithSpan {}
+pub trait TokenItem: ItemWithSpan {
+    const STATIC_NAME: &'static str;
+}
 
 pub trait TokenDisplayStatic {
     fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result;
@@ -54,6 +56,7 @@ where
 
 /// A helper trait to automatically implement `TokenItem`, `ItemWithSpan`, `ParseSimpleToken` and `DisplayStatic` for simple tokens.
 pub trait ParseSimpleTokenImpl: Sized + ItemWithSpan {
+    const STATIC_NAME_IMPL: &'static str;
     fn parse(reader: &mut TokenReader) -> Option<Self>;
     fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result;
 }
@@ -64,7 +67,9 @@ impl<T: ParseSimpleTokenImpl> ParseSimpleToken for T {
     }
 }
 
-impl<T: ParseSimpleTokenImpl> TokenItem for T {}
+impl<T: ParseSimpleTokenImpl> TokenItem for T {
+    const STATIC_NAME: &'static str = T::STATIC_NAME_IMPL;
+}
 impl<T: ParseSimpleTokenImpl> TokenDisplayStatic for T {
     fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         T::display(f)
@@ -81,6 +86,8 @@ pub struct TkBlockLineEndSearch {
 }
 
 impl ParseSimpleTokenImpl for TkBlockLineEndSearch {
+    const STATIC_NAME_IMPL: &'static str = "block line end search";
+
     fn parse(reader: &mut TokenReader) -> Option<Self> {
         // Don't trim, as trimming will skip newlines.
         let next_token = reader.next_token()?;
@@ -112,6 +119,8 @@ pub struct TkDataLineEndSearch {
 }
 
 impl ParseSimpleTokenImpl for TkDataLineEndSearch {
+    const STATIC_NAME_IMPL: &'static str = "data line end search";
+
     fn parse(reader: &mut TokenReader) -> Option<Self> {
         // Don't trim, as trimming will skip newlines.
         let next_token = reader.next_token()?;
@@ -161,6 +170,8 @@ impl TkIdent {
 }
 
 impl ParseSimpleTokenImpl for TkIdent {
+    const STATIC_NAME_IMPL: &'static str = "identifier";
+
     fn parse(reader: &mut TokenReader) -> Option<Self> {
         reader.trim_empty();
         let next_token = reader.next_token()?;
@@ -200,6 +211,8 @@ impl TkInteger {
 }
 
 impl ParseSimpleTokenImpl for TkInteger {
+    const STATIC_NAME_IMPL: &'static str = "integer";
+
     fn parse(reader: &mut TokenReader) -> Option<Self> {
         reader.trim_empty();
         let next_token = reader.next_token()?;
@@ -239,6 +252,8 @@ impl TkFloat {
 }
 
 impl ParseSimpleTokenImpl for TkFloat {
+    const STATIC_NAME_IMPL: &'static str = "float";
+
     fn parse(reader: &mut TokenReader) -> Option<Self> {
         reader.trim_empty();
         let next_token = reader.next_token()?;
@@ -278,6 +293,8 @@ impl TkString {
 }
 
 impl ParseSimpleTokenImpl for TkString {
+    const STATIC_NAME_IMPL: &'static str = "string";
+
     fn parse(reader: &mut TokenReader) -> Option<Self> {
         reader.trim_empty();
         let next_token = reader.next_token()?;
@@ -318,6 +335,8 @@ macro_rules! simple_token {
         }
 
         impl ParseSimpleTokenImpl for $name {
+            const STATIC_NAME_IMPL: &'static str = const_format::concatcp!($(TokenValue::$token.as_static_str_name()),*);
+
             fn parse(reader: &mut TokenReader) -> Option<Self> {
                 reader.trim_empty();
                 let matches = Self::MATCHES;
@@ -348,10 +367,7 @@ macro_rules! simple_token {
             }
 
             fn display(f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                let matches = Self::MATCHES;
-                for token in matches.iter() {
-                    write!(f, "{}", token)?;
-                }
+                write!(f, "{}", Self::STATIC_NAME)?;
                 Ok(())
             }
         }
@@ -374,6 +390,8 @@ macro_rules! simple_ident_token {
         }
 
         impl ParseSimpleTokenImpl for $name {
+            const STATIC_NAME_IMPL: &'static str = $matches;
+
             fn parse(reader: &mut TokenReader) -> Option<Self> {
                 reader.trim_empty();
                 let next_token = reader.next_token()?;
@@ -410,7 +428,9 @@ macro_rules! group_token {
             span: Span,
         }
 
-        impl TokenItem for $name {}
+        impl TokenItem for $name {
+            const STATIC_NAME: &'static str = $display;
+        }
         impl ItemWithSpan for $name {
             fn span(&self) -> Span {
                 self.span.clone()

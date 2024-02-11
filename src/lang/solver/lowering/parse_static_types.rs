@@ -1,12 +1,13 @@
-use std::collections::HashMap;
+use std::{borrow::Cow, collections::HashMap};
 
 use crate::lang::{
+    ast::items::{SyArithmeticBinaryOp, SyBinaryOp},
     solver::{type_system::*, Id, MId, ModItemSet, ModuleGroupCompilation},
-    tokens::Span,
+    tokens::{ItemWithSpan, Span},
     CompilerError, ErrorCollector,
 };
 
-use super::{LiStructField, LiType, LiTypeKind};
+use super::{LiBinaryTypeExpression, LiStructField, LiType, LiTypeKind};
 
 /// A type for encapsulating which parts of this compilation step are mutated
 /// and which parts are immutable. This keeps the compiler happy.
@@ -85,17 +86,16 @@ pub fn parse_type_from_linked_type(
                         add_field_if_not_exists(field);
                     }
                     LiStructField::FieldSpread(spread) => {
-                        let fields = get_struct_literal_fields_from_ty(
+                        get_struct_literal_fields_from_ty_and_execute_callback(
                             &spread.spread,
                             &spread.spread.span,
                             compilation,
+                            |fields| {
+                                for field in fields.iter().rev() {
+                                    add_field_if_not_exists(field.clone());
+                                }
+                            },
                         );
-
-                        if let Some(fields) = fields {
-                            for field in fields.iter().rev() {
-                                add_field_if_not_exists(field.clone());
-                            }
-                        }
                     }
                     LiStructField::ComputedKeyValue(_computed) => todo!(),
                 }
@@ -122,41 +122,61 @@ pub fn parse_type_from_linked_type(
 
             TyTypeKind::Reference(ty_id)
         }
+        LiTypeKind::BinaryExpression(binary) => {
+            todo!();
+        }
         LiTypeKind::Unknown => TyTypeKind::Unknown,
         LiTypeKind::Never => TyTypeKind::Never,
     };
 
-    TyType::new_named(linked_ty.name.clone(), ty_kind)
+    TyType::new_named(linked_ty.name.clone(), ty_kind, linked_ty.span.clone())
 }
 
-fn get_struct_literal_fields_from_ty<'a>(
+/// Resolve type references to get the underlying type
+fn normalize_references<'a>(ty: TyType, types: &'a ModItemSet<TyType>) -> Option<Cow<'a, TyType>> {
+    // First, check if the type is a reference or not. Non reference types
+    // get returned directly.
+    match &ty.kind {
+        TyTypeKind::Reference(id) => {
+            let mut underlying_type = types.get(*id);
+
+            loop {
+                let Some(ty) = underlying_type else {
+                    return None;
+                };
+
+                match &ty.kind {
+                    TyTypeKind::Reference(id) => {
+                        underlying_type = types.get(*id);
+                    }
+                    _ => return Some(Cow::Borrowed(ty)),
+                }
+            }
+        }
+        _ => Some(Cow::Owned(ty)),
+    }
+}
+
+// I really tried avoiding a callback system here, but ownership semantics make it much much more verbose.
+// The type can either be owned, or a reference type and therefore you get a borrow. Instead of dealing with
+// mapping a Cow through 4 layers, I'm just passing a reference to a callback.
+fn get_struct_literal_fields_from_ty_and_execute_callback<'a>(
     ty: &LiType,
     ref_span: &Span,
     compilation: &'a mut TypeFromLinkedTypeCompilation,
-) -> Option<&'a Vec<TyStructLiteralField>> {
+    callback: impl FnOnce(&Vec<TyStructLiteralField>),
+) {
     let spread_ty_resolved = parse_type_from_linked_type(&ty, compilation);
-    let mut spread_id = compilation.types.add_value(spread_ty_resolved);
+    let spread_ty = normalize_references(spread_ty_resolved, compilation.types);
 
-    loop {
-        let spread_ty = &compilation.types.get(spread_id);
-        let Some(spread_ty) = spread_ty else {
-            // Type not resolved yet, therefore this is likely a cyclical spread reference
-            compilation.errors.push(CompilerError::new(
-                "Cyclical type reference in struct spread",
-                ref_span.clone(),
-            ));
-            return None;
-        };
-
-        match &spread_ty.kind {
-            TyTypeKind::Reference(id) => {
-                spread_id = *id;
-            }
-            _ => break,
-        }
-    }
-
-    let spread_ty = &compilation.types[spread_id];
+    let Some(spread_ty) = spread_ty else {
+        // Type not resolved yet, therefore this is likely a cyclical spread reference
+        compilation.errors.push(CompilerError::new(
+            "Cyclical type reference in struct spread",
+            ref_span.clone(),
+        ));
+        return;
+    };
 
     match &spread_ty.kind {
         TyTypeKind::Struct(spread_struct) => {
@@ -166,17 +186,111 @@ fn get_struct_literal_fields_from_ty<'a>(
                     "Expected struct literal in struct spread",
                     ref_span.clone(),
                 ));
-                return None;
+                return;
             };
 
-            Some(&literal.fields)
+            callback(&literal.fields);
         }
         _ => {
             compilation.errors.push(CompilerError::new(
                 "Expected struct type in struct spread",
                 ref_span.clone(),
             ));
-            None
+            return;
         }
+    }
+}
+
+// fn resolve_binary_expression(
+//     compilation: &mut TypeFromLinkedTypeCompilation,
+//     binary: &LiBinaryTypeExpression,
+// ) -> TyType {
+//     let left = parse_type_from_linked_type(&binary.left, compilation);
+//     let right = parse_type_from_linked_type(&binary.right, compilation);
+// }
+
+fn resolve_non_union_binary_expression(
+    left: TyType,
+    operator: SyBinaryOp,
+    right: TyType,
+    compilation: &mut TypeFromLinkedTypeCompilation,
+) -> TyType {
+    let op_span = operator.span();
+    let expr_span = left.span.join(&right.span);
+    let left_span = left.span.clone();
+    let right_span = right.span.clone();
+
+    let left_resolved = normalize_references(left, compilation.types);
+    let right_resolved = normalize_references(right, compilation.types);
+
+    let Some(left_resolved) = left_resolved else {
+        compilation.errors.push(CompilerError::new(
+            "Recursive type computations are not allowed",
+            left_span.clone(),
+        ));
+        return TyType::new(TyTypeKind::Unknown, left_span);
+    };
+
+    let Some(right_resolved) = right_resolved else {
+        compilation.errors.push(CompilerError::new(
+            "Recursive type computations are not allowed",
+            right_span.clone(),
+        ));
+        return TyType::new(TyTypeKind::Unknown, right_span);
+    };
+
+    let push_invalid_op_error = |left: &TyType, right: &TyType| {
+        compilation.errors.push(CompilerError::new(
+            "Invalid binary operation for types",
+            left.span.join(&right.span),
+        ));
+        TyType::new(TyTypeKind::Unknown, left.span.join(&right.span))
+    };
+
+    macro_rules! invalid_op {
+        () => {{
+            push_invalid_op_error(&left_resolved, &right_resolved);
+            return TyType::new(TyTypeKind::Unknown, operator.span());
+        }};
+    }
+
+    match (&left_resolved.kind, &right_resolved.kind) {
+        (TyTypeKind::Number(self_number), TyTypeKind::Number(other_number)) => match operator {
+            SyBinaryOp::Arithmetic(op) => {
+                let left_lit = &self_number.literal;
+                let right_lit = &other_number.literal;
+
+                let (Some(left_lit), Some(right_lit)) = (left_lit, right_lit) else {
+                    return TyType::new(TyTypeKind::Number(TyNumber::new()), expr_span);
+                };
+
+                let result = run_arithmetic_op_on_numbers(left_lit.value, op, right_lit.value);
+
+                TyType::new(
+                    TyTypeKind::Number(TyNumber::from_literal(result)),
+                    expr_span,
+                )
+            }
+            _ => invalid_op!(),
+        },
+        _ => {
+            compilation.errors.push(CompilerError::new(
+                "Invalid binary operation for types",
+                expr_span,
+            ));
+            TyType::new(TyTypeKind::Unknown, op_span)
+        }
+    }
+}
+
+fn run_arithmetic_op_on_numbers(left: f64, operator: SyArithmeticBinaryOp, right: f64) -> f64 {
+    use SyArithmeticBinaryOp::*;
+
+    match operator {
+        Add(_) => left + right,
+        Minus(_) => left - right,
+        Mult(_) => left * right,
+        Div(_) => left / right,
+        Mod(_) => left % right,
     }
 }

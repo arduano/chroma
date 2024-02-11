@@ -107,7 +107,17 @@ pub fn link_type_expression_ast(
 
             LiTypeKind::Struct(LiStruct { entries: fields })
         }
-        SyExpression::Binary(_) => todo!(),
+        SyExpression::Binary(binary) => {
+            let left = link_type_expression_ast(&binary.left, None, compilation, namespace);
+            let right = link_type_expression_ast(&binary.right, None, compilation, namespace);
+
+            LiTypeKind::BinaryExpression(LiBinaryTypeExpression {
+                left: Box::new(left),
+                right: Box::new(right),
+                operator: binary.operator.clone(),
+            })
+        }
+        SyExpression::Invalid => LiTypeKind::Unknown,
     };
 
     LiType::new_named(name, kind, ast.span().clone())

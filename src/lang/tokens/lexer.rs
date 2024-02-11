@@ -172,6 +172,41 @@ impl TokenValue {
     pub fn is_whitespace_or_newline(&self) -> bool {
         matches!(self, TokenValue::Whitespace | TokenValue::Newline)
     }
+
+    pub const fn as_static_str_name(&self) -> &'static str {
+        match self {
+            TokenValue::Ident(_) => "identifier",
+            TokenValue::String(_) => "string",
+            TokenValue::Integer(_) => "integer",
+            TokenValue::Float(_) => "float",
+            TokenValue::Parens(_) => "parentheses",
+            TokenValue::Braces(_) => "braces",
+            TokenValue::Brackets(_) => "brackets",
+            TokenValue::Whitespace => "whitespace",
+            TokenValue::Newline => "newline",
+            TokenValue::Comment => "comment",
+            TokenValue::Semi => ";",
+            TokenValue::Colon => ":",
+            TokenValue::Comma => ",",
+            TokenValue::Dot => ".",
+            TokenValue::Plus => "+",
+            TokenValue::Minus => "-",
+            TokenValue::Star => "*",
+            TokenValue::Slash => "/",
+            TokenValue::Percent => "%",
+            TokenValue::Caret => "^",
+            TokenValue::Exclamation => "!",
+            TokenValue::Tilde => "~",
+            TokenValue::Lt => "<",
+            TokenValue::Gt => ">",
+            TokenValue::Eq => "=",
+            TokenValue::Question => "?",
+            TokenValue::And => "&",
+            TokenValue::Or => "|",
+            TokenValue::Hash => "#",
+            TokenValue::At => "@",
+        }
+    }
 }
 
 impl std::fmt::Display for TokenValue {
@@ -181,32 +216,7 @@ impl std::fmt::Display for TokenValue {
             TokenValue::String(s) => write!(f, "\"{}\"", s),
             TokenValue::Integer(i) => write!(f, "{}", i),
             TokenValue::Float(fl) => write!(f, "{}", fl),
-            TokenValue::Parens(_) => write!(f, "(...)"),
-            TokenValue::Braces(_) => write!(f, "{{...}}"),
-            TokenValue::Brackets(_) => write!(f, "[...]"),
-            TokenValue::Whitespace => write!(f, "{{whitespace}}"),
-            TokenValue::Newline => write!(f, "{{newline}}"),
-            TokenValue::Comment => write!(f, "{{comment}}"),
-            TokenValue::Semi => write!(f, ";"),
-            TokenValue::Colon => write!(f, ":"),
-            TokenValue::Comma => write!(f, ","),
-            TokenValue::Dot => write!(f, "."),
-            TokenValue::Plus => write!(f, "+"),
-            TokenValue::Minus => write!(f, "-"),
-            TokenValue::Star => write!(f, "*"),
-            TokenValue::Slash => write!(f, "/"),
-            TokenValue::Percent => write!(f, "%"),
-            TokenValue::Caret => write!(f, "^"),
-            TokenValue::Exclamation => write!(f, "!"),
-            TokenValue::Tilde => write!(f, "~"),
-            TokenValue::Lt => write!(f, "<"),
-            TokenValue::Gt => write!(f, ">"),
-            TokenValue::Eq => write!(f, "="),
-            TokenValue::Question => write!(f, "?"),
-            TokenValue::And => write!(f, "&"),
-            TokenValue::Or => write!(f, "|"),
-            TokenValue::Hash => write!(f, "#"),
-            TokenValue::At => write!(f, "@"),
+            _ => write!(f, "{}", self.as_static_str_name()),
         }
     }
 }

@@ -26,6 +26,7 @@ pub enum SyExpression {
     StringLiteral(SyStringLiteral),
     ObjectLiteral(SyObjectLiteral),
     Binary(SyBinary),
+    Invalid,
 }
 
 impl SyExpression {
@@ -35,6 +36,7 @@ impl SyExpression {
             Self::StringLiteral(_) => true,
             Self::ObjectLiteral(_) => true,
             Self::Binary(_) => true,
+            Self::Invalid => false,
         }
     }
 }
@@ -107,6 +109,7 @@ impl AstItem for SyExpression {
             Self::StringLiteral(expr) => expr.check(env, errors),
             Self::ObjectLiteral(expr) => expr.check(env, errors),
             Self::Binary(expr) => expr.check(env, errors),
+            Self::Invalid => {}
         }
     }
 }
@@ -118,6 +121,7 @@ impl ItemWithSpan for SyExpression {
             Self::StringLiteral(expr) => expr.span(),
             Self::ObjectLiteral(expr) => expr.span(),
             Self::Binary(expr) => expr.span(),
+            Self::Invalid => Span::new_empty(),
         }
     }
 }

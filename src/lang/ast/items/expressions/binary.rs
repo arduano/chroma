@@ -42,6 +42,16 @@ macro_rules! impl_binary_op {
                 }
             }
         }
+
+        impl $ty {
+            pub fn as_op_symbol_str(&self) -> &'static str {
+                match self {
+                    $(
+                        Self::$variant(_) => $tk::STATIC_NAME,
+                    )+
+                }
+            }
+        }
     };
 }
 
@@ -118,6 +128,17 @@ impl ItemWithSpan for SyBinaryOp {
             Self::Comparative(op) => op.span(),
             Self::BooleanLogic(op) => op.span(),
             Self::Bitwise(op) => op.span(),
+        }
+    }
+}
+
+impl SyBinaryOp {
+    pub fn as_op_symbol_str(&self) -> &'static str {
+        match self {
+            Self::Arithmetic(op) => op.as_op_symbol_str(),
+            Self::Comparative(op) => op.as_op_symbol_str(),
+            Self::BooleanLogic(op) => op.as_op_symbol_str(),
+            Self::Bitwise(op) => op.as_op_symbol_str(),
         }
     }
 }
@@ -241,9 +262,9 @@ fn op_precedence(left: &SyBinaryOp, right: &SyBinaryOp) -> BinaryOpPrecedence {
 
 #[derive(Debug, Clone)]
 pub struct SyBinary {
-    left: Box<Attempted<SyExpression>>,
-    op: SyBinaryOp,
-    right: Box<Attempted<SyExpression>>,
+    pub left: Box<Attempted<SyExpression>>,
+    pub operator: SyBinaryOp,
+    pub right: Box<Attempted<SyExpression>>,
 }
 
 impl AstItem for SyBinary {
@@ -271,7 +292,7 @@ impl ItemWithSpan for SyBinary {
     fn span(&self) -> Span {
         self.left
             .span()
-            .join(&self.op.span())
+            .join(&self.operator.span())
             .join(&self.right.span())
     }
 }
@@ -320,7 +341,11 @@ impl BinaryOpChain {
         };
         let right = right_cell.take().unwrap();
 
-        let binary_expr = SyBinary { left, op, right };
+        let binary_expr = SyBinary {
+            left,
+            operator: op,
+            right,
+        };
 
         *right_cell = Some(Box::new(Ok(SyExpression::Binary(binary_expr))));
     }
@@ -383,9 +408,25 @@ impl ExpressionBottomUpParse for SyBinary {
                 let left = chain.op_at(index - 1);
                 let right = chain.op_at(index);
 
-                if op_precedence(left, right) == BinaryOpPrecedence::Right {
-                    chain.group_op(index);
-                    grouped_right = true;
+                let precedence = op_precedence(left, right);
+                match precedence {
+                    BinaryOpPrecedence::Left => {
+                        // Continue
+                    }
+                    BinaryOpPrecedence::Right => {
+                        // Group
+                        chain.group_op(index);
+                        grouped_right = true;
+                    }
+                    BinaryOpPrecedence::Illegal => {
+                        // Return invalid expression
+                        reader.add_error(CompilerError::new(
+                            "Ambiguous binary operator precedence",
+                            chain.op_at(index).span(),
+                        ));
+
+                        return Err(SyExpression::Invalid);
+                    }
                 }
             }
 
