@@ -2,7 +2,9 @@ use std::collections::HashMap;
 
 use crate::lang::{
     ast::items::{SyArithmeticBinaryOp, SyBinaryOp, SyBooleanLogicBinaryOp},
-    solver::{type_system::*, Id, MId, ModItemSet, ModuleGroupCompilation, TyIdOrValWithSpan},
+    solver::{
+        type_system::*, Id, MId, ModItemSet, ModuleGroupCompilation, TyIdOrValWithSpan, TypeData,
+    },
     tokens::{ItemWithSpan, Span, TkIdent},
     CompilerError, ErrorCollector,
 };
@@ -15,7 +17,7 @@ pub struct TypeFromLinkedTypeCompilation<'a> {
     pub current_module_id: Id<ModuleGroupCompilation>,
     pub linked_type_definitions: &'a ModItemSet<LiType>,
     pub linked_type_to_type_mapping: &'a mut HashMap<MId<LiType>, MId<TyType>>,
-    pub types: &'a mut ModItemSet<TyType>,
+    pub type_data: &'a mut TypeData,
     pub errors: &'a mut ErrorCollector,
 }
 
@@ -27,7 +29,7 @@ pub fn parse_type_from_linked_type_id(
         return *existing_type;
     }
 
-    let allocated_id = compilation.types.allocate_id();
+    let allocated_id = compilation.type_data.types.allocate_id();
 
     compilation
         .linked_type_to_type_mapping
@@ -36,6 +38,7 @@ pub fn parse_type_from_linked_type_id(
     let linked_ty = &compilation.linked_type_definitions[linked_ty_id];
     let value = parse_type_from_linked_type(linked_ty, compilation);
     let id = compilation
+        .type_data
         .types
         .insert_for_allocated_value(allocated_id, value.ty);
 
@@ -76,7 +79,7 @@ pub fn parse_type_from_linked_type(
                 match entry {
                     LiStructField::KeyValue(kv) => {
                         let value = parse_type_from_linked_type(&kv.value, compilation);
-                        let value_id = compilation.types.get_id_for_val_or_id(value.ty);
+                        let value_id = compilation.type_data.types.get_id_for_val_or_id(value.ty);
 
                         let field = TyStructLiteralField {
                             name: kv.key.clone(),
@@ -138,6 +141,7 @@ fn get_struct_literal_fields_from_ty_and_execute_callback<'a>(
 ) {
     let spread_ty_resolved = parse_type_from_linked_type(&ty, compilation);
     let spread_ty = compilation
+        .type_data
         .types
         .get_val_for_val_or_id(&spread_ty_resolved.ty);
 
@@ -182,10 +186,25 @@ fn resolve_binary_expression(
     name: Option<TkIdent>,
     compilation: &mut TypeFromLinkedTypeCompilation,
 ) -> TyIdOrValWithSpan {
-    let left_ty = compilation.types.get_val_for_val_or_id(&left.ty);
-    let right_ty = compilation.types.get_val_for_val_or_id(&right.ty);
+    let left_ty = compilation.type_data.types.get_val_for_val_or_id(&left.ty);
+    let right_ty = compilation.type_data.types.get_val_for_val_or_id(&right.ty);
 
     let expr_span = left.span.join(&right.span);
+
+    // Resolve unions first
+    match operator {
+        SyBinaryOp::BooleanLogic(SyBooleanLogicBinaryOp::Or(_)) => {
+            let union = TyUnion::union_types(
+                left,
+                right,
+                expr_span.clone(),
+                name.clone(),
+                compilation.type_data,
+            );
+            return union;
+        }
+        _ => {}
+    }
 
     let Some(left_ty) = left_ty else {
         compilation.errors.push(CompilerError::new(
@@ -209,22 +228,6 @@ fn resolve_binary_expression(
         );
     };
 
-    // Resolve unions first
-    match operator {
-        SyBinaryOp::BooleanLogic(SyBooleanLogicBinaryOp::Or(_)) => {
-            let union = TyUnion::union_types(
-                left,
-                right,
-                expr_span.clone(),
-                name.clone(),
-                compilation.types,
-                compilation.errors,
-            );
-            return union;
-        }
-        _ => {}
-    }
-
     enum Side {
         Left,
         Right,
@@ -244,7 +247,12 @@ fn resolve_binary_expression(
                         compilation,
                     );
 
-                    new_union.insert_type(resolved, compilation.types, compilation.errors);
+                    new_union.insert_type_normalized(
+                        resolved,
+                        &mut compilation.type_data.types,
+                        &mut compilation.type_data.type_subsetability,
+                        compilation.errors,
+                    );
                 }
             }
 
@@ -266,7 +274,10 @@ fn resolve_binary_expression(
                 Side::Left => left,
                 Side::Right => right,
             };
-            let other_ty_id = compilation.types.get_id_for_val_or_id(other_ty.ty);
+            let other_ty_id = compilation
+                .type_data
+                .types
+                .get_id_for_val_or_id(other_ty.ty);
             let other_ty = TyIdOrValWithSpan::new_id(other_ty_id, other_ty.span);
 
             for union_ty in &union_types {
@@ -285,7 +296,12 @@ fn resolve_binary_expression(
                     ),
                 };
 
-                new_union.insert_type(resolved, compilation.types, compilation.errors);
+                new_union.insert_type_normalized(
+                    resolved,
+                    &mut compilation.type_data.types,
+                    &mut compilation.type_data.type_subsetability,
+                    compilation.errors,
+                );
             }
 
             if new_union.types.len() == 1 {
@@ -307,8 +323,8 @@ fn resolve_non_union_binary_expression(
     right: TyIdOrValWithSpan,
     compilation: &mut TypeFromLinkedTypeCompilation,
 ) -> TyIdOrValWithSpan {
-    let left_ty = compilation.types.get_val_for_val_or_id(&left.ty);
-    let right_ty = compilation.types.get_val_for_val_or_id(&right.ty);
+    let left_ty = compilation.type_data.types.get_val_for_val_or_id(&left.ty);
+    let right_ty = compilation.type_data.types.get_val_for_val_or_id(&right.ty);
 
     let joined_span = left.span.join(&right.span);
 

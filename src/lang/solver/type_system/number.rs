@@ -1,4 +1,4 @@
-use crate::lang::solver::{TypeAssignabilityQuery, TypeSubsetQuery};
+use crate::lang::solver::{MId, TypeAssignabilityQuery, TypeSubsetQuery};
 
 use super::TyTypeLogic;
 
@@ -44,5 +44,13 @@ impl TyTypeLogic for TyNumber {
 
     fn is_substate_of(&self, other: &Self, _query: &mut TypeSubsetQuery) -> bool {
         is_assignable(self, other)
+    }
+
+    fn get_normalized(&self) -> Option<Self> {
+        None
+    }
+
+    fn get_inner_types(&self) -> Vec<MId<super::TyType>> {
+        Vec::new()
     }
 }

@@ -143,7 +143,7 @@ impl TyTypeLogic for TyStruct {
                 return false;
             };
 
-            query.is_substate_of(self_field.value, other_field.value)
+            query.is_substet_of(self_field.value, other_field.value)
         });
 
         if !other_fields_are_substate {
@@ -161,5 +161,17 @@ impl TyTypeLogic for TyStruct {
         }
 
         true
+    }
+
+    fn get_normalized(&self) -> Option<Self> {
+        todo!();
+    }
+
+    fn get_inner_types(&self) -> Vec<MId<TyType>> {
+        if let Some(literal) = &self.literal {
+            literal.fields.iter().map(|field| field.value).collect()
+        } else {
+            Vec::new()
+        }
     }
 }

@@ -47,4 +47,12 @@ impl TyTypeLogic for TyString {
     fn is_substate_of(&self, other: &Self, _query: &mut TypeSubsetQuery) -> bool {
         is_assignable(self, other)
     }
+
+    fn get_normalized(&self) -> Option<Self> {
+        None
+    }
+
+    fn get_inner_types(&self) -> Vec<crate::lang::solver::MId<super::TyType>> {
+        Vec::new()
+    }
 }

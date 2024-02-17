@@ -124,7 +124,7 @@ pub fn get_type_id_for_linked_type_id(
         current_module_id: compilation.current_module_id,
         linked_type_definitions: &compilation.linked_type_definitions,
         linked_type_to_type_mapping: &mut compilation.linked_type_to_type_mapping,
-        types: &mut compilation.types,
+        type_data: &mut compilation.type_data,
         errors: &mut compilation.errors,
     };
 

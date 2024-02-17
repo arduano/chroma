@@ -1,6 +1,7 @@
 use crate::lang::{
     solver::{
-        ModItemSet, TyIdOrValWithSpan, TypeAssignabilityQuery, TypeIdWithSpan, TypeSubsetQuery,
+        MId, ModItemSet, TyIdOrValWithSpan, TypeAssignabilityQuery, TypeData, TypeIdWithSpan,
+        TypeSubsetQuery, TypeSubsetabilityCache,
     },
     tokens::{Span, TkIdent},
     CompilerError, ErrorCollector,
@@ -15,8 +16,13 @@ pub struct TyUnion {
     pub types: Vec<TypeIdWithSpan>,
 }
 
-fn is_type_subset_of(ty: &TyType, ty2: &TyType, types: &ModItemSet<TyType>) -> bool {
-    if !ty.is_substate_of(ty2, &mut TypeSubsetQuery::new(types)) {
+fn is_type_subset_of(
+    ty: &TyType,
+    ty2: &TyType,
+    types: &ModItemSet<TyType>,
+    type_subsetability: &mut TypeSubsetabilityCache,
+) -> bool {
+    if !ty.is_substate_of(ty2, &mut TypeSubsetQuery::new(types, type_subsetability)) {
         return false;
     }
     true
@@ -26,6 +32,7 @@ fn is_type_subset_of_union(
     ty: &TyType,
     union_list: &Vec<TypeIdWithSpan>,
     types: &ModItemSet<TyType>,
+    type_subsetability: &mut TypeSubsetabilityCache,
 ) -> bool {
     if union_list.len() == 0 {
         return false;
@@ -33,7 +40,10 @@ fn is_type_subset_of_union(
 
     for union_ty in union_list {
         let union_ty = &types[union_ty.id];
-        if !ty.is_substate_of(union_ty, &mut TypeSubsetQuery::new(types)) {
+        if !ty.is_substate_of(
+            union_ty,
+            &mut TypeSubsetQuery::new(&types, type_subsetability),
+        ) {
             return false;
         }
     }
@@ -87,32 +97,27 @@ impl TyUnion {
         Self { types }
     }
 
-    pub fn insert_type(
+    /// An internal function to prepare a type for normalized inserting. Returns true if it should be
+    /// inserted, false if not.
+    fn prepare_type_for_normalized_inserting(
         &mut self,
-        ty_ref: TyIdOrValWithSpan,
-        types: &mut ModItemSet<TyType>,
+        ty: &TyType,
+        types: &ModItemSet<TyType>,
+        type_subsetability: &mut TypeSubsetabilityCache,
         errors: &mut ErrorCollector,
-    ) {
-        let ty = types.get_val_for_val_or_id(&ty_ref.ty);
-
-        let Some(ty) = ty else {
-            // Recursive expression found, illegal
-            errors.push(CompilerError::new("Recursive type union", ty_ref.span));
-            return;
-        };
-
+    ) -> bool {
         if let TyTypeKind::Union(union) = &ty.kind {
             // Cloning here to keep the borrow checker happy
             let union_types_cloned = union.types.clone();
             for ty in &union_types_cloned {
-                self.insert_type(ty.as_type_id_or_val(), types, errors);
+                self.insert_type_by_id_normalized(&ty, types, type_subsetability, errors);
             }
-            return;
+            return false;
         }
 
         // If it's already a substate, ignore
-        if is_type_subset_of_union(&ty, &self.types, types) {
-            return;
+        if is_type_subset_of_union(&ty, &self.types, types, type_subsetability) {
+            return false;
         }
 
         // If it's a superset of any of the types, remove the types
@@ -122,22 +127,71 @@ impl TyUnion {
 
             let Some(union_ty) = union_ty else {
                 // Recursive expression found, illegal
-                errors.push(CompilerError::new(
-                    "Recursive type union",
-                    ty_ref.span.clone(),
-                ));
+                errors.push(CompilerError::new("Recursive type union", ty.span.clone()));
                 i += 1;
                 continue;
             };
 
-            if is_type_subset_of(&union_ty, &ty, types) {
+            if is_type_subset_of(&union_ty, &ty, &types, type_subsetability) {
                 self.types.remove(i);
             } else {
                 i += 1;
             }
         }
 
+        true
+    }
+
+    pub fn insert_type_by_id_normalized(
+        &mut self,
+        ty_ref: &TypeIdWithSpan,
+        types: &ModItemSet<TyType>,
+        type_subsetability: &mut TypeSubsetabilityCache,
+        errors: &mut ErrorCollector,
+    ) {
+        let ty = types
+            .get(ty_ref.id)
+            .expect("Incomplete expression when normalizing");
+
+        let should_insert =
+            self.prepare_type_for_normalized_inserting(&ty, types, type_subsetability, errors);
+
+        if !should_insert {
+            return;
+        }
+
+        // Insert the type
+        self.types
+            .push(TypeIdWithSpan::new(ty_ref.id, ty_ref.span.clone()));
+    }
+
+    pub fn insert_type_normalized(
+        &mut self,
+        ty_ref: TyIdOrValWithSpan,
+        types: &mut ModItemSet<TyType>,
+        type_subsetability: &mut TypeSubsetabilityCache,
+        errors: &mut ErrorCollector,
+    ) {
+        let ty = types
+            .get_val_for_val_or_id(&ty_ref.ty)
+            .expect("Incomplete expression when normalizing");
+
+        let should_insert =
+            self.prepare_type_for_normalized_inserting(&ty, types, type_subsetability, errors);
+
+        if !should_insert {
+            return;
+        }
+
         let id = types.get_id_for_val_or_id(ty_ref.ty);
+
+        // Insert the type
+        self.types
+            .push(TypeIdWithSpan::new(id, ty_ref.span.clone()));
+    }
+
+    pub fn insert_type(&mut self, ty_ref: TyIdOrValWithSpan, types_data: &mut TypeData) {
+        let id = types_data.types.get_id_for_val_or_id(ty_ref.ty);
 
         // Insert the type
         self.types.push(TypeIdWithSpan::new(id, ty_ref.span));
@@ -148,22 +202,16 @@ impl TyUnion {
         right: TyIdOrValWithSpan,
         span: Span,
         name: Option<TkIdent>,
-        types: &mut ModItemSet<TyType>,
-        errors: &mut ErrorCollector,
+        types_data: &mut TypeData,
     ) -> TyIdOrValWithSpan {
         let mut new_union = TyUnion::new();
 
-        new_union.insert_type(left, types, errors);
-        new_union.insert_type(right, types, errors);
+        new_union.insert_type(left, types_data);
+        new_union.insert_type(right, types_data);
 
-        if new_union.types.len() == 1 {
-            let ty = &new_union.types[0];
-            TyIdOrValWithSpan::new_id(ty.id, ty.span.clone())
-        } else {
-            let kind = TyTypeKind::Union(new_union);
-            let ty = TyType::new_named(name, kind, span.clone());
-            TyIdOrValWithSpan::new_val(ty, span)
-        }
+        let kind = TyTypeKind::Union(new_union);
+        let ty = TyType::new_named(name, kind, span.clone());
+        TyIdOrValWithSpan::new_val(ty, span)
     }
 
     pub fn check_assignable_to_single(
@@ -260,5 +308,26 @@ impl TyTypeLogic for TyUnion {
 
     fn get_intersection(&self, _other: &Self) -> Self {
         todo!()
+    }
+
+    fn get_normalized(&self) -> Option<Self> {
+        let mut new_union = TyUnion::new();
+
+        for ty in &self.types {
+            new_union.insert_type_normalized(ty.as_type_id_or_val(), todo!(), todo!(), todo!());
+        }
+
+        todo!();
+
+        if new_union.types.len() == self.types.len() {
+            // return None;
+        }
+        todo!();
+
+        // Some(new_union)
+    }
+
+    fn get_inner_types(&self) -> Vec<MId<TyType>> {
+        self.types.iter().map(|ty| ty.id).collect()
     }
 }

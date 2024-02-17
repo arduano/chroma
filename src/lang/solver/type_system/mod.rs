@@ -54,7 +54,7 @@ pub enum TyTypeKind {
     Unknown,
 }
 
-trait TyTypeLogic {
+trait TyTypeLogic: Sized {
     /// Check if one type is assignable to another. E.g. `{ foo: string, bar: string }` is assignable to `{ foo: string }`
     fn check_assignable_to(&self, other: &Self, query: &mut TypeAssignabilityQuery) -> bool;
 
@@ -62,6 +62,10 @@ trait TyTypeLogic {
     fn is_substate_of(&self, other: &Self, query: &mut TypeSubsetQuery) -> bool;
 
     fn get_intersection(&self, other: &Self) -> Self;
+
+    fn get_normalized(&self) -> Option<Self>;
+
+    fn get_inner_types(&self) -> Vec<MId<TyType>>;
 }
 
 impl TyTypeLogic for TyTypeKind {
@@ -146,6 +150,28 @@ impl TyTypeLogic for TyTypeKind {
             _ => false,
         }
     }
+
+    fn get_normalized(&self) -> Option<Self> {
+        match self {
+            TyTypeKind::Number(number) => number.get_normalized().map(TyTypeKind::Number),
+            TyTypeKind::String(string) => string.get_normalized().map(TyTypeKind::String),
+            TyTypeKind::Struct(struct_ty) => struct_ty.get_normalized().map(TyTypeKind::Struct),
+            TyTypeKind::Union(union) => union.get_normalized().map(TyTypeKind::Union),
+            TyTypeKind::Never => None,
+            TyTypeKind::Unknown => None,
+        }
+    }
+
+    fn get_inner_types(&self) -> Vec<MId<TyType>> {
+        match self {
+            TyTypeKind::Number(number) => number.get_inner_types(),
+            TyTypeKind::String(string) => string.get_inner_types(),
+            TyTypeKind::Struct(struct_ty) => struct_ty.get_inner_types(),
+            TyTypeKind::Union(union) => union.get_inner_types(),
+            TyTypeKind::Never => Vec::new(),
+            TyTypeKind::Unknown => Vec::new(),
+        }
+    }
 }
 
 impl TyTypeLogic for TyType {
@@ -163,6 +189,18 @@ impl TyTypeLogic for TyType {
 
     fn is_substate_of(&self, other: &Self, query: &mut TypeSubsetQuery) -> bool {
         self.kind.is_substate_of(&other.kind, query)
+    }
+
+    fn get_normalized(&self) -> Option<Self> {
+        self.kind.get_normalized().map(|kind| Self {
+            name: self.name.clone(),
+            kind,
+            span: self.span.clone(),
+        })
+    }
+
+    fn get_inner_types(&self) -> Vec<MId<TyType>> {
+        self.kind.get_inner_types()
     }
 }
 

@@ -74,14 +74,29 @@ impl TypeIdWithSpan {
     }
 }
 
+pub struct TypeData {
+    pub types: ModItemSet<TyType>,
+    pub type_assignability: TypeAssignabilityCache,
+    pub type_subsetability: TypeSubsetabilityCache,
+}
+
+impl TypeData {
+    pub fn new(types: ModItemSet<TyType>) -> Self {
+        Self {
+            types,
+            type_assignability: TypeAssignabilityCache::new(),
+            type_subsetability: TypeSubsetabilityCache::new(),
+        }
+    }
+}
+
 pub struct ModuleGroupCompilation {
     pub current_module_id: ModId,
     pub files: Vec<Id<CodeFile>>,
     pub modules: HashMap<Id<CodeFile>, ModuleNamespace>,
     pub linked_type_definitions: ModItemSet<LiType>,
+    pub type_data: TypeData,
     pub linked_type_to_type_mapping: HashMap<MId<LiType>, MId<TyType>>,
-    pub types: ModItemSet<TyType>,
-    pub type_assignability: TypeAssignabilityCache,
     pub errors: ErrorCollector,
 }
 
@@ -93,8 +108,7 @@ impl ModuleGroupCompilation {
             modules: HashMap::new(),
             linked_type_definitions: ModItemSet::new(HashMap::new(), id),
             linked_type_to_type_mapping: HashMap::new(),
-            types: ModItemSet::new(HashMap::new(), id),
-            type_assignability: TypeAssignabilityCache::new(),
+            type_data: TypeData::new(ModItemSet::new(HashMap::new(), id)),
             errors: ErrorCollector::new(),
         }
     }
@@ -122,11 +136,10 @@ impl ModuleGroupCompilation {
                 id,
             ),
             linked_type_to_type_mapping: HashMap::new(),
-            types: ModItemSet::new(
+            type_data: TypeData::new(ModItemSet::new(
                 get_module_item_set(&past_compilations, |comp| &comp.types),
                 id,
-            ),
-            type_assignability: TypeAssignabilityCache::new(),
+            )),
             errors: ErrorCollector::new(),
         }
     }

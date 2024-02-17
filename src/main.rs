@@ -105,7 +105,7 @@ async fn main() {
 
     dbg!(&compilation.linked_type_definitions);
     dbg!(&compilation.linked_type_to_type_mapping);
-    dbg!(&compilation.types);
+    dbg!(&compilation.type_data.types);
 
     let assignable = run_type_assignability_query(&mut compilation, a_type_id, b_type_id);
     dbg!(assignable);
