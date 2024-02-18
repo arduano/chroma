@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use super::{type_system::TyType, MId, ModItemSet, ModuleGroupCompilation};
+use crate::lang::solver::{MId, ModItemSet, ModuleGroupCompilation};
+
+use super::TyType;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 /// An arbitrary type relationship, e.g. if a type is assignable to another, or a type is a subset of another.

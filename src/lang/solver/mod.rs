@@ -1,11 +1,10 @@
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
 use self::{
     linked_ast::LiType,
-    type_system::{TyType, TyTypeFlags, TyTypeLogic},
+    type_system::{
+        TyType, TyTypeFlags, TyTypeLogic, TypeAssignabilityCache, TypeSubsetabilityCache,
+    },
 };
 
 use super::{
@@ -19,11 +18,10 @@ pub use entity_ids::*;
 mod linked_ast;
 mod lowering;
 mod type_system;
+pub use type_system::*;
 
 mod file_graph;
 pub use file_graph::*;
-mod type_assignability;
-pub use type_assignability::*;
 
 /// A "Module-associated ID", an ID that is associated with a module.
 /// This allows any module to refer to another module's items.

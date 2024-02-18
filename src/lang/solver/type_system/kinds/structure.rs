@@ -1,10 +1,11 @@
 use crate::lang::{
-    solver::{ModItemSet, TypeAssignabilityQuery, TypeIdWithSpan, TypeSubsetQuery},
+    solver::{ModItemSet, TypeIdWithSpan},
     tokens::TkIdent,
 };
 
 use super::{
-    NormalizationError, NormalizationQuery, TyType, TyTypeFlags, TyTypeLogic, TypeDependencies,
+    NormalizationError, NormalizationQuery, TyType, TyTypeFlags, TyTypeLogic,
+    TypeAssignabilityQuery, TypeDependencies, TypeSubsetQuery,
 };
 
 #[derive(Debug, Clone)]
@@ -205,7 +206,6 @@ impl TyTypeLogic for TyStruct {
 
             TypeDependencies {
                 inner_types,
-                normalization_deps: Ok(vec![]),
                 ..Default::default()
             }
         } else {

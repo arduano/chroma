@@ -1,14 +1,11 @@
 use crate::lang::{
-    solver::{
-        ModItemSet, TyIdOrValWithSpan, TypeAssignabilityQuery, TypeData, TypeIdWithSpan,
-        TypeSubsetQuery, TypeSubsetabilityCache,
-    },
+    solver::{ModItemSet, TyIdOrValWithSpan, TypeData, TypeIdWithSpan},
     tokens::{Span, TkIdent},
 };
 
 use super::{
-    CantNormalize, NormalizationError, NormalizationQuery, TyType, TyTypeFlags, TyTypeKind,
-    TyTypeLogic, TypeDependencies,
+    NormalizationError, NormalizationQuery, TyType, TyTypeFlags, TyTypeKind, TyTypeLogic,
+    TypeAssignabilityQuery, TypeDependencies, TypeSubsetQuery, TypeSubsetabilityCache,
 };
 
 #[derive(Debug, Clone)]
@@ -369,7 +366,6 @@ impl TyTypeLogic for TyUnion {
                 // Can't normalize, bail
                 return TypeDependencies {
                     inner_types,
-                    normalization_deps: Err(CantNormalize),
                     ..Default::default()
                 };
             };
@@ -381,7 +377,6 @@ impl TyTypeLogic for TyUnion {
 
         TypeDependencies {
             inner_types,
-            normalization_deps: Ok(normalization_deps),
             ..Default::default()
         }
     }

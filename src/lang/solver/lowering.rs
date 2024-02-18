@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use crate::lang::{
     ast::{
@@ -16,9 +16,9 @@ use self::{
 
 use super::{
     linked_ast::*,
-    type_system::{NormalizationQuery, TyType},
+    type_system::{NormalizationQuery, TyType, TypeSubsetabilityCache},
     MId, ModItemSet, ModuleGroupCompilation, ModuleNamespace, ModuleNamespaceItem,
-    ModuleNamespaceItemKind, TypeIdWithSpan, TypeSubsetabilityCache,
+    ModuleNamespaceItemKind, TypeIdWithSpan,
 };
 
 mod link_type_expressions;

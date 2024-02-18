@@ -16,7 +16,7 @@
 //     },
 // };
 
-type Foo = { a: string, rec: Foo || string } || number || Bar;
+type Foo = { a: string, rec: Foo || string } || number;
 type Bar = { a: "string", rec: Bar };
 
 type A = Bar;
