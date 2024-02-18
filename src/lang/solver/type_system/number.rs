@@ -1,6 +1,6 @@
-use crate::lang::solver::{MId, TypeAssignabilityQuery, TypeSubsetQuery};
+use crate::lang::solver::{MId, ModItemSet, TypeAssignabilityQuery, TypeSubsetQuery};
 
-use super::TyTypeLogic;
+use super::{NormalizationError, NormalizationQuery, TyType, TyTypeLogic, TypeDependencies};
 
 #[derive(Debug, Clone)]
 pub struct TyNumber {
@@ -46,11 +46,14 @@ impl TyTypeLogic for TyNumber {
         is_assignable(self, other)
     }
 
-    fn get_normalized(&self) -> Option<Self> {
-        None
+    fn get_normalized(
+        &self,
+        ctx: &mut NormalizationQuery,
+    ) -> Result<Option<Self>, NormalizationError> {
+        Ok(None)
     }
 
-    fn get_inner_types(&self) -> Vec<MId<super::TyType>> {
-        Vec::new()
+    fn get_type_dependencies(&self, types: &ModItemSet<TyType>) -> TypeDependencies {
+        TypeDependencies::new_empty()
     }
 }

@@ -42,6 +42,11 @@ impl<M, T> GroupItemSetWithRefs<M, T> {
         port_id_out(id)
     }
 
+    pub fn replace_value(&mut self, id: Id2<M, T>, val: T) {
+        self.item_set
+            .replace_value(port_id_in(id), Id2OrVal::Val(val));
+    }
+
     pub fn get_id_for_val_or_id(&mut self, val: Id2OrVal<M, T>) -> Id2<M, T> {
         match val {
             Id2OrVal::Id(id) => id,

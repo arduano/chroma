@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use crate::lang::{
     ast::items::{SyArithmeticBinaryOp, SyBinaryOp, SyBooleanLogicBinaryOp},
     solver::{
-        type_system::*, Id, MId, ModItemSet, ModuleGroupCompilation, TyIdOrValWithSpan, TypeData,
+        lowering::try_normalize_type, type_system::*, Id, MId, ModItemSet, ModuleGroupCompilation,
+        TyIdOrValWithSpan, TypeData, TypeIdWithSpan,
     },
     tokens::{ItemWithSpan, Span, TkIdent},
     CompilerError, ErrorCollector,
@@ -83,7 +84,7 @@ pub fn parse_type_from_linked_type(
 
                         let field = TyStructLiteralField {
                             name: kv.key.clone(),
-                            value: value_id,
+                            value: TypeIdWithSpan::new(value_id, kv.value.span()),
                         };
 
                         add_field_if_not_exists(field);
@@ -228,6 +229,29 @@ fn resolve_binary_expression(
         );
     };
 
+    let left_ty_id = compilation.type_data.types.get_id_for_val_or_id(left.ty);
+    let left_ty_ref = TypeIdWithSpan::new(left_ty_id, left.span.clone());
+    try_normalize_type(
+        &left_ty_ref,
+        &mut compilation.type_data.types,
+        &mut compilation.type_data.type_subsetability,
+        &mut compilation.type_data.already_normalized_types,
+    );
+
+    let right_ty_id = compilation.type_data.types.get_id_for_val_or_id(right.ty);
+    let right_ty_ref = TypeIdWithSpan::new(right_ty_id, right.span.clone());
+    try_normalize_type(
+        &right_ty_ref,
+        &mut compilation.type_data.types,
+        &mut compilation.type_data.type_subsetability,
+        &mut compilation.type_data.already_normalized_types,
+    );
+
+    let left_ty = compilation.type_data.types.get(left_ty_ref.id).unwrap();
+    let right_ty = compilation.type_data.types.get(right_ty_ref.id).unwrap();
+
+    // Normalize
+
     enum Side {
         Left,
         Right,
@@ -251,7 +275,6 @@ fn resolve_binary_expression(
                         resolved,
                         &mut compilation.type_data.types,
                         &mut compilation.type_data.type_subsetability,
-                        compilation.errors,
                     );
                 }
             }
@@ -270,15 +293,11 @@ fn resolve_binary_expression(
             let union_types = union.types.clone(); // Keep the borrow checker happy
 
             // Get the other type, and ensure that it has an ID so we don't have to clone a non-id type a lot.
-            let other_ty = match side {
-                Side::Left => left,
-                Side::Right => right,
+            let other_ty_ref = match side {
+                Side::Left => left_ty_ref,
+                Side::Right => right_ty_ref,
             };
-            let other_ty_id = compilation
-                .type_data
-                .types
-                .get_id_for_val_or_id(other_ty.ty);
-            let other_ty = TyIdOrValWithSpan::new_id(other_ty_id, other_ty.span);
+            let other_ty = other_ty_ref.as_type_id_or_val();
 
             for union_ty in &union_types {
                 let resolved = match side {
@@ -300,7 +319,6 @@ fn resolve_binary_expression(
                     resolved,
                     &mut compilation.type_data.types,
                     &mut compilation.type_data.type_subsetability,
-                    compilation.errors,
                 );
             }
 
@@ -313,7 +331,12 @@ fn resolve_binary_expression(
                 return TyIdOrValWithSpan::new_val(ty, expr_span);
             }
         }
-        (_, _) => resolve_non_union_binary_expression(left, operator, right, compilation),
+        (_, _) => resolve_non_union_binary_expression(
+            left_ty_ref.as_type_id_or_val(),
+            operator,
+            right_ty_ref.as_type_id_or_val(),
+            compilation,
+        ),
     }
 }
 

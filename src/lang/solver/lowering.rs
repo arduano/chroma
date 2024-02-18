@@ -1,12 +1,16 @@
-use std::collections::HashMap;
+use std::{
+    any::TypeId,
+    collections::{hash_map::Entry, HashMap, HashSet},
+};
 
 use crate::lang::{
     ast::{
         helpers::Attempted,
         items::{SyDeclaration, SyDeclarationBody, SyExpression, SyObjectLiteralField},
     },
+    solver::NormalizedTypeData,
     tokens::TkIdent,
-    CompilerError,
+    CompilerError, ErrorCollector,
 };
 
 use self::{
@@ -15,8 +19,10 @@ use self::{
 };
 
 use super::{
-    linked_ast::*, type_system::TyType, MId, ModuleGroupCompilation, ModuleNamespace,
-    ModuleNamespaceItem, ModuleNamespaceItemKind,
+    linked_ast::*,
+    type_system::{NormalizationQuery, TyType, TyTypeKind},
+    MId, ModItemSet, ModuleGroupCompilation, ModuleNamespace, ModuleNamespaceItem,
+    ModuleNamespaceItemKind, TypeData, TypeIdWithSpan, TypeSubsetabilityCache,
 };
 
 mod link_type_expressions;
@@ -129,4 +135,18 @@ pub fn get_type_id_for_linked_type_id(
     };
 
     parse_type_from_linked_type_id(linked_ty_id, &mut ty_compilation)
+}
+
+pub fn try_normalize_type(
+    ty_ref: &TypeIdWithSpan,
+    types: &mut ModItemSet<TyType>,
+    type_subsetability: &mut TypeSubsetabilityCache,
+    already_normalized_types: &mut HashSet<MId<TyType>>,
+) -> bool {
+    let mut normalizer =
+        NormalizationQuery::new(types, type_subsetability, already_normalized_types);
+
+    let result = normalizer.ensure_required_type_normalized(ty_ref);
+
+    result.is_ok()
 }

@@ -1,4 +1,7 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use self::{linked_ast::LiType, type_system::TyType};
 
@@ -74,10 +77,15 @@ impl TypeIdWithSpan {
     }
 }
 
+pub struct NormalizedTypeData {
+    pub inner_types: Vec<MId<TyType>>,
+}
+
 pub struct TypeData {
     pub types: ModItemSet<TyType>,
     pub type_assignability: TypeAssignabilityCache,
     pub type_subsetability: TypeSubsetabilityCache,
+    pub already_normalized_types: HashSet<MId<TyType>>,
 }
 
 impl TypeData {
@@ -86,6 +94,7 @@ impl TypeData {
             types,
             type_assignability: TypeAssignabilityCache::new(),
             type_subsetability: TypeSubsetabilityCache::new(),
+            already_normalized_types: HashSet::new(),
         }
     }
 }

@@ -1,9 +1,9 @@
 use crate::lang::{
-    solver::{MId, TypeAssignabilityQuery, TypeSubsetQuery},
+    solver::{MId, ModItemSet, TypeAssignabilityQuery, TypeIdWithSpan, TypeSubsetQuery},
     tokens::TkIdent,
 };
 
-use super::{TyType, TyTypeLogic};
+use super::{NormalizationError, NormalizationQuery, TyType, TyTypeLogic, TypeDependencies};
 
 #[derive(Debug, Clone)]
 pub struct TyStruct {
@@ -42,11 +42,11 @@ impl TyStructLiteral {
 #[derive(Debug, Clone)]
 pub struct TyStructLiteralField {
     pub name: TkIdent,
-    pub value: MId<TyType>,
+    pub value: TypeIdWithSpan,
 }
 
 impl TyStructLiteralField {
-    pub fn new(name: TkIdent, value: MId<TyType>) -> Self {
+    pub fn new(name: TkIdent, value: TypeIdWithSpan) -> Self {
         Self { name, value }
     }
 }
@@ -77,7 +77,7 @@ impl TyTypeLogic for TyStruct {
                 return false;
             };
 
-            query.is_assignable_to(self_field.value, other_field.value)
+            query.is_assignable_to(self_field.value.id, other_field.value.id)
         })
     }
 
@@ -143,7 +143,7 @@ impl TyTypeLogic for TyStruct {
                 return false;
             };
 
-            query.is_substet_of(self_field.value, other_field.value)
+            query.is_substet_of(self_field.value.id, other_field.value.id)
         });
 
         if !other_fields_are_substate {
@@ -163,15 +163,32 @@ impl TyTypeLogic for TyStruct {
         true
     }
 
-    fn get_normalized(&self) -> Option<Self> {
-        todo!();
+    fn get_normalized(
+        &self,
+        ctx: &mut NormalizationQuery,
+    ) -> Result<Option<Self>, NormalizationError> {
+        if let Some(literal) = &self.literal {
+            for field in &literal.fields {
+                ctx.ensure_non_required_type_normalized(&field.value)?;
+            }
+
+            Ok(None)
+        } else {
+            Ok(None)
+        }
     }
 
-    fn get_inner_types(&self) -> Vec<MId<TyType>> {
+    fn get_type_dependencies(&self, types: &ModItemSet<TyType>) -> TypeDependencies {
         if let Some(literal) = &self.literal {
-            literal.fields.iter().map(|field| field.value).collect()
+            let inner_types = literal.fields.iter().map(|field| field.value.id).collect();
+
+            TypeDependencies {
+                inner_types,
+                normalization_deps: Ok(vec![]),
+                ..Default::default()
+            }
         } else {
-            Vec::new()
+            TypeDependencies::new_empty()
         }
     }
 }

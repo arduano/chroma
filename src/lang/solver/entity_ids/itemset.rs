@@ -29,6 +29,11 @@ impl<T> ItemSet<T> {
         id
     }
 
+    pub fn replace_value(&mut self, id: Id<T>, val: T) {
+        let existing = self.items.insert(id, val);
+        debug_assert!(existing.is_some(), "Tried to replace non-existing value");
+    }
+
     pub fn allocate_id(&mut self) -> Id<T> {
         let id = self.counter.next();
         id

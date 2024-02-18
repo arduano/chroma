@@ -1,4 +1,6 @@
 mod number;
+use std::collections::HashSet;
+
 pub use number::*;
 mod string;
 pub use string::*;
@@ -9,7 +11,10 @@ pub use union::*;
 
 use crate::lang::tokens::{Span, TkIdent};
 
-use super::{MId, TypeAssignabilityQuery, TypeSubsetQuery};
+use super::{
+    MId, ModItemSet, NormalizedTypeData, TypeAssignabilityQuery, TypeIdWithSpan, TypeSubsetQuery,
+    TypeSubsetabilityCache,
+};
 
 #[derive(Debug, Clone)]
 pub struct TyType {
@@ -42,6 +47,10 @@ impl TyType {
     pub fn is_substate_of(&self, other: &Self, query: &mut TypeSubsetQuery) -> bool {
         self.kind.is_substate_of(&other.kind, query)
     }
+
+    pub fn get_type_dependencies(&self, types: &ModItemSet<TyType>) -> TypeDependencies {
+        self.kind.get_type_dependencies(types)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -63,9 +72,13 @@ trait TyTypeLogic: Sized {
 
     fn get_intersection(&self, other: &Self) -> Self;
 
-    fn get_normalized(&self) -> Option<Self>;
+    /// Try to normalize the current type. If it's already normalized, return None. If it's not possible to normalize, return an error.
+    fn get_normalized(
+        &self,
+        ctx: &mut NormalizationQuery,
+    ) -> Result<Option<Self>, NormalizationError>;
 
-    fn get_inner_types(&self) -> Vec<MId<TyType>>;
+    fn get_type_dependencies(&self, types: &ModItemSet<TyType>) -> TypeDependencies;
 }
 
 impl TyTypeLogic for TyTypeKind {
@@ -151,25 +164,30 @@ impl TyTypeLogic for TyTypeKind {
         }
     }
 
-    fn get_normalized(&self) -> Option<Self> {
+    fn get_normalized(
+        &self,
+        ctx: &mut NormalizationQuery,
+    ) -> Result<Option<Self>, NormalizationError> {
         match self {
-            TyTypeKind::Number(number) => number.get_normalized().map(TyTypeKind::Number),
-            TyTypeKind::String(string) => string.get_normalized().map(TyTypeKind::String),
-            TyTypeKind::Struct(struct_ty) => struct_ty.get_normalized().map(TyTypeKind::Struct),
-            TyTypeKind::Union(union) => union.get_normalized().map(TyTypeKind::Union),
-            TyTypeKind::Never => None,
-            TyTypeKind::Unknown => None,
+            TyTypeKind::Number(number) => Ok(number.get_normalized(ctx)?.map(TyTypeKind::Number)),
+            TyTypeKind::String(string) => Ok(string.get_normalized(ctx)?.map(TyTypeKind::String)),
+            TyTypeKind::Struct(struct_ty) => {
+                Ok(struct_ty.get_normalized(ctx)?.map(TyTypeKind::Struct))
+            }
+            TyTypeKind::Union(union) => Ok(union.get_normalized(ctx)?.map(TyTypeKind::Union)),
+            TyTypeKind::Never => Ok(None),
+            TyTypeKind::Unknown => Ok(None),
         }
     }
 
-    fn get_inner_types(&self) -> Vec<MId<TyType>> {
+    fn get_type_dependencies(&self, types: &ModItemSet<TyType>) -> TypeDependencies {
         match self {
-            TyTypeKind::Number(number) => number.get_inner_types(),
-            TyTypeKind::String(string) => string.get_inner_types(),
-            TyTypeKind::Struct(struct_ty) => struct_ty.get_inner_types(),
-            TyTypeKind::Union(union) => union.get_inner_types(),
-            TyTypeKind::Never => Vec::new(),
-            TyTypeKind::Unknown => Vec::new(),
+            TyTypeKind::Number(number) => number.get_type_dependencies(types),
+            TyTypeKind::String(string) => string.get_type_dependencies(types),
+            TyTypeKind::Struct(struct_ty) => struct_ty.get_type_dependencies(types),
+            TyTypeKind::Union(union) => union.get_type_dependencies(types),
+            TyTypeKind::Never => TypeDependencies::new_empty(),
+            TyTypeKind::Unknown => TypeDependencies::new_empty(),
         }
     }
 }
@@ -191,16 +209,21 @@ impl TyTypeLogic for TyType {
         self.kind.is_substate_of(&other.kind, query)
     }
 
-    fn get_normalized(&self) -> Option<Self> {
-        self.kind.get_normalized().map(|kind| Self {
+    fn get_normalized(
+        &self,
+        ctx: &mut NormalizationQuery,
+    ) -> Result<Option<Self>, NormalizationError> {
+        let result = self.kind.get_normalized(ctx)?.map(|kind| Self {
             name: self.name.clone(),
             kind,
             span: self.span.clone(),
-        })
+        });
+
+        Ok(result)
     }
 
-    fn get_inner_types(&self) -> Vec<MId<TyType>> {
-        self.kind.get_inner_types()
+    fn get_type_dependencies(&self, types: &ModItemSet<TyType>) -> TypeDependencies {
+        self.kind.get_type_dependencies(types)
     }
 }
 
@@ -208,4 +231,122 @@ pub enum TyTypeOrBorrowRef<'a> {
     Owned(TyType),
     Borrowed(&'a TyType),
     Ref(MId<TyType>),
+}
+
+#[derive(Debug, Clone)]
+pub struct NormalizationSuccess;
+#[derive(Debug, Clone)]
+pub struct NormalizationError;
+
+pub struct NormalizationQuery<'a> {
+    pub types: &'a mut ModItemSet<TyType>,
+    pub type_subsetability: &'a mut TypeSubsetabilityCache,
+    pub already_normalized_types: &'a mut HashSet<MId<TyType>>,
+
+    /// The required normalizations in the current ctx. If a cycle happens here, it's an error.
+    required_parent_normalizations: Vec<MId<TyType>>,
+    /// The parent calls outside required normalizations. If a cycle happens here, we ignore that path.
+    parent_calls: Vec<MId<TyType>>,
+}
+
+impl<'a> NormalizationQuery<'a> {
+    pub fn new(
+        types: &'a mut ModItemSet<TyType>,
+        type_subsetability: &'a mut TypeSubsetabilityCache,
+        already_normalized_types: &'a mut HashSet<MId<TyType>>,
+    ) -> Self {
+        Self {
+            types,
+            type_subsetability,
+            already_normalized_types,
+            required_parent_normalizations: Vec::new(),
+            parent_calls: Vec::new(),
+        }
+    }
+
+    /// Try to normalize a required type. Return an error if it fails.
+    pub fn ensure_required_type_normalized(
+        &mut self,
+        ty_ref: &TypeIdWithSpan,
+    ) -> Result<NormalizationSuccess, NormalizationError> {
+        macro_rules! bail {
+            () => {
+                let error_ty = TyType::new(TyTypeKind::Unknown, ty_ref.span.clone());
+                self.types.replace_value(ty_ref.id, error_ty);
+                return Err(NormalizationError);
+            };
+        }
+
+        if self.already_normalized_types.contains(&ty_ref.id) {
+            return Ok(NormalizationSuccess);
+        }
+
+        if self.required_parent_normalizations.contains(&ty_ref.id) {
+            bail!();
+        }
+
+        if self.parent_calls.contains(&ty_ref.id) {
+            return Ok(NormalizationSuccess);
+        }
+
+        let Some(ty) = self.types.get(ty_ref.id) else {
+            bail!();
+        };
+
+        // TODO: Keep the borrow checker happy. In the future, maybe wrap all
+        // the types in Arc? And have a `get` and `get_arc` function on the type sets.
+        let ty = ty.clone();
+
+        if let Some(normalized) = ty.get_normalized(self)? {
+            self.types.replace_value(ty_ref.id, normalized);
+        }
+
+        self.already_normalized_types.insert(ty_ref.id);
+
+        Ok(NormalizationSuccess)
+    }
+
+    /// Try to normalize a non required type. Same as normalizing a required type, except a
+    /// new query is created with all the required parent calls being moved to the parent_calls.
+    pub fn ensure_non_required_type_normalized(
+        &mut self,
+        ty_ref: &TypeIdWithSpan,
+    ) -> Result<NormalizationSuccess, NormalizationError> {
+        let mut new_parent_calls = self.parent_calls.clone();
+        new_parent_calls.extend_from_slice(&self.required_parent_normalizations);
+
+        let mut new_query = NormalizationQuery {
+            types: self.types,
+            type_subsetability: self.type_subsetability,
+            already_normalized_types: self.already_normalized_types,
+            required_parent_normalizations: Vec::new(),
+            parent_calls: new_parent_calls,
+        };
+
+        new_query.ensure_required_type_normalized(ty_ref)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CantNormalize;
+
+#[derive(Debug, Clone)]
+pub struct TypeDependencies {
+    pub inner_types: Vec<MId<TyType>>,
+    pub normalization_deps: Result<Vec<MId<TyType>>, CantNormalize>,
+}
+
+impl TypeDependencies {
+    pub fn new_empty() -> Self {
+        Self {
+            inner_types: Vec::new(),
+            normalization_deps: Ok(Vec::new()),
+        }
+    }
+}
+
+impl Default for TypeDependencies {
+    fn default() -> Self {
+        Self::new_empty()
+    }
 }

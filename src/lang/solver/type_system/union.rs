@@ -7,7 +7,10 @@ use crate::lang::{
     CompilerError, ErrorCollector,
 };
 
-use super::{TyType, TyTypeKind, TyTypeLogic};
+use super::{
+    CantNormalize, NormalizationError, NormalizationQuery, TyType, TyTypeKind, TyTypeLogic,
+    TypeDependencies,
+};
 
 #[derive(Debug, Clone)]
 pub struct TyUnion {
@@ -104,13 +107,12 @@ impl TyUnion {
         ty: &TyType,
         types: &ModItemSet<TyType>,
         type_subsetability: &mut TypeSubsetabilityCache,
-        errors: &mut ErrorCollector,
     ) -> bool {
         if let TyTypeKind::Union(union) = &ty.kind {
             // Cloning here to keep the borrow checker happy
             let union_types_cloned = union.types.clone();
             for ty in &union_types_cloned {
-                self.insert_type_by_id_normalized(&ty, types, type_subsetability, errors);
+                self.insert_type_by_id_normalized(&ty, types, type_subsetability);
             }
             return false;
         }
@@ -123,14 +125,9 @@ impl TyUnion {
         // If it's a superset of any of the types, remove the types
         let mut i = 0;
         while i < self.types.len() {
-            let union_ty = &types.get(self.types[i].id);
-
-            let Some(union_ty) = union_ty else {
-                // Recursive expression found, illegal
-                errors.push(CompilerError::new("Recursive type union", ty.span.clone()));
-                i += 1;
-                continue;
-            };
+            let union_ty = &types
+                .get(self.types[i].id)
+                .expect("Incomplete expression when normalizing");
 
             if is_type_subset_of(&union_ty, &ty, &types, type_subsetability) {
                 self.types.remove(i);
@@ -147,14 +144,13 @@ impl TyUnion {
         ty_ref: &TypeIdWithSpan,
         types: &ModItemSet<TyType>,
         type_subsetability: &mut TypeSubsetabilityCache,
-        errors: &mut ErrorCollector,
     ) {
         let ty = types
             .get(ty_ref.id)
             .expect("Incomplete expression when normalizing");
 
         let should_insert =
-            self.prepare_type_for_normalized_inserting(&ty, types, type_subsetability, errors);
+            self.prepare_type_for_normalized_inserting(&ty, types, type_subsetability);
 
         if !should_insert {
             return;
@@ -170,14 +166,13 @@ impl TyUnion {
         ty_ref: TyIdOrValWithSpan,
         types: &mut ModItemSet<TyType>,
         type_subsetability: &mut TypeSubsetabilityCache,
-        errors: &mut ErrorCollector,
     ) {
         let ty = types
             .get_val_for_val_or_id(&ty_ref.ty)
             .expect("Incomplete expression when normalizing");
 
         let should_insert =
-            self.prepare_type_for_normalized_inserting(&ty, types, type_subsetability, errors);
+            self.prepare_type_for_normalized_inserting(&ty, types, type_subsetability);
 
         if !should_insert {
             return;
@@ -310,24 +305,54 @@ impl TyTypeLogic for TyUnion {
         todo!()
     }
 
-    fn get_normalized(&self) -> Option<Self> {
+    fn get_normalized(
+        &self,
+        ctx: &mut NormalizationQuery,
+    ) -> Result<Option<Self>, NormalizationError> {
         let mut new_union = TyUnion::new();
 
-        for ty in &self.types {
-            new_union.insert_type_normalized(ty.as_type_id_or_val(), todo!(), todo!(), todo!());
-        }
+        for ty_ref in &self.types {
+            let ty = ctx.types.get(ty_ref.id).ok_or(NormalizationError)?;
 
-        todo!();
+            if matches!(ty.kind, TyTypeKind::Union(_)) {
+                ctx.ensure_required_type_normalized(&ty_ref)?;
+            } else {
+                ctx.ensure_non_required_type_normalized(&ty_ref)?;
+            }
+
+            new_union.insert_type_by_id_normalized(ty_ref, ctx.types, ctx.type_subsetability);
+        }
 
         if new_union.types.len() == self.types.len() {
-            // return None;
+            return Ok(None);
         }
-        todo!();
 
-        // Some(new_union)
+        Ok(Some(new_union))
     }
 
-    fn get_inner_types(&self) -> Vec<MId<TyType>> {
-        self.types.iter().map(|ty| ty.id).collect()
+    fn get_type_dependencies(&self, types: &ModItemSet<TyType>) -> TypeDependencies {
+        let inner_types = self.types.iter().map(|ty| ty.id).collect();
+
+        let mut normalization_deps = Vec::new();
+        for ty_ref in &self.types {
+            let Some(ty) = types.get(ty_ref.id) else {
+                // Can't normalize, bail
+                return TypeDependencies {
+                    inner_types,
+                    normalization_deps: Err(CantNormalize),
+                    ..Default::default()
+                };
+            };
+
+            if matches!(ty.kind, TyTypeKind::Union(_)) {
+                normalization_deps.push(ty_ref.id);
+            }
+        }
+
+        TypeDependencies {
+            inner_types,
+            normalization_deps: Ok(normalization_deps),
+            ..Default::default()
+        }
     }
 }

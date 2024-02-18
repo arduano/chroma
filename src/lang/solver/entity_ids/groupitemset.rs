@@ -30,6 +30,11 @@ impl<M, T> GroupItemSet<M, T> {
         Id2::new(self.current_group_id, id)
     }
 
+    pub fn replace_value(&mut self, id: Id2<M, T>, val: T) {
+        assert_eq!(id.group(), self.current_group_id);
+        self.current_group.replace_value(id.item(), val);
+    }
+
     pub fn allocate_id(&mut self) -> Id2<M, T> {
         let id = self.current_group.allocate_id();
         Id2::new(self.current_group_id, id)

@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use crate::lang::solver::{TypeAssignabilityQuery, TypeSubsetQuery};
+use crate::lang::solver::{ModItemSet, TypeAssignabilityQuery, TypeSubsetQuery};
 
-use super::TyTypeLogic;
+use super::{NormalizationError, NormalizationQuery, TyType, TyTypeLogic, TypeDependencies};
 
 #[derive(Debug, Clone)]
 pub struct TyString {
@@ -48,11 +48,14 @@ impl TyTypeLogic for TyString {
         is_assignable(self, other)
     }
 
-    fn get_normalized(&self) -> Option<Self> {
-        None
+    fn get_normalized(
+        &self,
+        ctx: &mut NormalizationQuery,
+    ) -> Result<Option<Self>, NormalizationError> {
+        Ok(None)
     }
 
-    fn get_inner_types(&self) -> Vec<crate::lang::solver::MId<super::TyType>> {
-        Vec::new()
+    fn get_type_dependencies(&self, types: &ModItemSet<TyType>) -> TypeDependencies {
+        TypeDependencies::new_empty()
     }
 }
