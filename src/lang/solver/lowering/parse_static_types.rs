@@ -127,7 +127,12 @@ pub fn parse_type_from_linked_type(
         LiTypeKind::Never => TyTypeKind::Never,
     };
 
-    let ty = TyType::new_named(linked_ty.name.clone(), ty_kind, linked_ty.span());
+    let ty = TyType::new_named_infer_flags(
+        linked_ty.name.clone(),
+        ty_kind,
+        linked_ty.span(),
+        &compilation.type_data.types,
+    );
     TyIdOrValWithSpan::new_val(ty, linked_ty.span())
 }
 
@@ -213,7 +218,11 @@ fn resolve_binary_expression(
             left.span.clone(),
         ));
         return TyIdOrValWithSpan::new_val(
-            TyType::new(TyTypeKind::Unknown, expr_span.clone()),
+            TyType::new(
+                TyTypeKind::Unknown,
+                expr_span.clone(),
+                TyTypeFlags::new_for_unknown(),
+            ),
             expr_span,
         );
     };
@@ -224,7 +233,11 @@ fn resolve_binary_expression(
             right.span.clone(),
         ));
         return TyIdOrValWithSpan::new_val(
-            TyType::new(TyTypeKind::Unknown, expr_span.clone()),
+            TyType::new(
+                TyTypeKind::Unknown,
+                expr_span.clone(),
+                TyTypeFlags::new_for_unknown(),
+            ),
             expr_span,
         );
     };
@@ -235,7 +248,6 @@ fn resolve_binary_expression(
         &left_ty_ref,
         &mut compilation.type_data.types,
         &mut compilation.type_data.type_subsetability,
-        &mut compilation.type_data.already_normalized_types,
     );
 
     let right_ty_id = compilation.type_data.types.get_id_for_val_or_id(right.ty);
@@ -244,7 +256,6 @@ fn resolve_binary_expression(
         &right_ty_ref,
         &mut compilation.type_data.types,
         &mut compilation.type_data.type_subsetability,
-        &mut compilation.type_data.already_normalized_types,
     );
 
     let left_ty = compilation.type_data.types.get(left_ty_ref.id).unwrap();
@@ -284,7 +295,8 @@ fn resolve_binary_expression(
                 return TyIdOrValWithSpan::new_id(ty.id, ty.span.clone());
             } else {
                 let kind = TyTypeKind::Union(new_union);
-                let ty = TyType::new_named(name, kind, expr_span.clone());
+                let flags = kind.flags(&compilation.type_data.types);
+                let ty = TyType::new_named(name, kind, expr_span.clone(), flags);
                 return TyIdOrValWithSpan::new_val(ty, expr_span);
             }
         }
@@ -327,7 +339,8 @@ fn resolve_binary_expression(
                 return TyIdOrValWithSpan::new_id(ty.id, ty.span.clone());
             } else {
                 let kind = TyTypeKind::Union(new_union);
-                let ty = TyType::new_named(name, kind, expr_span.clone());
+                let flags = kind.flags(&compilation.type_data.types);
+                let ty = TyType::new_named(name, kind, expr_span.clone(), flags);
                 return TyIdOrValWithSpan::new_val(ty, expr_span);
             }
         }
@@ -356,10 +369,7 @@ fn resolve_non_union_binary_expression(
             "Recursive type computations are not allowed",
             left.span.clone(),
         ));
-        return TyIdOrValWithSpan::new_val(
-            TyType::new(TyTypeKind::Unknown, joined_span.clone()),
-            joined_span,
-        );
+        return TyIdOrValWithSpan::new_val(TyType::new_unknown(joined_span.clone()), joined_span);
     };
 
     let Some(right_ty) = right_ty else {
@@ -367,10 +377,7 @@ fn resolve_non_union_binary_expression(
             "Recursive type computations are not allowed",
             right.span.clone(),
         ));
-        return TyIdOrValWithSpan::new_val(
-            TyType::new(TyTypeKind::Unknown, joined_span.clone()),
-            joined_span,
-        );
+        return TyIdOrValWithSpan::new_val(TyType::new_unknown(joined_span.clone()), joined_span);
     };
 
     let op_span = operator.span();
@@ -381,13 +388,13 @@ fn resolve_non_union_binary_expression(
             "Invalid binary operation for types (2)",
             joined_span.clone(),
         ));
-        TyType::new(TyTypeKind::Unknown, joined_span)
+        TyType::new_unknown(joined_span)
     };
 
     macro_rules! invalid_op {
         ($compilation:expr) => {{
             push_invalid_op_error();
-            let ty = TyType::new(TyTypeKind::Unknown, operator.span());
+            let ty = TyType::new_unknown(operator.span());
             return TyIdOrValWithSpan::new_val(ty, expr_span);
         }};
     }
@@ -400,15 +407,20 @@ fn resolve_non_union_binary_expression(
                 let right_lit = &other_number.literal;
 
                 let (Some(left_lit), Some(right_lit)) = (left_lit, right_lit) else {
-                    let ty = TyType::new(TyTypeKind::Number(TyNumber::new()), expr_span.clone());
+                    let ty = TyType::new_infer_flags(
+                        TyTypeKind::Number(TyNumber::new()),
+                        expr_span.clone(),
+                        &compilation.type_data.types,
+                    );
                     return TyIdOrValWithSpan::new_val(ty, expr_span);
                 };
 
                 let result = run_arithmetic_op_on_numbers(left_lit.value, op, right_lit.value);
 
-                let ty = TyType::new(
+                let ty = TyType::new_infer_flags(
                     TyTypeKind::Number(TyNumber::from_literal(result)),
                     expr_span.clone(),
+                    &compilation.type_data.types,
                 );
                 return TyIdOrValWithSpan::new_val(ty, expr_span);
             }
@@ -419,7 +431,7 @@ fn resolve_non_union_binary_expression(
                 "Invalid binary operation for types (1)",
                 expr_span.clone(),
             ));
-            let ty = TyType::new(TyTypeKind::Unknown, op_span);
+            let ty = TyType::new_unknown(op_span);
             return TyIdOrValWithSpan::new_val(ty, expr_span);
         }
     }

@@ -2,7 +2,9 @@ use std::sync::Arc;
 
 use crate::lang::solver::{ModItemSet, TypeAssignabilityQuery, TypeSubsetQuery};
 
-use super::{NormalizationError, NormalizationQuery, TyType, TyTypeLogic, TypeDependencies};
+use super::{
+    NormalizationError, NormalizationQuery, TyType, TyTypeFlags, TyTypeLogic, TypeDependencies,
+};
 
 #[derive(Debug, Clone)]
 pub struct TyString {
@@ -53,6 +55,10 @@ impl TyTypeLogic for TyString {
         _ctx: &mut NormalizationQuery,
     ) -> Result<Option<Self>, NormalizationError> {
         Ok(None)
+    }
+
+    fn flags(&self, types: &ModItemSet<TyType>) -> TyTypeFlags {
+        TyTypeFlags::new_all()
     }
 
     fn get_type_dependencies(&self, _types: &ModItemSet<TyType>) -> TypeDependencies {

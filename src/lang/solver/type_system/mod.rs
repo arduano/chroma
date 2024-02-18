@@ -16,24 +16,104 @@ use super::{
     TypeSubsetabilityCache,
 };
 
+#[derive(Debug, Clone, Copy)]
+pub struct TyTypeFlags {
+    pub is_normalized: bool,
+}
+
+impl TyTypeFlags {
+    pub fn new() -> Self {
+        Self {
+            is_normalized: false,
+        }
+    }
+
+    pub fn new_all() -> Self {
+        Self {
+            is_normalized: true,
+        }
+    }
+
+    pub fn new_for_unknown() -> Self {
+        Self {
+            is_normalized: false,
+        }
+    }
+
+    pub fn normalized(mut self) -> Self {
+        self.is_normalized = true;
+        self
+    }
+
+    pub fn join(self, other: Self) -> Self {
+        Self {
+            is_normalized: self.is_normalized && other.is_normalized,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TyType {
     pub name: Option<TkIdent>,
     pub span: Span,
     pub kind: TyTypeKind,
+    pub flags: TyTypeFlags,
 }
 
 impl TyType {
-    pub fn new(kind: TyTypeKind, span: Span) -> Self {
+    pub fn new(kind: TyTypeKind, span: Span, flags: TyTypeFlags) -> Self {
         Self {
+            name: None,
+            kind,
+            span,
+            flags,
+        }
+    }
+
+    pub fn new_infer_flags(kind: TyTypeKind, span: Span, types: &ModItemSet<TyType>) -> Self {
+        Self {
+            flags: kind.flags(types),
             name: None,
             kind,
             span,
         }
     }
 
-    pub fn new_named(name: Option<TkIdent>, kind: TyTypeKind, span: Span) -> Self {
-        Self { name, kind, span }
+    pub fn new_named(
+        name: Option<TkIdent>,
+        kind: TyTypeKind,
+        span: Span,
+        flags: TyTypeFlags,
+    ) -> Self {
+        Self {
+            name,
+            kind,
+            span,
+            flags,
+        }
+    }
+
+    pub fn new_named_infer_flags(
+        name: Option<TkIdent>,
+        kind: TyTypeKind,
+        span: Span,
+        types: &ModItemSet<TyType>,
+    ) -> Self {
+        Self {
+            flags: kind.flags(types),
+            name,
+            kind,
+            span,
+        }
+    }
+
+    pub fn new_unknown(span: Span) -> Self {
+        Self {
+            name: None,
+            kind: TyTypeKind::Unknown,
+            span,
+            flags: TyTypeFlags::new_for_unknown(),
+        }
     }
 
     pub fn kind(&self) -> &TyTypeKind {
@@ -63,7 +143,7 @@ pub enum TyTypeKind {
     Unknown,
 }
 
-trait TyTypeLogic: Sized {
+pub trait TyTypeLogic: Sized {
     /// Check if one type is assignable to another. E.g. `{ foo: string, bar: string }` is assignable to `{ foo: string }`
     fn check_assignable_to(&self, other: &Self, query: &mut TypeAssignabilityQuery) -> bool;
 
@@ -77,6 +157,8 @@ trait TyTypeLogic: Sized {
         &self,
         ctx: &mut NormalizationQuery,
     ) -> Result<Option<Self>, NormalizationError>;
+
+    fn flags(&self, types: &ModItemSet<TyType>) -> TyTypeFlags;
 
     fn get_type_dependencies(&self, types: &ModItemSet<TyType>) -> TypeDependencies;
 }
@@ -180,6 +262,17 @@ impl TyTypeLogic for TyTypeKind {
         }
     }
 
+    fn flags(&self, types: &ModItemSet<TyType>) -> TyTypeFlags {
+        match self {
+            TyTypeKind::Number(number) => number.flags(types),
+            TyTypeKind::String(string) => string.flags(types),
+            TyTypeKind::Struct(struct_ty) => struct_ty.flags(types),
+            TyTypeKind::Union(union) => union.flags(types),
+            TyTypeKind::Never => TyTypeFlags::new_all(),
+            TyTypeKind::Unknown => TyTypeFlags::new_all(),
+        }
+    }
+
     fn get_type_dependencies(&self, types: &ModItemSet<TyType>) -> TypeDependencies {
         match self {
             TyTypeKind::Number(number) => number.get_type_dependencies(types),
@@ -202,6 +295,7 @@ impl TyTypeLogic for TyType {
             name: None,
             kind: self.kind.get_intersection(&other.kind),
             span: Span::new_empty(),
+            flags: self.flags.join(other.flags),
         }
     }
 
@@ -217,9 +311,14 @@ impl TyTypeLogic for TyType {
             name: self.name.clone(),
             kind,
             span: self.span.clone(),
+            flags: self.flags.normalized(),
         });
 
         Ok(result)
+    }
+
+    fn flags(&self, types: &ModItemSet<TyType>) -> TyTypeFlags {
+        self.flags
     }
 
     fn get_type_dependencies(&self, types: &ModItemSet<TyType>) -> TypeDependencies {
@@ -241,7 +340,6 @@ pub struct NormalizationError;
 pub struct NormalizationQuery<'a> {
     pub types: &'a mut ModItemSet<TyType>,
     pub type_subsetability: &'a mut TypeSubsetabilityCache,
-    pub already_normalized_types: &'a mut HashSet<MId<TyType>>,
 
     /// The required normalizations in the current ctx. If a cycle happens here, it's an error.
     required_parent_normalizations: Vec<MId<TyType>>,
@@ -253,12 +351,10 @@ impl<'a> NormalizationQuery<'a> {
     pub fn new(
         types: &'a mut ModItemSet<TyType>,
         type_subsetability: &'a mut TypeSubsetabilityCache,
-        already_normalized_types: &'a mut HashSet<MId<TyType>>,
     ) -> Self {
         Self {
             types,
             type_subsetability,
-            already_normalized_types,
             required_parent_normalizations: Vec::new(),
             parent_calls: Vec::new(),
         }
@@ -271,13 +367,21 @@ impl<'a> NormalizationQuery<'a> {
     ) -> Result<NormalizationSuccess, NormalizationError> {
         macro_rules! bail {
             () => {
-                let error_ty = TyType::new(TyTypeKind::Unknown, ty_ref.span.clone());
+                let error_ty = TyType::new(
+                    TyTypeKind::Unknown,
+                    ty_ref.span.clone(),
+                    TyTypeFlags::new_all(),
+                );
                 self.types.replace_value(ty_ref.id, error_ty);
                 return Err(NormalizationError);
             };
         }
 
-        if self.already_normalized_types.contains(&ty_ref.id) {
+        let Some(ty) = self.types.get(ty_ref.id) else {
+            bail!();
+        };
+
+        if ty.flags.is_normalized {
             return Ok(NormalizationSuccess);
         }
 
@@ -301,8 +405,6 @@ impl<'a> NormalizationQuery<'a> {
             self.types.replace_value(ty_ref.id, normalized);
         }
 
-        self.already_normalized_types.insert(ty_ref.id);
-
         Ok(NormalizationSuccess)
     }
 
@@ -318,7 +420,6 @@ impl<'a> NormalizationQuery<'a> {
         let mut new_query = NormalizationQuery {
             types: self.types,
             type_subsetability: self.type_subsetability,
-            already_normalized_types: self.already_normalized_types,
             required_parent_normalizations: Vec::new(),
             parent_calls: new_parent_calls,
         };

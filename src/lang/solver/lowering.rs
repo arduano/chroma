@@ -137,10 +137,8 @@ pub fn try_normalize_type(
     ty_ref: &TypeIdWithSpan,
     types: &mut ModItemSet<TyType>,
     type_subsetability: &mut TypeSubsetabilityCache,
-    already_normalized_types: &mut HashSet<MId<TyType>>,
 ) -> bool {
-    let mut normalizer =
-        NormalizationQuery::new(types, type_subsetability, already_normalized_types);
+    let mut normalizer = NormalizationQuery::new(types, type_subsetability);
 
     let result = normalizer.ensure_required_type_normalized(ty_ref);
 

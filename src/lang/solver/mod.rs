@@ -3,7 +3,10 @@ use std::{
     sync::Arc,
 };
 
-use self::{linked_ast::LiType, type_system::TyType};
+use self::{
+    linked_ast::LiType,
+    type_system::{TyType, TyTypeFlags, TyTypeLogic},
+};
 
 use super::{
     ast::items::SyDeclarationBody,
@@ -59,6 +62,16 @@ impl TyIdOrValWithSpan {
             ty: MIdOrVal::Id(ty),
         }
     }
+
+    pub fn try_get_flags(&self, types: &ModItemSet<TyType>) -> TyTypeFlags {
+        match &self.ty {
+            MIdOrVal::Id(id) => match types.get(*id) {
+                Some(ty) => ty.flags(types),
+                None => TyTypeFlags::new_for_unknown(),
+            },
+            MIdOrVal::Val(val) => val.flags(types),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -85,7 +98,6 @@ pub struct TypeData {
     pub types: ModItemSet<TyType>,
     pub type_assignability: TypeAssignabilityCache,
     pub type_subsetability: TypeSubsetabilityCache,
-    pub already_normalized_types: HashSet<MId<TyType>>,
 }
 
 impl TypeData {
@@ -94,7 +106,6 @@ impl TypeData {
             types,
             type_assignability: TypeAssignabilityCache::new(),
             type_subsetability: TypeSubsetabilityCache::new(),
-            already_normalized_types: HashSet::new(),
         }
     }
 }

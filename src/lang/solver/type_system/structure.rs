@@ -3,7 +3,9 @@ use crate::lang::{
     tokens::TkIdent,
 };
 
-use super::{NormalizationError, NormalizationQuery, TyType, TyTypeLogic, TypeDependencies};
+use super::{
+    NormalizationError, NormalizationQuery, TyType, TyTypeFlags, TyTypeLogic, TypeDependencies,
+};
 
 #[derive(Debug, Clone)]
 pub struct TyStruct {
@@ -175,6 +177,25 @@ impl TyTypeLogic for TyStruct {
             Ok(None)
         } else {
             Ok(None)
+        }
+    }
+
+    fn flags(&self, types: &ModItemSet<TyType>) -> TyTypeFlags {
+        if let Some(literal) = &self.literal {
+            let mut flags = TyTypeFlags::new_all();
+
+            for field in &literal.fields {
+                let ty = types.get(field.value.id);
+                if let Some(ty) = ty {
+                    flags = flags.join(ty.flags(types));
+                } else {
+                    flags = flags.join(TyTypeFlags::new_for_unknown());
+                }
+            }
+
+            flags
+        } else {
+            TyTypeFlags::new_all()
         }
     }
 

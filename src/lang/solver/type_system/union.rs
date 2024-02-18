@@ -7,8 +7,8 @@ use crate::lang::{
 };
 
 use super::{
-    CantNormalize, NormalizationError, NormalizationQuery, TyType, TyTypeKind, TyTypeLogic,
-    TypeDependencies,
+    CantNormalize, NormalizationError, NormalizationQuery, TyType, TyTypeFlags, TyTypeKind,
+    TyTypeLogic, TypeDependencies,
 };
 
 #[derive(Debug, Clone)]
@@ -200,11 +200,27 @@ impl TyUnion {
     ) -> TyIdOrValWithSpan {
         let mut new_union = TyUnion::new();
 
-        new_union.insert_type(left, types_data);
-        new_union.insert_type(right, types_data);
+        let left_flags = left.try_get_flags(&types_data.types);
+        let right_flags = right.try_get_flags(&types_data.types);
+        let flags = left_flags.join(right_flags);
+
+        let mut insert_with_flags = |ty: TyIdOrValWithSpan, flags: TyTypeFlags| {
+            if flags.is_normalized {
+                new_union.insert_type_normalized(
+                    ty,
+                    &mut types_data.types,
+                    &mut types_data.type_subsetability,
+                );
+            } else {
+                new_union.insert_type(ty, types_data);
+            }
+        };
+
+        insert_with_flags(left, flags);
+        insert_with_flags(right, flags);
 
         let kind = TyTypeKind::Union(new_union);
-        let ty = TyType::new_named(name, kind, span.clone());
+        let ty = TyType::new_named(name, kind, span.clone(), flags);
         TyIdOrValWithSpan::new_val(ty, span)
     }
 
@@ -327,6 +343,21 @@ impl TyTypeLogic for TyUnion {
         }
 
         Ok(Some(new_union))
+    }
+
+    fn flags(&self, types: &ModItemSet<TyType>) -> TyTypeFlags {
+        let mut flags = TyTypeFlags::new_all();
+
+        for variant in &self.types {
+            let ty = types.get(variant.id);
+            if let Some(ty) = ty {
+                flags = flags.join(ty.flags(types));
+            } else {
+                flags = flags.join(TyTypeFlags::new_for_unknown());
+            }
+        }
+
+        flags
     }
 
     fn get_type_dependencies(&self, types: &ModItemSet<TyType>) -> TypeDependencies {
