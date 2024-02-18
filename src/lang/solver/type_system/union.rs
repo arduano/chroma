@@ -1,10 +1,9 @@
 use crate::lang::{
     solver::{
-        MId, ModItemSet, TyIdOrValWithSpan, TypeAssignabilityQuery, TypeData, TypeIdWithSpan,
+        ModItemSet, TyIdOrValWithSpan, TypeAssignabilityQuery, TypeData, TypeIdWithSpan,
         TypeSubsetQuery, TypeSubsetabilityCache,
     },
     tokens::{Span, TkIdent},
-    CompilerError, ErrorCollector,
 };
 
 use super::{

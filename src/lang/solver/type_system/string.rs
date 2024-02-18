@@ -50,12 +50,12 @@ impl TyTypeLogic for TyString {
 
     fn get_normalized(
         &self,
-        ctx: &mut NormalizationQuery,
+        _ctx: &mut NormalizationQuery,
     ) -> Result<Option<Self>, NormalizationError> {
         Ok(None)
     }
 
-    fn get_type_dependencies(&self, types: &ModItemSet<TyType>) -> TypeDependencies {
+    fn get_type_dependencies(&self, _types: &ModItemSet<TyType>) -> TypeDependencies {
         TypeDependencies::new_empty()
     }
 }

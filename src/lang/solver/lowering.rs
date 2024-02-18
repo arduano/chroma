@@ -1,16 +1,12 @@
-use std::{
-    any::TypeId,
-    collections::{hash_map::Entry, HashMap, HashSet},
-};
+use std::collections::{HashMap, HashSet};
 
 use crate::lang::{
     ast::{
         helpers::Attempted,
         items::{SyDeclaration, SyDeclarationBody, SyExpression, SyObjectLiteralField},
     },
-    solver::NormalizedTypeData,
     tokens::TkIdent,
-    CompilerError, ErrorCollector,
+    CompilerError,
 };
 
 use self::{
@@ -20,9 +16,9 @@ use self::{
 
 use super::{
     linked_ast::*,
-    type_system::{NormalizationQuery, TyType, TyTypeKind},
+    type_system::{NormalizationQuery, TyType},
     MId, ModItemSet, ModuleGroupCompilation, ModuleNamespace, ModuleNamespaceItem,
-    ModuleNamespaceItemKind, TypeData, TypeIdWithSpan, TypeSubsetabilityCache,
+    ModuleNamespaceItemKind, TypeIdWithSpan, TypeSubsetabilityCache,
 };
 
 mod link_type_expressions;

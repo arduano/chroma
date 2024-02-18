@@ -1,5 +1,5 @@
 use crate::lang::{
-    solver::{MId, ModItemSet, TypeAssignabilityQuery, TypeIdWithSpan, TypeSubsetQuery},
+    solver::{ModItemSet, TypeAssignabilityQuery, TypeIdWithSpan, TypeSubsetQuery},
     tokens::TkIdent,
 };
 
@@ -178,7 +178,7 @@ impl TyTypeLogic for TyStruct {
         }
     }
 
-    fn get_type_dependencies(&self, types: &ModItemSet<TyType>) -> TypeDependencies {
+    fn get_type_dependencies(&self, _types: &ModItemSet<TyType>) -> TypeDependencies {
         if let Some(literal) = &self.literal {
             let inner_types = literal.fields.iter().map(|field| field.value.id).collect();
 

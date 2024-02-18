@@ -207,7 +207,7 @@ fn resolve_binary_expression(
         _ => {}
     }
 
-    let Some(left_ty) = left_ty else {
+    let Some(_left_ty) = left_ty else {
         compilation.errors.push(CompilerError::new(
             "Recursive type computations are not allowed",
             left.span.clone(),
@@ -218,7 +218,7 @@ fn resolve_binary_expression(
         );
     };
 
-    let Some(right_ty) = right_ty else {
+    let Some(_right_ty) = right_ty else {
         compilation.errors.push(CompilerError::new(
             "Recursive type computations are not allowed",
             right.span.clone(),

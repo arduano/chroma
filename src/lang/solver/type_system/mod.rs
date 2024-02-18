@@ -12,7 +12,7 @@ pub use union::*;
 use crate::lang::tokens::{Span, TkIdent};
 
 use super::{
-    MId, ModItemSet, NormalizedTypeData, TypeAssignabilityQuery, TypeIdWithSpan, TypeSubsetQuery,
+    MId, ModItemSet, TypeAssignabilityQuery, TypeIdWithSpan, TypeSubsetQuery,
     TypeSubsetabilityCache,
 };
 
