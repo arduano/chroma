@@ -32,6 +32,7 @@ pub struct SubsetOf;
 
 type TypeSubsetability = TypeRelationship<SubsetOf>;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeRelationshipCache<T: std::fmt::Debug + Clone + PartialEq + Eq + std::hash::Hash> {
     cache: HashMap<TypeRelationship<T>, bool>,
 }
@@ -135,7 +136,7 @@ impl<'a> TypeSubsetQuery<'a> {
             return assignable;
         }
 
-        let assignable = self.is_substet_of(left, right);
+        let assignable = self.is_subset_of_impl(left, right);
 
         self.type_subsetability.set(left, right, assignable);
 

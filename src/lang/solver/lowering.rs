@@ -6,7 +6,7 @@ use crate::lang::{
         items::{SyDeclaration, SyDeclarationBody, SyExpression, SyObjectLiteralField},
     },
     tokens::TkIdent,
-    CompilerError,
+    CompilerError, ErrorCollector,
 };
 
 use self::{
@@ -137,10 +137,17 @@ pub fn try_normalize_type(
     ty_ref: &TypeIdWithSpan,
     types: &mut ModItemSet<TyType>,
     type_subsetability: &mut TypeSubsetabilityCache,
+    errors: &mut ErrorCollector,
 ) -> bool {
     let mut normalizer = NormalizationQuery::new(types, type_subsetability);
 
     let result = normalizer.ensure_required_type_normalized(ty_ref);
+    if result.is_err() {
+        errors.push(CompilerError::new(
+            "Recursive type computations are not allowed",
+            ty_ref.span.clone(),
+        ));
+    }
 
     result.is_ok()
 }

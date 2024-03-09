@@ -67,6 +67,8 @@ impl<'a> NormalizationQuery<'a> {
             bail!();
         };
 
+        self.required_parent_normalizations.push(ty_ref.id);
+
         // TODO: Keep the borrow checker happy. In the future, maybe wrap all
         // the types in Arc? And have a `get` and `get_arc` function on the type sets.
         let ty = ty.clone();
@@ -74,6 +76,8 @@ impl<'a> NormalizationQuery<'a> {
         if let Some(normalized) = ty.get_normalized(self)? {
             self.types.replace_value(ty_ref.id, normalized);
         }
+
+        self.required_parent_normalizations.pop();
 
         Ok(NormalizationSuccess)
     }
@@ -90,7 +94,7 @@ impl<'a> NormalizationQuery<'a> {
         let mut new_query = NormalizationQuery {
             types: self.types,
             type_subsetability: self.type_subsetability,
-            required_parent_normalizations: Vec::new(),
+            required_parent_normalizations: vec![],
             parent_calls: new_parent_calls,
         };
 

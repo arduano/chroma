@@ -2,6 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use self::{
     linked_ast::LiType,
+    lowering::try_normalize_type,
     type_system::{
         TyType, TyTypeFlags, TyTypeLogic, TypeAssignabilityCache, TypeSubsetabilityCache,
     },
@@ -85,6 +86,10 @@ impl TypeIdWithSpan {
 
     pub fn as_type_id_or_val(&self) -> TyIdOrValWithSpan {
         TyIdOrValWithSpan::new_id(self.id, self.span.clone())
+    }
+
+    pub fn with_new_span(&self, span: Span) -> Self {
+        Self { span, id: self.id }
     }
 }
 
@@ -190,6 +195,16 @@ impl ModuleGroupCompilation {
         for li_type_id in namespace_types {
             let id = lowering::get_type_id_for_linked_type_id(self, li_type_id);
             types.push(id);
+        }
+
+        for &type_id in &types {
+            let ty = self.type_data.types.get(type_id).unwrap();
+            try_normalize_type(
+                &TypeIdWithSpan::new(type_id, ty.span.clone()),
+                &mut self.type_data.types,
+                &mut self.type_data.type_subsetability,
+                &mut self.errors,
+            );
         }
 
         types

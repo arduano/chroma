@@ -101,7 +101,7 @@ async fn main() {
         .get(&b_li_type_id.unwrap())
         .unwrap();
 
-    dbg!(&ast);
+    // dbg!(&ast);
 
     dbg!(&compilation.linked_type_definitions);
     dbg!(&compilation.linked_type_to_type_mapping);

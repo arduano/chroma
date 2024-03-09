@@ -248,6 +248,7 @@ fn resolve_binary_expression(
         &left_ty_ref,
         &mut compilation.type_data.types,
         &mut compilation.type_data.type_subsetability,
+        &mut compilation.errors,
     );
 
     let right_ty_id = compilation.type_data.types.get_id_for_val_or_id(right.ty);
@@ -256,6 +257,7 @@ fn resolve_binary_expression(
         &right_ty_ref,
         &mut compilation.type_data.types,
         &mut compilation.type_data.type_subsetability,
+        &mut compilation.errors,
     );
 
     let left_ty = compilation.type_data.types.get(left_ty_ref.id).unwrap();
@@ -386,7 +388,7 @@ fn resolve_non_union_binary_expression(
     let push_invalid_op_error = || {
         compilation.errors.push(CompilerError::new(
             "Invalid binary operation for types (2)",
-            joined_span.clone(),
+            op_span.clone(),
         ));
         TyType::new_unknown(joined_span)
     };
@@ -429,7 +431,7 @@ fn resolve_non_union_binary_expression(
         _ => {
             compilation.errors.push(CompilerError::new(
                 "Invalid binary operation for types (1)",
-                expr_span.clone(),
+                op_span.clone(),
             ));
             let ty = TyType::new_unknown(op_span);
             return TyIdOrValWithSpan::new_val(ty, expr_span);
