@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use crate::lang::{
     ast::items::{SyArithmeticBinaryOp, SyBinaryOp, SyBooleanLogicBinaryOp},
     solver::{
-        lowering::try_normalize_type, type_system::*, Id, MId, ModItemSet, ModuleGroupCompilation,
-        TyIdOrValWithSpan, TypeData, TypeIdWithSpan,
+        type_system::*, Id, MId, ModItemSet, ModuleGroupCompilation, TyIdOrValWithSpan, TypeData,
+        TypeIdWithSpan,
     },
     tokens::{ItemWithSpan, Span, TkIdent},
     CompilerError, ErrorCollector,
@@ -192,9 +192,6 @@ fn resolve_binary_expression(
     name: Option<TkIdent>,
     compilation: &mut TypeFromLinkedTypeCompilation,
 ) -> TyIdOrValWithSpan {
-    let left_ty = compilation.type_data.types.get_val_for_val_or_id(&left.ty);
-    let right_ty = compilation.type_data.types.get_val_for_val_or_id(&right.ty);
-
     let expr_span = left.span.join(&right.span);
 
     // Resolve unions first
@@ -212,53 +209,11 @@ fn resolve_binary_expression(
         _ => {}
     }
 
-    let Some(_left_ty) = left_ty else {
-        compilation.errors.push(CompilerError::new(
-            "Recursive type computations are not allowed",
-            left.span.clone(),
-        ));
-        return TyIdOrValWithSpan::new_val(
-            TyType::new(
-                TyTypeKind::Unknown,
-                expr_span.clone(),
-                TyTypeFlags::new_for_unknown(),
-            ),
-            expr_span,
-        );
-    };
-
-    let Some(_right_ty) = right_ty else {
-        compilation.errors.push(CompilerError::new(
-            "Recursive type computations are not allowed",
-            right.span.clone(),
-        ));
-        return TyIdOrValWithSpan::new_val(
-            TyType::new(
-                TyTypeKind::Unknown,
-                expr_span.clone(),
-                TyTypeFlags::new_for_unknown(),
-            ),
-            expr_span,
-        );
-    };
-
     let left_ty_id = compilation.type_data.types.get_id_for_val_or_id(left.ty);
     let left_ty_ref = TypeIdWithSpan::new(left_ty_id, left.span.clone());
-    try_normalize_type(
-        &left_ty_ref,
-        &mut compilation.type_data.types,
-        &mut compilation.type_data.type_subsetability,
-        &mut compilation.errors,
-    );
 
     let right_ty_id = compilation.type_data.types.get_id_for_val_or_id(right.ty);
     let right_ty_ref = TypeIdWithSpan::new(right_ty_id, right.span.clone());
-    try_normalize_type(
-        &right_ty_ref,
-        &mut compilation.type_data.types,
-        &mut compilation.type_data.type_subsetability,
-        &mut compilation.errors,
-    );
 
     let left_ty = compilation.type_data.types.get(left_ty_ref.id).unwrap();
     let right_ty = compilation.type_data.types.get(right_ty_ref.id).unwrap();
@@ -273,8 +228,19 @@ fn resolve_binary_expression(
     match ((&left_ty.kind, Side::Left), (&right_ty.kind, Side::Right)) {
         ((TyTypeKind::Union(union1), _), (TyTypeKind::Union(union2), _)) => {
             let mut new_union = TyUnion::new();
-            let union1_types = union1.types.clone(); // Keep the borrow checker happy
-            let union2_types = union2.types.clone(); // Keep the borrow checker happy
+            let union1_types = union1
+                .get_normalized_type_list(
+                    &compilation.type_data.types,
+                    &mut compilation.type_data.type_subsetability,
+                )
+                .into_owned(); // Keep the borrow checker happy
+            let union2_types = union2
+                .get_normalized_type_list(
+                    &compilation.type_data.types,
+                    &mut compilation.type_data.type_subsetability,
+                )
+                .into_owned(); // Keep the borrow checker happy
+
             for union1_ty in &union1_types {
                 for union2_ty in &union2_types {
                     let resolved = resolve_non_union_binary_expression(
@@ -304,7 +270,14 @@ fn resolve_binary_expression(
         }
         ((_, side), (TyTypeKind::Union(union), _)) | ((TyTypeKind::Union(union), _), (_, side)) => {
             let mut new_union = TyUnion::new();
-            let union_types = union.types.clone(); // Keep the borrow checker happy
+            let union_types = union
+                .get_normalized_type_list(
+                    &compilation.type_data.types,
+                    &mut compilation.type_data.type_subsetability,
+                )
+                .into_owned(); // Keep the borrow checker happy
+
+            dbg!(&union_types);
 
             // Get the other type, and ensure that it has an ID so we don't have to clone a non-id type a lot.
             let other_ty_ref = match side {

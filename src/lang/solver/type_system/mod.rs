@@ -2,46 +2,29 @@ use crate::lang::tokens::{Span, TkIdent};
 
 mod kinds;
 pub use kinds::*;
-mod normalization;
-pub use normalization::*;
 mod relationships;
 pub use relationships::*;
 
 use super::{MId, ModItemSet};
 
 #[derive(Debug, Clone, Copy)]
-pub struct TyTypeFlags {
-    pub is_normalized: bool,
-}
+pub struct TyTypeFlags {}
 
 impl TyTypeFlags {
     pub fn new() -> Self {
-        Self {
-            is_normalized: false,
-        }
+        Self {}
     }
 
     pub fn new_all() -> Self {
-        Self {
-            is_normalized: true,
-        }
+        Self {}
     }
 
     pub fn new_for_unknown() -> Self {
-        Self {
-            is_normalized: false,
-        }
+        Self {}
     }
 
-    pub fn normalized(mut self) -> Self {
-        self.is_normalized = true;
-        self
-    }
-
-    pub fn join(self, other: Self) -> Self {
-        Self {
-            is_normalized: self.is_normalized && other.is_normalized,
-        }
+    pub fn join(self, _other: Self) -> Self {
+        Self {}
     }
 }
 
@@ -145,12 +128,6 @@ pub trait TyTypeLogic: Sized {
 
     fn get_intersection(&self, other: &Self) -> Self;
 
-    /// Try to normalize the current type. If it's already normalized, return None. If it's not possible to normalize, return an error.
-    fn get_normalized(
-        &self,
-        ctx: &mut NormalizationQuery,
-    ) -> Result<Option<Self>, NormalizationError>;
-
     fn flags(&self, types: &ModItemSet<TyType>) -> TyTypeFlags;
 
     fn get_type_dependencies(&self, types: &ModItemSet<TyType>) -> TypeDependencies;
@@ -239,22 +216,6 @@ impl TyTypeLogic for TyTypeKind {
         }
     }
 
-    fn get_normalized(
-        &self,
-        ctx: &mut NormalizationQuery,
-    ) -> Result<Option<Self>, NormalizationError> {
-        match self {
-            TyTypeKind::Number(number) => Ok(number.get_normalized(ctx)?.map(TyTypeKind::Number)),
-            TyTypeKind::String(string) => Ok(string.get_normalized(ctx)?.map(TyTypeKind::String)),
-            TyTypeKind::Struct(struct_ty) => {
-                Ok(struct_ty.get_normalized(ctx)?.map(TyTypeKind::Struct))
-            }
-            TyTypeKind::Union(union) => Ok(union.get_normalized(ctx)?.map(TyTypeKind::Union)),
-            TyTypeKind::Never => Ok(None),
-            TyTypeKind::Unknown => Ok(None),
-        }
-    }
-
     fn flags(&self, types: &ModItemSet<TyType>) -> TyTypeFlags {
         match self {
             TyTypeKind::Number(number) => number.flags(types),
@@ -294,20 +255,6 @@ impl TyTypeLogic for TyType {
 
     fn is_substate_of(&self, other: &Self, query: &mut TypeSubsetQuery) -> bool {
         self.kind.is_substate_of(&other.kind, query)
-    }
-
-    fn get_normalized(
-        &self,
-        ctx: &mut NormalizationQuery,
-    ) -> Result<Option<Self>, NormalizationError> {
-        let result = self.kind.get_normalized(ctx)?.map(|kind| Self {
-            name: self.name.clone(),
-            kind,
-            span: self.span.clone(),
-            flags: self.flags.normalized(),
-        });
-
-        Ok(result)
     }
 
     fn flags(&self, _types: &ModItemSet<TyType>) -> TyTypeFlags {

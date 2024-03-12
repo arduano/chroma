@@ -1,8 +1,7 @@
 use crate::lang::solver::ModItemSet;
 
 use super::{
-    NormalizationError, NormalizationQuery, TyType, TyTypeFlags, TyTypeLogic,
-    TypeAssignabilityQuery, TypeDependencies, TypeSubsetQuery,
+    TyType, TyTypeFlags, TyTypeLogic, TypeAssignabilityQuery, TypeDependencies, TypeSubsetQuery,
 };
 
 #[derive(Debug, Clone)]
@@ -47,13 +46,6 @@ impl TyTypeLogic for TyNumber {
 
     fn is_substate_of(&self, other: &Self, _query: &mut TypeSubsetQuery) -> bool {
         is_assignable(self, other)
-    }
-
-    fn get_normalized(
-        &self,
-        _ctx: &mut NormalizationQuery,
-    ) -> Result<Option<Self>, NormalizationError> {
-        Ok(None)
     }
 
     fn flags(&self, _types: &ModItemSet<TyType>) -> TyTypeFlags {

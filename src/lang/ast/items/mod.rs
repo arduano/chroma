@@ -7,4 +7,3 @@ pub use declarations::*;
 mod statements;
 pub use statements::*;
 mod attributes;
-pub use attributes::*;

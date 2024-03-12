@@ -1,11 +1,13 @@
+use std::borrow::Cow;
+
 use crate::lang::{
     solver::{ModItemSet, TyIdOrValWithSpan, TypeData, TypeIdWithSpan},
     tokens::{Span, TkIdent},
 };
 
 use super::{
-    NormalizationError, NormalizationQuery, TyType, TyTypeFlags, TyTypeKind, TyTypeLogic,
-    TypeAssignabilityQuery, TypeDependencies, TypeSubsetQuery, TypeSubsetabilityCache,
+    TyType, TyTypeFlags, TyTypeKind, TyTypeLogic, TypeAssignabilityQuery, TypeDependencies,
+    TypeSubsetQuery, TypeSubsetabilityCache,
 };
 
 #[derive(Debug, Clone)]
@@ -94,6 +96,53 @@ impl TyUnion {
 
     pub fn new_with_types(types: Vec<TypeIdWithSpan>) -> Self {
         Self { types }
+    }
+
+    pub fn get_normalized_type_list(
+        &self,
+        types: &ModItemSet<TyType>,
+        type_subsetability: &mut TypeSubsetabilityCache,
+    ) -> Cow<'_, [TypeIdWithSpan]> {
+        let mut current = Cow::Borrowed(self.types.as_slice());
+
+        // Normalize nested unions, appending nested union elements to the end until
+        // there are no more nested unions.
+        let mut i = 0;
+        while i < current.len() {
+            let ty = &types[current[i].id];
+            if let TyTypeKind::Union(union) = &ty.kind {
+                let current = current.to_mut();
+                current.remove(i);
+                for ty in &union.types {
+                    current.push(ty.clone());
+                }
+            }
+
+            i += 1;
+        }
+
+        // Normalize subset items. For each item, check if it's a subset of any
+        // other item, and remove it if it is.
+        let mut i = 0;
+        while i < current.len() {
+            let ty = &types[current[i].id];
+            for j in 0..current.len() {
+                if i == j {
+                    continue;
+                }
+
+                let ty2 = &types[current[j].id];
+                if is_type_subset_of(ty, ty2, types, type_subsetability) {
+                    current.to_mut().remove(i);
+                    i -= 1;
+                    break;
+                }
+            }
+
+            i += 1;
+        }
+
+        current
     }
 
     /// An internal function to prepare a type for normalized inserting. Returns true if it should be
@@ -201,16 +250,8 @@ impl TyUnion {
         let right_flags = right.try_get_flags(&types_data.types);
         let flags = left_flags.join(right_flags);
 
-        let mut insert_with_flags = |ty: TyIdOrValWithSpan, flags: TyTypeFlags| {
-            if flags.is_normalized {
-                new_union.insert_type_normalized(
-                    ty,
-                    &mut types_data.types,
-                    &mut types_data.type_subsetability,
-                );
-            } else {
-                new_union.insert_type(ty, types_data);
-            }
+        let mut insert_with_flags = |ty: TyIdOrValWithSpan, _flags: TyTypeFlags| {
+            new_union.insert_type(ty, types_data);
         };
 
         insert_with_flags(left, flags);
@@ -315,31 +356,6 @@ impl TyTypeLogic for TyUnion {
 
     fn get_intersection(&self, _other: &Self) -> Self {
         todo!()
-    }
-
-    fn get_normalized(
-        &self,
-        ctx: &mut NormalizationQuery,
-    ) -> Result<Option<Self>, NormalizationError> {
-        let mut new_union = TyUnion::new();
-
-        for ty_ref in &self.types {
-            let ty = ctx.types.get(ty_ref.id).ok_or(NormalizationError)?;
-
-            if matches!(ty.kind, TyTypeKind::Union(_)) {
-                ctx.ensure_required_type_normalized(&ty_ref)?;
-            } else {
-                ctx.ensure_non_required_type_normalized(&ty_ref)?;
-            }
-
-            new_union.insert_type_by_id_normalized(ty_ref, ctx.types, ctx.type_subsetability);
-        }
-
-        if new_union.types.len() == self.types.len() {
-            return Ok(None);
-        }
-
-        Ok(Some(new_union))
     }
 
     fn flags(&self, types: &ModItemSet<TyType>) -> TyTypeFlags {

@@ -4,8 +4,7 @@ use crate::lang::{
 };
 
 use super::{
-    NormalizationError, NormalizationQuery, TyType, TyTypeFlags, TyTypeLogic,
-    TypeAssignabilityQuery, TypeDependencies, TypeSubsetQuery,
+    TyType, TyTypeFlags, TyTypeLogic, TypeAssignabilityQuery, TypeDependencies, TypeSubsetQuery,
 };
 
 #[derive(Debug, Clone)]
@@ -164,21 +163,6 @@ impl TyTypeLogic for TyStruct {
         }
 
         true
-    }
-
-    fn get_normalized(
-        &self,
-        ctx: &mut NormalizationQuery,
-    ) -> Result<Option<Self>, NormalizationError> {
-        if let Some(literal) = &self.literal {
-            for field in &literal.fields {
-                ctx.ensure_non_required_type_normalized(&field.value)?;
-            }
-
-            Ok(None)
-        } else {
-            Ok(None)
-        }
     }
 
     fn flags(&self, types: &ModItemSet<TyType>) -> TyTypeFlags {
