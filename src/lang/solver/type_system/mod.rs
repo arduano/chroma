@@ -83,9 +83,9 @@ impl TyType {
         }
     }
 
-    pub fn new_unknown(span: Span) -> Self {
+    pub fn new_unknown(name: Option<TkIdent>, span: Span) -> Self {
         Self {
-            name: None,
+            name,
             kind: TyTypeKind::Unknown,
             span,
             flags: TyTypeFlags::new_for_unknown(),
@@ -106,6 +106,10 @@ impl TyType {
 
     pub fn get_type_dependencies(&self, types: &ModItemSet<TyType>) -> TypeDependencies {
         self.kind.get_type_dependencies(types)
+    }
+
+    pub fn is_union(&self) -> bool {
+        matches!(self.kind, TyTypeKind::Union(_))
     }
 }
 

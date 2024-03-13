@@ -122,7 +122,11 @@ pub fn link_type_expression_ast(
             })
         }
         SyExpression::Parentheses(expr) => {
-            return link_type_expression_ast(&expr.expression, name, compilation, namespace);
+            let mut li_ty =
+                link_type_expression_ast(&expr.expression, name, compilation, namespace);
+            li_ty.span = expr.parentheses.span();
+
+            return li_ty;
         }
         SyExpression::Invalid => LiTypeKind::Unknown,
     };

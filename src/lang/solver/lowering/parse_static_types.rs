@@ -13,7 +13,7 @@ use crate::lang::{
 use super::{LiStructField, LiType, LiTypeKind};
 
 /// A type for encapsulating which parts of this compilation step are mutated
-/// and which parts are immutable. This keeps the compiler happy.
+/// and which parts are immutable. This keeps rust happy.
 pub struct TypeFromLinkedTypeCompilation<'a> {
     pub current_module_id: Id<ModuleGroupCompilation>,
     pub linked_type_definitions: &'a ModItemSet<LiType>,
@@ -120,6 +120,7 @@ pub fn parse_type_from_linked_type(
                 &binary.operator,
                 right,
                 linked_ty.name.clone(),
+                linked_ty.span(),
                 compilation,
             );
         }
@@ -183,6 +184,29 @@ fn get_struct_literal_fields_from_ty_and_execute_callback<'a>(
     }
 }
 
+// Using a single type, convert it to a list of variants.
+// Unions will return an array of types, while single types
+// will return a slice with just themselves as the only element.
+fn type_to_variant_list<'a>(
+    id: &'a TyIdOrValWithSpan,
+    ty: &TyType,
+    types: &ModItemSet<TyType>,
+    type_subsetability: &mut TypeSubsetabilityCache,
+) -> Vec<TyIdOrValWithSpan> {
+    match &ty.kind {
+        TyTypeKind::Union(union) => {
+            let types = union
+                .get_normalized_type_list(types, type_subsetability)
+                .iter()
+                .map(|ty| ty.as_type_id_or_val())
+                .collect::<Vec<_>>();
+
+            types
+        }
+        _ => vec![id.clone()], // TODO: Reduce allocations?
+    }
+}
+
 /// Resolve a binary expression while accounting for unions. Any union types will be resolved
 /// item-wise and then combined together again.
 fn resolve_binary_expression(
@@ -190,11 +214,12 @@ fn resolve_binary_expression(
     operator: &SyBinaryOp,
     right: TyIdOrValWithSpan,
     name: Option<TkIdent>,
+    span: Span,
     compilation: &mut TypeFromLinkedTypeCompilation,
 ) -> TyIdOrValWithSpan {
     let expr_span = left.span.join(&right.span);
 
-    // Resolve unions first
+    // Resolve unions first, unions are a special edge case
     match operator {
         SyBinaryOp::BooleanLogic(SyBooleanLogicBinaryOp::Or(_)) => {
             let union = TyUnion::union_types(
@@ -209,122 +234,76 @@ fn resolve_binary_expression(
         _ => {}
     }
 
-    let left_ty_id = compilation.type_data.types.get_id_for_val_or_id(left.ty);
-    let left_ty_ref = TypeIdWithSpan::new(left_ty_id, left.span.clone());
+    // Grab the types
+    let Some(left_ty) = compilation.type_data.types.get_val_for_val_or_id(&left.ty) else {
+        compilation.errors.push(CompilerError::new(
+            "Recursive type computations are not allowed",
+            left.span.clone(),
+        ));
+        return TyIdOrValWithSpan::new_val(TyType::new_unknown(name, expr_span.clone()), expr_span);
+    };
+    let Some(right_ty) = compilation.type_data.types.get_val_for_val_or_id(&right.ty) else {
+        compilation.errors.push(CompilerError::new(
+            "Recursive type computations are not allowed",
+            left.span.clone(),
+        ));
+        return TyIdOrValWithSpan::new_val(TyType::new_unknown(name, expr_span.clone()), expr_span);
+    };
 
-    let right_ty_id = compilation.type_data.types.get_id_for_val_or_id(right.ty);
-    let right_ty_ref = TypeIdWithSpan::new(right_ty_id, right.span.clone());
-
-    let left_ty = compilation.type_data.types.get(left_ty_ref.id).unwrap();
-    let right_ty = compilation.type_data.types.get(right_ty_ref.id).unwrap();
-
-    // Normalize
-
-    enum Side {
-        Left,
-        Right,
+    // If neither is a union, directly return as-is.
+    if !left_ty.is_union() && !right_ty.is_union() {
+        return resolve_non_union_binary_expression(left, operator, right, name, span, compilation);
     }
 
-    match ((&left_ty.kind, Side::Left), (&right_ty.kind, Side::Right)) {
-        ((TyTypeKind::Union(union1), _), (TyTypeKind::Union(union2), _)) => {
-            let mut new_union = TyUnion::new();
-            let union1_types = union1
-                .get_normalized_type_list(
-                    &compilation.type_data.types,
-                    &mut compilation.type_data.type_subsetability,
-                )
-                .into_owned(); // Keep the borrow checker happy
-            let union2_types = union2
-                .get_normalized_type_list(
-                    &compilation.type_data.types,
-                    &mut compilation.type_data.type_subsetability,
-                )
-                .into_owned(); // Keep the borrow checker happy
+    // Get the variants list for both sides
+    let left_variants = type_to_variant_list(
+        &left,
+        left_ty,
+        &compilation.type_data.types,
+        &mut compilation.type_data.type_subsetability,
+    );
+    let right_variants = type_to_variant_list(
+        &right,
+        right_ty,
+        &compilation.type_data.types,
+        &mut compilation.type_data.type_subsetability,
+    );
 
-            for union1_ty in &union1_types {
-                for union2_ty in &union2_types {
-                    let resolved = resolve_non_union_binary_expression(
-                        union1_ty.as_type_id_or_val(),
-                        operator,
-                        union2_ty.as_type_id_or_val(),
-                        compilation,
-                    );
+    // Insert them into a new union
+    let mut new_union = TyUnion::new();
+    for union_left_ty in left_variants.into_iter() {
+        for union_right_ty in right_variants.iter() {
+            let mut union_left_ty = union_left_ty.clone(); // TODO: Reduce allocations?
+            union_left_ty.span = left.span.clone();
+            let mut union_right_ty = union_right_ty.clone();
+            union_right_ty.span = right.span.clone();
 
-                    new_union.insert_type_normalized(
-                        resolved,
-                        &mut compilation.type_data.types,
-                        &mut compilation.type_data.type_subsetability,
-                    );
-                }
-            }
+            let resolved = resolve_non_union_binary_expression(
+                union_left_ty,
+                operator,
+                union_right_ty,
+                name.clone(),
+                span.clone(),
+                compilation,
+            );
 
-            if new_union.types.len() == 1 {
-                let ty = &new_union.types[0];
-                return TyIdOrValWithSpan::new_id(ty.id, ty.span.clone());
-            } else {
-                let kind = TyTypeKind::Union(new_union);
-                let flags = kind.flags(&compilation.type_data.types);
-                let ty = TyType::new_named(name, kind, expr_span.clone(), flags);
-                return TyIdOrValWithSpan::new_val(ty, expr_span);
-            }
+            new_union.insert_type_normalized(
+                resolved,
+                &mut compilation.type_data.types,
+                &mut compilation.type_data.type_subsetability,
+            );
         }
-        ((_, side), (TyTypeKind::Union(union), _)) | ((TyTypeKind::Union(union), _), (_, side)) => {
-            let mut new_union = TyUnion::new();
-            let union_types = union
-                .get_normalized_type_list(
-                    &compilation.type_data.types,
-                    &mut compilation.type_data.type_subsetability,
-                )
-                .into_owned(); // Keep the borrow checker happy
+    }
 
-            dbg!(&union_types);
-
-            // Get the other type, and ensure that it has an ID so we don't have to clone a non-id type a lot.
-            let other_ty_ref = match side {
-                Side::Left => left_ty_ref,
-                Side::Right => right_ty_ref,
-            };
-            let other_ty = other_ty_ref.as_type_id_or_val();
-
-            for union_ty in &union_types {
-                let resolved = match side {
-                    Side::Left => resolve_non_union_binary_expression(
-                        other_ty.clone(),
-                        operator,
-                        union_ty.as_type_id_or_val(),
-                        compilation,
-                    ),
-                    Side::Right => resolve_non_union_binary_expression(
-                        union_ty.as_type_id_or_val(),
-                        operator,
-                        other_ty.clone(),
-                        compilation,
-                    ),
-                };
-
-                new_union.insert_type_normalized(
-                    resolved,
-                    &mut compilation.type_data.types,
-                    &mut compilation.type_data.type_subsetability,
-                );
-            }
-
-            if new_union.types.len() == 1 {
-                let ty = &new_union.types[0];
-                return TyIdOrValWithSpan::new_id(ty.id, ty.span.clone());
-            } else {
-                let kind = TyTypeKind::Union(new_union);
-                let flags = kind.flags(&compilation.type_data.types);
-                let ty = TyType::new_named(name, kind, expr_span.clone(), flags);
-                return TyIdOrValWithSpan::new_val(ty, expr_span);
-            }
-        }
-        (_, _) => resolve_non_union_binary_expression(
-            left_ty_ref.as_type_id_or_val(),
-            operator,
-            right_ty_ref.as_type_id_or_val(),
-            compilation,
-        ),
+    // If the union is just 1 element, return that element, otherwise return the union.
+    if new_union.types.len() == 1 {
+        let ty = &new_union.types[0];
+        return TyIdOrValWithSpan::new_id(ty.id, ty.span.clone());
+    } else {
+        let kind = TyTypeKind::Union(new_union);
+        let flags = kind.flags(&compilation.type_data.types);
+        let ty = TyType::new_named(name, kind, expr_span.clone(), flags);
+        return TyIdOrValWithSpan::new_val(ty, expr_span);
     }
 }
 
@@ -332,19 +311,19 @@ fn resolve_non_union_binary_expression(
     left: TyIdOrValWithSpan,
     operator: &SyBinaryOp,
     right: TyIdOrValWithSpan,
+    name: Option<TkIdent>,
+    span: Span,
     compilation: &mut TypeFromLinkedTypeCompilation,
 ) -> TyIdOrValWithSpan {
     let left_ty = compilation.type_data.types.get_val_for_val_or_id(&left.ty);
     let right_ty = compilation.type_data.types.get_val_for_val_or_id(&right.ty);
-
-    let joined_span = left.span.join(&right.span);
 
     let Some(left_ty) = left_ty else {
         compilation.errors.push(CompilerError::new(
             "Recursive type computations are not allowed",
             left.span.clone(),
         ));
-        return TyIdOrValWithSpan::new_val(TyType::new_unknown(joined_span.clone()), joined_span);
+        return TyIdOrValWithSpan::new_val(TyType::new_unknown(name, span.clone()), span);
     };
 
     let Some(right_ty) = right_ty else {
@@ -352,25 +331,24 @@ fn resolve_non_union_binary_expression(
             "Recursive type computations are not allowed",
             right.span.clone(),
         ));
-        return TyIdOrValWithSpan::new_val(TyType::new_unknown(joined_span.clone()), joined_span);
+        return TyIdOrValWithSpan::new_val(TyType::new_unknown(name, span.clone()), span);
     };
 
     let op_span = operator.span();
-    let expr_span = left.span.join(&right.span);
 
     let push_invalid_op_error = || {
         compilation.errors.push(CompilerError::new(
             "Invalid binary operation for types (2)",
             op_span.clone(),
         ));
-        TyType::new_unknown(joined_span)
+        TyType::new_unknown(name.clone(), span.clone())
     };
 
     macro_rules! invalid_op {
         ($compilation:expr) => {{
             push_invalid_op_error();
-            let ty = TyType::new_unknown(operator.span());
-            return TyIdOrValWithSpan::new_val(ty, expr_span);
+            let ty = TyType::new_unknown(name, operator.span());
+            return TyIdOrValWithSpan::new_val(ty, span);
         }};
     }
 
@@ -382,22 +360,24 @@ fn resolve_non_union_binary_expression(
                 let right_lit = &other_number.literal;
 
                 let (Some(left_lit), Some(right_lit)) = (left_lit, right_lit) else {
-                    let ty = TyType::new_infer_flags(
+                    let ty = TyType::new_named_infer_flags(
+                        name,
                         TyTypeKind::Number(TyNumber::new()),
-                        expr_span.clone(),
+                        span.clone(),
                         &compilation.type_data.types,
                     );
-                    return TyIdOrValWithSpan::new_val(ty, expr_span);
+                    return TyIdOrValWithSpan::new_val(ty, span);
                 };
 
                 let result = run_arithmetic_op_on_numbers(left_lit.value, op, right_lit.value);
 
-                let ty = TyType::new_infer_flags(
+                let ty = TyType::new_named_infer_flags(
+                    name,
                     TyTypeKind::Number(TyNumber::from_literal(result)),
-                    expr_span.clone(),
+                    span.clone(),
                     &compilation.type_data.types,
                 );
-                return TyIdOrValWithSpan::new_val(ty, expr_span);
+                return TyIdOrValWithSpan::new_val(ty, span);
             }
             _ => invalid_op!(compilation),
         },
@@ -406,8 +386,8 @@ fn resolve_non_union_binary_expression(
                 "Invalid binary operation for types (1)",
                 op_span.clone(),
             ));
-            let ty = TyType::new_unknown(op_span);
-            return TyIdOrValWithSpan::new_val(ty, expr_span);
+            let ty = TyType::new_unknown(name, op_span);
+            return TyIdOrValWithSpan::new_val(ty, span);
         }
     }
 }
