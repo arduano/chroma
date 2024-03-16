@@ -124,7 +124,7 @@ pub fn parse_type_from_linked_type(
                 compilation,
             );
         }
-        LiTypeKind::Unknown => TyTypeKind::Unknown,
+        LiTypeKind::Unknown => TyTypeKind::Any(TyAnyTypeKind::Unknown),
         LiTypeKind::Never => TyTypeKind::Never,
     };
 

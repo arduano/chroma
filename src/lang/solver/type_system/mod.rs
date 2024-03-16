@@ -86,7 +86,7 @@ impl TyType {
     pub fn new_unknown(name: Option<TkIdent>, span: Span) -> Self {
         Self {
             name,
-            kind: TyTypeKind::Unknown,
+            kind: TyTypeKind::Any(TyAnyTypeKind::Unknown),
             span,
             flags: TyTypeFlags::new_for_unknown(),
         }
@@ -114,13 +114,20 @@ impl TyType {
 }
 
 #[derive(Debug, Clone)]
+pub enum TyAnyTypeKind {
+    Unknown,
+    Any,
+    Infer,
+}
+
+#[derive(Debug, Clone)]
 pub enum TyTypeKind {
     Number(TyNumber),
     String(TyString),
     Struct(TyStruct),
     Union(TyUnion),
     Never,
-    Unknown,
+    Any(TyAnyTypeKind),
 }
 
 pub trait TyTypeLogic: Sized {
@@ -140,8 +147,8 @@ pub trait TyTypeLogic: Sized {
 impl TyTypeLogic for TyTypeKind {
     fn check_assignable_to(&self, other: &Self, query: &mut TypeAssignabilityQuery) -> bool {
         match (self, other) {
-            (_, TyTypeKind::Unknown) => true,
-            (TyTypeKind::Unknown, _) => true,
+            (_, TyTypeKind::Any(_)) => true,
+            (TyTypeKind::Any(_), _) => true,
 
             (TyTypeKind::Never, TyTypeKind::Never) => true,
             (TyTypeKind::Number(self_number), TyTypeKind::Number(other_number)) => {
@@ -173,8 +180,8 @@ impl TyTypeLogic for TyTypeKind {
             (TyTypeKind::Never, _) => TyTypeKind::Never,
             (_, TyTypeKind::Never) => TyTypeKind::Never,
 
-            (TyTypeKind::Unknown, _) => other.clone(),
-            (_, TyTypeKind::Unknown) => self.clone(),
+            (TyTypeKind::Any(_), _) => other.clone(),
+            (_, TyTypeKind::Any(_)) => self.clone(),
 
             (TyTypeKind::Number(self_number), TyTypeKind::Number(other_number)) => {
                 TyTypeKind::Number(self_number.get_intersection(other_number))
@@ -186,7 +193,7 @@ impl TyTypeLogic for TyTypeKind {
                 TyTypeKind::Struct(self_struct.get_intersection(other_struct))
             }
 
-            _ => TyTypeKind::Unknown,
+            _ => TyTypeKind::Any(TyAnyTypeKind::Unknown),
         }
     }
 
@@ -195,8 +202,8 @@ impl TyTypeLogic for TyTypeKind {
             (TyTypeKind::Never, _) => true,
             (_, TyTypeKind::Never) => false,
 
-            (TyTypeKind::Unknown, _) => true,
-            (_, TyTypeKind::Unknown) => false,
+            (TyTypeKind::Any(_), _) => true,
+            (_, TyTypeKind::Any(_)) => false,
 
             (TyTypeKind::Number(self_number), TyTypeKind::Number(other_number)) => {
                 self_number.is_substate_of(other_number, query)
@@ -227,7 +234,7 @@ impl TyTypeLogic for TyTypeKind {
             TyTypeKind::Struct(struct_ty) => struct_ty.flags(types),
             TyTypeKind::Union(union) => union.flags(types),
             TyTypeKind::Never => TyTypeFlags::new_all(),
-            TyTypeKind::Unknown => TyTypeFlags::new_all(),
+            TyTypeKind::Any(_) => TyTypeFlags::new_all(),
         }
     }
 
@@ -238,7 +245,7 @@ impl TyTypeLogic for TyTypeKind {
             TyTypeKind::Struct(struct_ty) => struct_ty.get_type_dependencies(types),
             TyTypeKind::Union(union) => union.get_type_dependencies(types),
             TyTypeKind::Never => TypeDependencies::new_empty(),
-            TyTypeKind::Unknown => TypeDependencies::new_empty(),
+            TyTypeKind::Any(_) => TypeDependencies::new_empty(),
         }
     }
 }
