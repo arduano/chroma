@@ -126,6 +126,8 @@ pub fn parse_type_from_linked_type(
         }
         LiTypeKind::Unknown => TyTypeKind::Any(TyAnyTypeKind::Unknown),
         LiTypeKind::Never => TyTypeKind::Never,
+
+        LiTypeKind::TypeFnLazyValue(_) => todo!(),
     };
 
     let ty = TyType::new_named_infer_flags(

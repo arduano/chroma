@@ -1,11 +1,13 @@
 use crate::lang::{
     ast::items::SyBinaryOp,
-    solver::MId,
+    solver::{Id, MId},
     tokens::{Span, TkIdent, TkInteger, TkString},
 };
 
 mod structure;
 pub use structure::*;
+
+use super::LiTypeFnLazyValue;
 
 #[derive(Debug, Clone)]
 pub struct LiType {
@@ -47,6 +49,7 @@ pub enum LiTypeKind {
     Struct(LiStruct),
     StaticTypeReference(MId<LiType>),
     BinaryExpression(LiBinaryTypeExpression),
+    TypeFnLazyValue(Id<LiTypeFnLazyValue>),
     Unknown,
     Never,
 }
