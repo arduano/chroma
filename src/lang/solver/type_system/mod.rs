@@ -193,7 +193,7 @@ impl TyTypeLogic for TyTypeKind {
                 TyTypeKind::Struct(self_struct.get_intersection(other_struct))
             }
 
-            _ => TyTypeKind::Any(TyAnyTypeKind::Unknown),
+            _ => TyTypeKind::Never,
         }
     }
 

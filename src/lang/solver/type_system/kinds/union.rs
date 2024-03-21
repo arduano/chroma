@@ -153,6 +153,10 @@ impl TyUnion {
         types: &ModItemSet<TyType>,
         type_subsetability: &mut TypeSubsetabilityCache,
     ) -> bool {
+        if matches!(ty.kind, TyTypeKind::Never) {
+            return false;
+        }
+
         if let TyTypeKind::Union(union) = &ty.kind {
             // Cloning here to keep the borrow checker happy
             let union_types_cloned = union.types.clone();
