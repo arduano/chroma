@@ -46,6 +46,7 @@ impl LiType {
 pub enum LiTypeKind {
     Number(LiNumber),
     String(LiString),
+    Boolean(LiBoolean),
     Struct(LiStruct),
     StaticTypeReference(MId<LiType>),
     BinaryExpression(LiBinaryTypeExpression),
@@ -62,6 +63,11 @@ pub struct LiNumber {
 #[derive(Debug, Clone)]
 pub struct LiString {
     pub literal: Option<TkString>,
+}
+
+#[derive(Debug, Clone)]
+pub struct LiBoolean {
+    pub literal: Option<bool>,
 }
 
 #[derive(Debug, Clone)]

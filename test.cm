@@ -23,5 +23,8 @@
 
 // type B = Foo;
 
-type A = (1 || 2 || 3 || 4 || 5) % 1;
-type B = 0 || 1;
+type Foo = (1 || 2 || 3 || 4 || 5) % 1;
+type Bar = 0 || 1;
+
+type A = Foo extends Bar;
+type B = true;

@@ -20,6 +20,19 @@ fn parse_ast_type_var_read(
     if ident.ident.deref() == "number" {
         return LiTypeKind::Number(LiNumber { literal: None });
     }
+    if ident.ident.deref() == "boolean" {
+        return LiTypeKind::Boolean(LiBoolean { literal: None });
+    }
+    if ident.ident.deref() == "true" {
+        return LiTypeKind::Boolean(LiBoolean {
+            literal: Some(true),
+        });
+    }
+    if ident.ident.deref() == "false" {
+        return LiTypeKind::Boolean(LiBoolean {
+            literal: Some(false),
+        });
+    }
 
     let item = namespace.get_ident_kind(ident);
     let Some(item) = item else {

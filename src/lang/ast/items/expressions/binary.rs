@@ -85,12 +85,17 @@ impl_binary_op!(SyBitwiseBinaryOp, "bitwise binary operator", {
     BitShiftRight(TkBitShiftRight);
 });
 
+impl_binary_op!(SyMetaTypeBinaryOp, "meta type binary operator", {
+    Extends(TkExtends);
+});
+
 #[derive(Debug, Clone)]
 pub enum SyBinaryOp {
     Arithmetic(SyArithmeticBinaryOp),
     Comparative(SyComparativeBinaryOp),
     BooleanLogic(SyBooleanLogicBinaryOp),
     Bitwise(SyBitwiseBinaryOp),
+    MetaType(SyMetaTypeBinaryOp),
 }
 
 impl AstItem for SyBinaryOp {
@@ -112,6 +117,7 @@ impl AstItem for SyBinaryOp {
         try_parse!(Comparative);
         try_parse!(BooleanLogic);
         try_parse!(Bitwise);
+        try_parse!(MetaType);
 
         return Err(ParseError::NoMatch);
     }
@@ -128,6 +134,7 @@ impl ItemWithSpan for SyBinaryOp {
             Self::Comparative(op) => op.span(),
             Self::BooleanLogic(op) => op.span(),
             Self::Bitwise(op) => op.span(),
+            Self::MetaType(op) => op.span(),
         }
     }
 }
@@ -139,6 +146,7 @@ impl SyBinaryOp {
             Self::Comparative(op) => op.as_op_symbol_str(),
             Self::BooleanLogic(op) => op.as_op_symbol_str(),
             Self::Bitwise(op) => op.as_op_symbol_str(),
+            Self::MetaType(op) => op.as_op_symbol_str(),
         }
     }
 }
@@ -257,6 +265,10 @@ fn op_precedence(left: &SyBinaryOp, right: &SyBinaryOp) -> BinaryOpPrecedence {
         // Boolean logic to bitwise (e.g. `a && b & c`)
         (SyBinaryOp::BooleanLogic(_), SyBinaryOp::Bitwise(_)) => BinaryOpPrecedence::Right,
         (SyBinaryOp::Bitwise(_), SyBinaryOp::BooleanLogic(_)) => BinaryOpPrecedence::Left,
+
+        // Meta type to anything (e.g. `a extends b + c`)
+        (SyBinaryOp::MetaType(_), _) => BinaryOpPrecedence::Illegal,
+        (_, SyBinaryOp::MetaType(_)) => BinaryOpPrecedence::Illegal,
     }
 }
 

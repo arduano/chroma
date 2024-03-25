@@ -1,5 +1,7 @@
 mod number;
 pub use number::*;
+mod boolean;
+pub use boolean::*;
 mod string;
 pub use string::*;
 mod structure;

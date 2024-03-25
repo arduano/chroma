@@ -102,14 +102,16 @@ impl TyUnion {
         &self,
         types: &ModItemSet<TyType>,
         type_subsetability: &mut TypeSubsetabilityCache,
-    ) -> Cow<'_, [TypeIdWithSpan]> {
+    ) -> Option<Cow<'_, [TypeIdWithSpan]>> {
         let mut current = Cow::Borrowed(self.types.as_slice());
 
         // Normalize nested unions, appending nested union elements to the end until
         // there are no more nested unions.
         let mut i = 0;
         while i < current.len() {
-            let ty = &types[current[i].id];
+            // Return None if the type doesn't exist. Recursive unions aren't allowed.
+            let ty = types.get(current[i].id)?;
+
             if let TyTypeKind::Union(union) = &ty.kind {
                 let current = current.to_mut();
                 current.remove(i);
@@ -142,7 +144,7 @@ impl TyUnion {
             i += 1;
         }
 
-        current
+        Some(current)
     }
 
     /// An internal function to prepare a type for normalized inserting. Returns true if it should be

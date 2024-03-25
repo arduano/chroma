@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::lang::solver::{MId, ModItemSet, ModuleGroupCompilation};
+use crate::lang::solver::{MId, ModItemSet};
 
 use super::TyType;
 
@@ -170,13 +170,11 @@ impl<'a> TypeSubsetQuery<'a> {
 }
 
 pub fn run_type_assignability_query<'a>(
-    compilation: &'a mut ModuleGroupCompilation,
+    types: &'a ModItemSet<TyType>,
+    type_assignability: &'a mut TypeAssignabilityCache,
     left: MId<TyType>,
     right: MId<TyType>,
 ) -> bool {
-    let mut query = TypeAssignabilityQuery::new(
-        &compilation.type_data.types,
-        &mut compilation.type_data.type_assignability,
-    );
+    let mut query = TypeAssignabilityQuery::new(types, type_assignability);
     query.is_assignable_to(left, right)
 }

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::lang::{
-    ast::items::{SyArithmeticBinaryOp, SyBinaryOp, SyBooleanLogicBinaryOp},
+    ast::items::{SyArithmeticBinaryOp, SyBinaryOp, SyBooleanLogicBinaryOp, SyMetaTypeBinaryOp},
     solver::{
         type_system::*, Id, MId, ModItemSet, ModuleGroupCompilation, TyIdOrValWithSpan, TypeData,
         TypeIdWithSpan,
@@ -63,6 +63,13 @@ pub fn parse_type_from_linked_type(
                 TyTypeKind::String(TyString::from_literal(literal.value().clone()))
             } else {
                 TyTypeKind::String(TyString::new())
+            }
+        }
+        LiTypeKind::Boolean(boolean) => {
+            if let Some(literal) = &boolean.literal {
+                TyTypeKind::Boolean(TyBoolean::from_literal(*literal))
+            } else {
+                TyTypeKind::Boolean(TyBoolean::new())
             }
         }
         LiTypeKind::Struct(structure) => {
@@ -194,11 +201,24 @@ fn type_to_variant_list<'a>(
     ty: &TyType,
     types: &ModItemSet<TyType>,
     type_subsetability: &mut TypeSubsetabilityCache,
+    errors: &mut ErrorCollector,
 ) -> Vec<TyIdOrValWithSpan> {
     match &ty.kind {
         TyTypeKind::Union(union) => {
-            let types = union
-                .get_normalized_type_list(types, type_subsetability)
+            let types = union.get_normalized_type_list(types, type_subsetability);
+            let Some(types) = types else {
+                errors.push(CompilerError::new(
+                    "Recursive type computations are not allowed",
+                    id.span.clone(),
+                ));
+
+                return vec![TyIdOrValWithSpan::new_val(
+                    TyType::new_unknown(None, id.span.clone()),
+                    id.span.clone(),
+                )];
+            };
+
+            let types = types
                 .iter()
                 .map(|ty| ty.as_type_id_or_val())
                 .collect::<Vec<_>>();
@@ -221,7 +241,7 @@ fn resolve_binary_expression(
 ) -> TyIdOrValWithSpan {
     let expr_span = left.span.join(&right.span);
 
-    // Resolve unions first, unions are a special edge case
+    // Resolve union-tolerant operations first. Anything that doesn't require union permutation stuff goes here.
     match operator {
         SyBinaryOp::BooleanLogic(SyBooleanLogicBinaryOp::Or(_)) => {
             let union = TyUnion::union_types(
@@ -232,6 +252,27 @@ fn resolve_binary_expression(
                 compilation.type_data,
             );
             return union;
+        }
+        SyBinaryOp::MetaType(SyMetaTypeBinaryOp::Extends(_)) => {
+            let left = compilation.type_data.types.get_id_for_val_or_id(left.ty);
+            let right = compilation.type_data.types.get_id_for_val_or_id(right.ty);
+
+            let assignable = run_type_assignability_query(
+                &compilation.type_data.types,
+                &mut compilation.type_data.type_assignability,
+                left,
+                right,
+            );
+
+            return TyIdOrValWithSpan::new_val(
+                TyType::new_named_infer_flags(
+                    name.clone(),
+                    TyTypeKind::Boolean(TyBoolean::from_literal(assignable)),
+                    expr_span.clone(),
+                    &compilation.type_data.types,
+                ),
+                expr_span,
+            );
         }
         _ => {}
     }
@@ -263,12 +304,14 @@ fn resolve_binary_expression(
         left_ty,
         &compilation.type_data.types,
         &mut compilation.type_data.type_subsetability,
+        &mut compilation.errors,
     );
     let right_variants = type_to_variant_list(
         &right,
         right_ty,
         &compilation.type_data.types,
         &mut compilation.type_data.type_subsetability,
+        &mut compilation.errors,
     );
 
     // Insert them into a new union
@@ -338,7 +381,7 @@ fn resolve_non_union_binary_expression(
 
     let op_span = operator.span();
 
-    let push_invalid_op_error = || {
+    let _push_invalid_op_error = || {
         compilation.errors.push(CompilerError::new(
             "Invalid binary operation for types (2)",
             op_span.clone(),
@@ -354,35 +397,52 @@ fn resolve_non_union_binary_expression(
         }};
     }
 
+    macro_rules! make_return_ty {
+        ($kind:expr) => {{
+            let ty = TyType::new_named_infer_flags(
+                name.clone(),
+                $kind,
+                span.clone(),
+                &compilation.type_data.types,
+            );
+            TyIdOrValWithSpan::new_val(ty, span.clone())
+        }};
+    }
+
+    use SyBinaryOp::*;
+    use TyTypeKind::*;
+
     // Resolve per-type operators
-    match (&left_ty.kind, &right_ty.kind) {
-        (TyTypeKind::Number(self_number), TyTypeKind::Number(other_number)) => match operator {
-            SyBinaryOp::Arithmetic(op) => {
-                let left_lit = &self_number.literal;
-                let right_lit = &other_number.literal;
+    match (&left_ty.kind, &right_ty.kind, operator) {
+        (_, _, MetaType(SyMetaTypeBinaryOp::Extends(_))) => {
+            let left = compilation.type_data.types.get_id_for_val_or_id(left.ty);
+            let right = compilation.type_data.types.get_id_for_val_or_id(right.ty);
 
-                let (Some(left_lit), Some(right_lit)) = (left_lit, right_lit) else {
-                    let ty = TyType::new_named_infer_flags(
-                        name,
-                        TyTypeKind::Number(TyNumber::new()),
-                        span.clone(),
-                        &compilation.type_data.types,
-                    );
-                    return TyIdOrValWithSpan::new_val(ty, span);
-                };
+            let assignable = run_type_assignability_query(
+                &compilation.type_data.types,
+                &mut compilation.type_data.type_assignability,
+                left,
+                right,
+            );
 
-                let result = run_arithmetic_op_on_numbers(left_lit.value, op, right_lit.value);
+            dbg!(assignable);
+            dbg!(&left);
+            dbg!(&right);
 
-                let ty = TyType::new_named_infer_flags(
-                    name,
-                    TyTypeKind::Number(TyNumber::from_literal(result)),
-                    span.clone(),
-                    &compilation.type_data.types,
-                );
-                return TyIdOrValWithSpan::new_val(ty, span);
-            }
-            _ => invalid_op!(compilation),
-        },
+            return make_return_ty!(TyTypeKind::Boolean(TyBoolean::from_literal(assignable)));
+        }
+        (Number(self_number), Number(other_number), Arithmetic(op)) => {
+            let left_lit = &self_number.literal;
+            let right_lit = &other_number.literal;
+
+            let (Some(left_lit), Some(right_lit)) = (left_lit, right_lit) else {
+                return make_return_ty!(TyTypeKind::Number(TyNumber::new()));
+            };
+
+            let result = run_arithmetic_op_on_numbers(left_lit.value, op, right_lit.value);
+
+            return make_return_ty!(TyTypeKind::Number(TyNumber::from_literal(result)));
+        }
         _ => {
             compilation.errors.push(CompilerError::new(
                 "Invalid binary operation for types (1)",

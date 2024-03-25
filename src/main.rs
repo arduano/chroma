@@ -107,7 +107,12 @@ async fn main() {
     dbg!(&compilation.linked_type_to_type_mapping);
     dbg!(&compilation.type_data.types);
 
-    let assignable = run_type_assignability_query(&mut compilation, a_type_id, b_type_id);
+    let assignable = run_type_assignability_query(
+        &compilation.type_data.types,
+        &mut compilation.type_data.type_assignability,
+        a_type_id,
+        b_type_id,
+    );
     dbg!(assignable);
 
     let mut errors = Vec::new();

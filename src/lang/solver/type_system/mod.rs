@@ -124,6 +124,7 @@ pub enum TyAnyTypeKind {
 pub enum TyTypeKind {
     Number(TyNumber),
     String(TyString),
+    Boolean(TyBoolean),
     Struct(TyStruct),
     Union(TyUnion),
     Never,
@@ -157,6 +158,9 @@ impl TyTypeLogic for TyTypeKind {
             (TyTypeKind::String(self_string), TyTypeKind::String(other_string)) => {
                 self_string.check_assignable_to(other_string, query)
             }
+            (TyTypeKind::Boolean(self_boolean), TyTypeKind::Boolean(other_boolean)) => {
+                self_boolean.check_assignable_to(other_boolean, query)
+            }
             (TyTypeKind::Struct(self_struct), TyTypeKind::Struct(other_struct)) => {
                 self_struct.check_assignable_to(other_struct, query)
             }
@@ -189,6 +193,9 @@ impl TyTypeLogic for TyTypeKind {
             (TyTypeKind::String(self_string), TyTypeKind::String(other_string)) => {
                 TyTypeKind::String(self_string.get_intersection(other_string))
             }
+            (TyTypeKind::Boolean(self_boolean), TyTypeKind::Boolean(other_boolean)) => {
+                TyTypeKind::Boolean(self_boolean.get_intersection(other_boolean))
+            }
             (TyTypeKind::Struct(self_struct), TyTypeKind::Struct(other_struct)) => {
                 TyTypeKind::Struct(self_struct.get_intersection(other_struct))
             }
@@ -211,6 +218,9 @@ impl TyTypeLogic for TyTypeKind {
             (TyTypeKind::String(self_string), TyTypeKind::String(other_string)) => {
                 self_string.is_substate_of(other_string, query)
             }
+            (TyTypeKind::Boolean(self_boolean), TyTypeKind::Boolean(other_boolean)) => {
+                self_boolean.is_substate_of(other_boolean, query)
+            }
             (TyTypeKind::Struct(self_struct), TyTypeKind::Struct(other_struct)) => {
                 self_struct.is_substate_of(other_struct, query)
             }
@@ -231,6 +241,7 @@ impl TyTypeLogic for TyTypeKind {
         match self {
             TyTypeKind::Number(number) => number.flags(types),
             TyTypeKind::String(string) => string.flags(types),
+            TyTypeKind::Boolean(boolean) => boolean.flags(types),
             TyTypeKind::Struct(struct_ty) => struct_ty.flags(types),
             TyTypeKind::Union(union) => union.flags(types),
             TyTypeKind::Never => TyTypeFlags::new_all(),
@@ -242,6 +253,7 @@ impl TyTypeLogic for TyTypeKind {
         match self {
             TyTypeKind::Number(number) => number.get_type_dependencies(types),
             TyTypeKind::String(string) => string.get_type_dependencies(types),
+            TyTypeKind::Boolean(boolean) => boolean.get_type_dependencies(types),
             TyTypeKind::Struct(struct_ty) => struct_ty.get_type_dependencies(types),
             TyTypeKind::Union(union) => union.get_type_dependencies(types),
             TyTypeKind::Never => TypeDependencies::new_empty(),
