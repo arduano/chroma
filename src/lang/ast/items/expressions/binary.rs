@@ -87,6 +87,7 @@ impl_binary_op!(SyBitwiseBinaryOp, "bitwise binary operator", {
 
 impl_binary_op!(SyMetaTypeBinaryOp, "meta type binary operator", {
     Extends(TkExtends);
+    Union(TkTypeUnion);
 });
 
 #[derive(Debug, Clone)]
@@ -265,6 +266,12 @@ fn op_precedence(left: &SyBinaryOp, right: &SyBinaryOp) -> BinaryOpPrecedence {
         // Boolean logic to bitwise (e.g. `a && b & c`)
         (SyBinaryOp::BooleanLogic(_), SyBinaryOp::Bitwise(_)) => BinaryOpPrecedence::Right,
         (SyBinaryOp::Bitwise(_), SyBinaryOp::BooleanLogic(_)) => BinaryOpPrecedence::Left,
+
+        // Meta type edge cases
+        (
+            SyBinaryOp::MetaType(SyMetaTypeBinaryOp::Union(_)),
+            SyBinaryOp::MetaType(SyMetaTypeBinaryOp::Union(_)),
+        ) => BinaryOpPrecedence::Left,
 
         // Meta type to anything (e.g. `a extends b + c`)
         (SyBinaryOp::MetaType(_), _) => BinaryOpPrecedence::Illegal,

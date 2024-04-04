@@ -16,15 +16,15 @@
 //     },
 // };
 
-// type Foo = { a: string, rec: Foo || string } || number || Bar || string;
+// type Foo = { a: string, rec: Foo | string } | number | Bar | string;
 // type Bar = { a: "string", rec: Bar };
 
 // type A = Bar;
 
 // type B = Foo;
 
-type Foo = (1 || 2 || 3 || 4 || 5) % 1;
-type Bar = 0 || 1;
+type Foo = (1 | 2 | 3 | 4 | 5) % 1;
+type Bar = 0 | 1;
 
 type A = Foo extends Bar;
 type B = true;

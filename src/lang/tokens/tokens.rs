@@ -486,10 +486,12 @@ simple_token!(TkModulo, Percent);
 simple_token!(TkModuloAssign, Percent, Eq);
 
 // Logic
+simple_token!(TkTypeJoin, And);
 simple_token!(TkAnd, And, And);
-simple_token!(TkBitAnd, And);
+simple_token!(TkBitAnd, And, And, And);
+simple_token!(TkTypeUnion, Or);
 simple_token!(TkOr, Or, Or);
-simple_token!(TkBitOr, Or);
+simple_token!(TkBitOr, Or, Or, Or);
 simple_token!(TkBitXor, Caret);
 simple_token!(TkBitShiftLeft, Lt, Lt);
 simple_token!(TkBitShiftRight, Gt, Gt);

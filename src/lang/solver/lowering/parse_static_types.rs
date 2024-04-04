@@ -243,7 +243,7 @@ fn resolve_binary_expression(
 
     // Resolve union-tolerant operations first. Anything that doesn't require union permutation stuff goes here.
     match operator {
-        SyBinaryOp::BooleanLogic(SyBooleanLogicBinaryOp::Or(_)) => {
+        SyBinaryOp::MetaType(SyMetaTypeBinaryOp::Union(_)) => {
             let union = TyUnion::union_types(
                 left,
                 right,
