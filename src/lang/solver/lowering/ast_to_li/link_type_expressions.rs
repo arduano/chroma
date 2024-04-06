@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use crate::lang::tokens::{ItemWithSpan, Span};
 
-use super::*;
+use super::super::*;
 
 fn make_error_li_type() -> LiTypeKind {
     return LiTypeKind::Unknown;

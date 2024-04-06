@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::lang::{
     ast::{
         helpers::Attempted,
@@ -10,7 +8,7 @@ use crate::lang::{
 };
 
 use self::{
-    link_type_expressions::link_type_expression_ast,
+    ast_to_li::link_type_expression_ast,
     parse_static_types::{parse_type_from_linked_type_id, TypeFromLinkedTypeCompilation},
 };
 
@@ -19,7 +17,7 @@ use super::{
     ModuleNamespaceItem, ModuleNamespaceItemKind,
 };
 
-mod link_type_expressions;
+mod ast_to_li;
 mod parse_static_types;
 
 pub struct ModuleParseResult {
@@ -43,7 +41,7 @@ pub fn parse_module_decls(
     compilation: &mut ModuleGroupCompilation,
 ) -> ModuleParseResult {
     let module_path_refs = ();
-    let mut namespace_items = HashMap::new();
+    let mut namespace = ModuleNamespace::new();
     let mut items_to_compile = Vec::new();
 
     for (i, statement) in ast
@@ -69,16 +67,14 @@ pub fn parse_module_decls(
                     index_in_body: i,
                     kind: id,
                 });
-                namespace_items.insert(ident.ident, item);
+                namespace.add_item(item);
             }
             SyDeclaration::TypeFn(_) => todo!(),
         }
     }
 
     ModuleParseResult {
-        namespace: ModuleNamespace {
-            items: namespace_items,
-        },
+        namespace,
         module_path_refs,
         items_to_compile,
     }

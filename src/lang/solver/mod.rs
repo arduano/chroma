@@ -7,11 +7,7 @@ use self::{
     },
 };
 
-use super::{
-    ast::items::SyDeclarationBody,
-    tokens::{Span, TkIdent},
-    ErrorCollector,
-};
+use super::{ast::items::SyDeclarationBody, tokens::Span, ErrorCollector};
 
 mod entity_ids;
 pub use entity_ids::*;
@@ -19,6 +15,8 @@ mod linked_ast;
 mod lowering;
 mod type_system;
 pub use type_system::*;
+mod namespaces;
+pub use namespaces::*;
 
 mod file_graph;
 pub use file_graph::*;
@@ -95,7 +93,6 @@ impl TypeIdWithSpan {
 pub struct NormalizedTypeData {
     pub inner_types: Vec<MId<TyType>>,
 }
-
 pub struct TypeData {
     pub types: ModItemSet<TyType>,
     pub type_assignability: TypeAssignabilityCache,
@@ -179,8 +176,7 @@ impl ModuleGroupCompilation {
 
         let namespace_types = mod_results
             .namespace
-            .items
-            .values()
+            .items()
             .filter_map(|item| match item.kind {
                 ModuleNamespaceItemKind::Type(id) => Some(id),
                 _ => None,
@@ -209,40 +205,4 @@ pub struct ModuleGroupResult {
     pub types: Arc<ItemSet<MIdOrVal<TyType>>>,
     pub type_assignability: TypeAssignabilityCache,
     pub errors: ErrorCollector,
-}
-
-pub struct ModuleNamespace {
-    items: HashMap<Arc<str>, ModuleNamespaceItem>,
-}
-
-impl ModuleNamespace {
-    pub fn new() -> Self {
-        Self {
-            items: HashMap::new(),
-        }
-    }
-
-    pub fn add_item(&mut self, item: ModuleNamespaceItem) {
-        let existing = self.items.insert(item.ident.ident.clone(), item);
-        assert!(existing.is_none());
-    }
-
-    pub fn get_ident_kind(&self, ident: &TkIdent) -> Option<ModuleNamespaceItemKind> {
-        Some(self.items.get(&ident.ident)?.kind)
-    }
-
-    pub fn get_item(&self, ident: &Arc<str>) -> Option<&ModuleNamespaceItem> {
-        self.items.get(ident)
-    }
-}
-
-pub struct ModuleNamespaceItem {
-    ident: TkIdent,
-    kind: ModuleNamespaceItemKind,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ModuleNamespaceItemKind {
-    Type(MId<LiType>),
-    Unknown,
 }
