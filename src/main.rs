@@ -2,9 +2,9 @@
 
 use std::{collections::HashMap, ops::Deref, path::PathBuf, str::FromStr, sync::Arc};
 
-use lang::tokens::parse_file;
+use chroma::lang::tokens::parse_file;
 
-use crate::lang::{
+use chroma::lang::{
     ast::{
         helpers::{AstItem, AstParser, ParsingPhaseEnv},
         items::SyDeclarationBody,
@@ -15,8 +15,6 @@ use crate::lang::{
     tokens::TokenReader,
     ErrorCollector,
 };
-
-mod lang;
 
 // Naming:
 // Tk__ - Tokens
@@ -74,6 +72,8 @@ async fn main() {
     let env = ParsingPhaseEnv::new();
     let ast = SyDeclarationBody::parse(&mut ast_parser, env).unwrap();
 
+    dbg!(&ast);
+
     let mut compilation = ModuleGroupCompilation::new(module_counter.next(), HashMap::new());
     let _type_ids = compilation.compile_in_ast(None, &ast);
 
@@ -100,8 +100,6 @@ async fn main() {
         .linked_type_to_type_mapping
         .get(&b_li_type_id.unwrap())
         .unwrap();
-
-    // dbg!(&ast);
 
     dbg!(&compilation.linked_type_definitions);
     dbg!(&compilation.linked_type_to_type_mapping);

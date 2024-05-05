@@ -7,7 +7,7 @@ use super::LiType;
 
 pub struct LiTypeFn {
     pub name: TkIdent,
-    pub args: Vec<LiType>,
+    pub args: Vec<LiTypeFnArg>,
     pub expressions: ItemSet<LiTypeFnLazyValue>,
     pub ret_expr: Id<LiTypeFnLazyValue>,
 }

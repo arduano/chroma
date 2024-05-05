@@ -1,23 +1,9 @@
 use crate::lang::{
     ast::{helpers::*, items::*},
     tokens::*,
-    ErrorCollector,
+    CompilerError, ErrorCollector,
 };
 
-/// Represents a type fn.
-///
-/// # Example
-///
-/// ```no_run
-/// type fn AddField<Name: const ident, Val: Value> {
-///     type Result = {
-///         ...Val,
-///         [Name]: string,
-///     };
-///
-///     Result
-/// }
-/// ```
 #[derive(Debug, Clone)]
 pub struct SyTypeFn {
     signature: SyTypeFnSignature,
@@ -87,12 +73,14 @@ impl ItemWithSpan for SyTypeFnBody {
 /// # Example
 ///
 /// ```no_run
-/// type fn AddField<Name: const ident, Val: Value>
+/// type fn AddField(Name: const ident, Val: Value)
 /// ```
 #[derive(Debug, Clone)]
 pub struct SyTypeFnSignature {
+    pub ty_token: TkType,
+    pub fn_token: TkFn,
     pub name: Attempted<TkIdent>,
-    pub args: Attempted<SyTypeArgs>,
+    pub args: Attempted<SyTypeArgsParentheses>,
 }
 
 impl AstItem for SyTypeFnSignature {
@@ -102,13 +90,17 @@ impl AstItem for SyTypeFnSignature {
     where
         Self: Sized,
     {
-        reader.parse_optional_token::<TkType>()?;
-        reader.parse_optional_token::<TkFn>()?;
-
+        let ty_token = reader.parse_required_token()?;
+        let fn_token = reader.parse_required_token()?;
         let name = reader.parse_required_token();
         let args = reader.parse_required(env);
 
-        Ok(Self { name, args })
+        Ok(Self {
+            ty_token,
+            fn_token,
+            name,
+            args,
+        })
     }
 
     fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
@@ -129,8 +121,37 @@ impl ItemWithSpan for SyTypeFnSignature {
 /// # Example
 ///
 /// ```no_run
-/// <Arg1, Arg2: Constraint, Arg3: const Constraint>
+/// (Arg1, Arg2: Constraint, Arg3: const Constraint)
 /// ```
+#[derive(Debug, Clone)]
+pub struct SyTypeArgsParentheses {
+    pub parentheses: TkParens,
+    pub args: SyTypeArgs,
+}
+
+impl AstItem for SyTypeArgsParentheses {
+    const NAME: &'static str = "type arguments";
+
+    fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
+    where
+        Self: Sized,
+    {
+        let (parentheses, args) = reader.parse_required_group::<TkParens, SyTypeArgs>(env)?;
+
+        return Ok(Self { parentheses, args });
+    }
+
+    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
+        self.args.check(env, errors);
+    }
+}
+
+impl ItemWithSpan for SyTypeArgsParentheses {
+    fn span(&self) -> Span {
+        self.parentheses.span()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SyTypeArgs {
     pub args: Vec<Attempted<SyTypeArg>>,
@@ -143,25 +164,20 @@ impl AstItem for SyTypeArgs {
     where
         Self: Sized,
     {
-        reader.parse_optional_token::<TkLessThan>()?;
-
         let mut args = Vec::new();
+        reader.set_error_recovery_mode(ErrorRecoveryMode::until_token::<TkComma>());
 
-        loop {
-            let arg = reader.parse_required(env);
-            let errored = arg.is_err();
-            args.push(arg);
+        while !reader.is_empty() {
+            let arg = reader.parse_required(env.inside_nested_expr());
 
-            let had_comma = reader.parse_optional_token::<TkComma>().is_ok();
+            let comma = reader.parse_optional_token::<TkComma>();
 
-            if errored || !had_comma {
-                reader.parse_required_token::<TkGreaterThan>().ok();
-                break;
-            } else {
-                if reader.parse_optional_token::<TkGreaterThan>().is_ok() {
-                    break;
-                }
+            if comma.is_err() && !reader.is_empty() {
+                let span = reader.search_until_token::<TkDataLineEndSearch>();
+                reader.add_error(CompilerError::new("Expected ,", span));
             }
+
+            args.push(arg);
         }
 
         Ok(Self { args })

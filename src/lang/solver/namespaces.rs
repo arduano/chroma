@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use crate::lang::tokens::TkIdent;
 
 use super::{
-    linked_ast::{LiType, LiTypeFnLazyValue},
+    linked_ast::{LiType, LiTypeFnArg, LiTypeFnLazyValue},
     Id, MId,
 };
 
@@ -99,5 +99,6 @@ pub struct FunctionNamespaceItem {
 pub enum FunctionNamespaceItemKind {
     ModuleItem(ModuleNamespaceItemKind),
     TypeFnLazyType(Id<LiTypeFnLazyValue>),
+    TypeFnArg(Id<LiTypeFnArg>),
     Unknown,
 }
