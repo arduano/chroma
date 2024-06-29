@@ -10,8 +10,7 @@ use super::*;
 /// ```
 #[derive(Debug, Clone)]
 pub struct SyObjectLiteral {
-    pub braces: TkBraces,
-    pub fields: SObjectLiteralFields,
+    pub braced: Grouped<TkBraces, SObjectLiteralFields>,
 }
 
 impl AstItem for SyObjectLiteral {
@@ -21,19 +20,18 @@ impl AstItem for SyObjectLiteral {
     where
         Self: Sized,
     {
-        let (braces, fields) =
-            reader.parse_optional_group::<TkBraces, SObjectLiteralFields>(env)?;
-        Ok(Self { braces, fields })
+        let braced = reader.parse_optional_group::<TkBraces, SObjectLiteralFields>(env)?;
+        Ok(Self { braced })
     }
 
     fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        self.fields.check(env.inside_nested_expr(), errors);
+        self.braced.inner.check(env.inside_nested_expr(), errors);
     }
 }
 
 impl ItemWithSpan for SyObjectLiteral {
     fn span(&self) -> Span {
-        self.braces.span().join(&self.fields.span())
+        self.braced.span()
     }
 }
 
@@ -283,8 +281,7 @@ impl ItemWithSpan for SyObjectLiteralSpread {
 /// ```
 #[derive(Debug, Clone)]
 pub struct SyObjectLiteralComputedKey {
-    pub key_brackets: TkBrackets,
-    pub key_expression: Box<Attempted<SyExpression>>,
+    pub key: Grouped<TkBrackets, Attempted<Box<SyExpression>>>,
     pub colon: Attempted<TkColon>,
     pub value_expression: Box<Attempted<SyExpression>>,
 }
@@ -296,21 +293,21 @@ impl AstItem for SyObjectLiteralComputedKey {
     where
         Self: Sized,
     {
-        let (key_brackets, key_expression) =
-            reader.parse_optional_group::<TkBrackets, SyExpression>(env.inside_nested_expr())?;
+        let key = reader.parse_optional_group_tolerant_inner::<TkBrackets, SyExpression>(
+            env.inside_nested_expr(),
+        )?;
         let colon = reader.parse_required_token();
         let value_expression = reader.parse_required(env.inside_nested_expr());
 
         Ok(Self {
-            key_brackets,
-            key_expression: Box::new(Ok(key_expression)),
+            key: key.map_inner(|key| key.map(Box::new)),
             colon,
             value_expression: Box::new(value_expression),
         })
     }
 
     fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        if let Ok(expression) = &*self.key_expression {
+        if let Ok(expression) = &self.key.inner {
             expression.check(env.inside_nested_expr(), errors);
         }
         if let Ok(expression) = &*self.value_expression {
@@ -321,7 +318,8 @@ impl AstItem for SyObjectLiteralComputedKey {
 
 impl ItemWithSpan for SyObjectLiteralComputedKey {
     fn span(&self) -> Span {
-        self.key_brackets
+        self.key
+            .group_token
             .span()
             .join(&self.colon.span())
             .join(&self.value_expression.span())

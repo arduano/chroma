@@ -7,7 +7,7 @@ use crate::lang::{
 #[derive(Debug, Clone)]
 pub struct SyTypeFn {
     signature: SyTypeFnSignature,
-    body: Attempted<SyTypeFnBody>,
+    body: Attempted<Grouped<TkBraces, SyDeclarationBody>>,
 }
 
 impl AstItem for SyTypeFn {
@@ -18,7 +18,7 @@ impl AstItem for SyTypeFn {
         Self: Sized,
     {
         let signature = reader.parse_optional(env)?;
-        let body = reader.parse_required(env.outside_nested_expr());
+        let body = reader.parse_required_group(env.outside_nested_expr());
 
         Ok(Self { signature, body })
     }
@@ -27,7 +27,7 @@ impl AstItem for SyTypeFn {
         self.signature.check(env, errors);
 
         if let Ok(body) = &self.body {
-            body.check(env, errors);
+            body.inner.check(env, errors);
         }
     }
 }
@@ -35,36 +35,6 @@ impl AstItem for SyTypeFn {
 impl ItemWithSpan for SyTypeFn {
     fn span(&self) -> Span {
         self.signature.span().join(&self.body.span())
-    }
-}
-
-#[derive(Debug, Clone)]
-struct SyTypeFnBody {
-    braces: TkBraces,
-    contents: SyBody,
-}
-
-impl AstItem for SyTypeFnBody {
-    const NAME: &'static str = "type function body";
-
-    fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
-    where
-        Self: Sized,
-    {
-        let (braces, contents) =
-            reader.parse_required_group::<TkBraces, SyBody>(env.outside_nested_expr())?;
-
-        Ok(Self { braces, contents })
-    }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        self.contents.check(env, errors);
-    }
-}
-
-impl ItemWithSpan for SyTypeFnBody {
-    fn span(&self) -> Span {
-        self.braces.span().join(&self.contents.span())
     }
 }
 
@@ -80,7 +50,7 @@ pub struct SyTypeFnSignature {
     pub ty_token: TkType,
     pub fn_token: TkFn,
     pub name: Attempted<TkIdent>,
-    pub args: Attempted<SyTypeArgsParentheses>,
+    pub args: Attempted<Grouped<TkParens, SyTypeArgs>>,
 }
 
 impl AstItem for SyTypeFnSignature {
@@ -93,7 +63,7 @@ impl AstItem for SyTypeFnSignature {
         let ty_token = reader.parse_required_token()?;
         let fn_token = reader.parse_required_token()?;
         let name = reader.parse_required_token();
-        let args = reader.parse_required(env);
+        let args = reader.parse_required_group(env);
 
         Ok(Self {
             ty_token,
@@ -105,7 +75,7 @@ impl AstItem for SyTypeFnSignature {
 
     fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
         if let Ok(args) = &self.args {
-            args.check(env.inside_type_only(), errors);
+            args.inner.check(env.inside_type_only(), errors);
         }
     }
 }
@@ -113,42 +83,6 @@ impl AstItem for SyTypeFnSignature {
 impl ItemWithSpan for SyTypeFnSignature {
     fn span(&self) -> Span {
         self.name.span().join(&self.args.span())
-    }
-}
-
-/// Represents a type argument list.
-///
-/// # Example
-///
-/// ```no_run
-/// (Arg1, Arg2: Constraint, Arg3: const Constraint)
-/// ```
-#[derive(Debug, Clone)]
-pub struct SyTypeArgsParentheses {
-    pub parentheses: TkParens,
-    pub args: SyTypeArgs,
-}
-
-impl AstItem for SyTypeArgsParentheses {
-    const NAME: &'static str = "type arguments";
-
-    fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
-    where
-        Self: Sized,
-    {
-        let (parentheses, args) = reader.parse_required_group::<TkParens, SyTypeArgs>(env)?;
-
-        return Ok(Self { parentheses, args });
-    }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        self.args.check(env, errors);
-    }
-}
-
-impl ItemWithSpan for SyTypeArgsParentheses {
-    fn span(&self) -> Span {
-        self.parentheses.span()
     }
 }
 

@@ -41,6 +41,21 @@ pub type ParseResult<T> = Result<T, ParseError>;
 pub type ParsedOptional<T> = Result<T, ParseErrorNoMatch>;
 pub type Attempted<T> = Result<T, ParseErrorError>;
 
+pub trait AttemptedAsRef {
+    type Output;
+    fn value_as_ref(&self) -> Self::Output;
+}
+
+impl<'a, T> AttemptedAsRef for &'a Attempted<T> {
+    type Output = Attempted<&'a T>;
+    fn value_as_ref(&self) -> Self::Output {
+        match self {
+            Ok(value) => Ok(value),
+            Err(_) => Err(ParseErrorError),
+        }
+    }
+}
+
 pub trait AstItem: ItemWithSpan {
     const NAME: &'static str;
 
@@ -197,6 +212,27 @@ impl ErrorRecoveryMode {
             ErrorRecoveryMode::UntilToken(_) => false,
             ErrorRecoveryMode::UntilN(_) => true,
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Grouped<G, T> {
+    pub group_token: G,
+    pub inner: T,
+}
+
+impl<G, T> Grouped<G, T> {
+    pub fn map_inner<U>(self, f: impl FnOnce(T) -> U) -> Grouped<G, U> {
+        Grouped {
+            group_token: self.group_token,
+            inner: f(self.inner),
+        }
+    }
+}
+
+impl<G: ItemWithSpan, T> ItemWithSpan for Grouped<G, T> {
+    fn span(&self) -> Span {
+        self.group_token.span()
     }
 }
 
@@ -412,7 +448,7 @@ impl<'a> AstParser<'a> {
     pub fn parse_optional_group<T: ParseGroupToken, I: AstItem>(
         &mut self,
         env: ParsingPhaseEnv,
-    ) -> ParseResult<(T, I)> {
+    ) -> ParseResult<Grouped<T, I>> {
         let outer_unchanged_reader = self.input.clone();
         let mut outer_changed_reader = self.input.clone();
 
@@ -424,9 +460,60 @@ impl<'a> AstParser<'a> {
 
             self.input = outer_changed_reader;
             match result {
-                Attempted::Ok(item) => ParseResult::Ok((token, item)),
+                Attempted::Ok(item) => ParseResult::Ok(Grouped {
+                    group_token: token,
+                    inner: item,
+                }),
                 Attempted::Err(ParseErrorError) => ParseResult::Err(ParseError::Error),
             }
+        } else {
+            self.input = outer_unchanged_reader;
+            ParseResult::Err(ParseError::NoMatch)
+        }
+    }
+
+    pub fn parse_required_group_tolerant_inner<T: ParseGroupToken, I: AstItem>(
+        &mut self,
+        env: ParsingPhaseEnv,
+    ) -> Attempted<Grouped<T, Attempted<I>>> {
+        let outer_unchanged_reader = self.input.clone();
+        let mut outer_changed_reader = self.input.clone();
+
+        let token = T::parse(&mut outer_changed_reader);
+        if let Some((token, inner_reader)) = token {
+            self.input = inner_reader;
+
+            let result = self.parse_required::<I>(env);
+
+            self.input = outer_changed_reader;
+            Attempted::Ok(Grouped {
+                group_token: token,
+                inner: result,
+            })
+        } else {
+            self.input = outer_unchanged_reader;
+            Attempted::Err(ParseErrorError)
+        }
+    }
+
+    pub fn parse_optional_group_tolerant_inner<T: ParseGroupToken, I: AstItem>(
+        &mut self,
+        env: ParsingPhaseEnv,
+    ) -> ParseResult<Grouped<T, Attempted<I>>> {
+        let outer_unchanged_reader = self.input.clone();
+        let mut outer_changed_reader = self.input.clone();
+
+        let token = T::parse(&mut outer_changed_reader);
+        if let Some((token, inner_reader)) = token {
+            self.input = inner_reader;
+
+            let result = self.parse_required::<I>(env);
+
+            self.input = outer_changed_reader;
+            ParseResult::Ok(Grouped {
+                group_token: token,
+                inner: result,
+            })
         } else {
             self.input = outer_unchanged_reader;
             ParseResult::Err(ParseError::NoMatch)
@@ -436,7 +523,7 @@ impl<'a> AstParser<'a> {
     pub fn parse_required_group<T: ParseGroupToken, I: AstItem>(
         &mut self,
         env: ParsingPhaseEnv,
-    ) -> Attempted<(T, I)> {
+    ) -> Attempted<Grouped<T, I>> {
         let reader_unchanged = self.input.clone();
 
         let result = self.parse_optional_group::<T, I>(env);

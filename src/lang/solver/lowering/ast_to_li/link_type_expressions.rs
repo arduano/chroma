@@ -1,5 +1,6 @@
 use std::ops::Deref;
 
+use crate::lang::ast::helpers::AttemptedAsRef;
 use crate::lang::tokens::{ItemWithSpan, Span};
 
 use super::super::*;
@@ -51,7 +52,7 @@ fn parse_ast_type_var_read(
 }
 
 pub fn link_type_expression_ast(
-    ast: &Attempted<SyExpression>,
+    ast: Attempted<&SyExpression>,
     name: Option<TkIdent>,
     compilation: &mut ModuleGroupCompilation,
     namespace: &ModuleNamespace,
@@ -72,11 +73,15 @@ pub fn link_type_expression_ast(
         SyExpression::ObjectLiteral(obj) => {
             let mut fields = Vec::<LiStructField>::new();
 
-            for field in obj.fields.fields.iter().flatten() {
+            for field in obj.braced.inner.fields.iter().flatten() {
                 match field {
                     SyObjectLiteralField::KeyValue(kv) => {
-                        let value =
-                            link_type_expression_ast(&kv.value, None, compilation, namespace);
+                        let value = link_type_expression_ast(
+                            kv.value.deref().value_as_ref(),
+                            None,
+                            compilation,
+                            namespace,
+                        );
 
                         fields.push(LiStructField::KeyValue(LiStructKeyValue {
                             key: kv.key.clone(),
@@ -93,8 +98,12 @@ pub fn link_type_expression_ast(
                         }));
                     }
                     SyObjectLiteralField::Spread(spread) => {
-                        let value =
-                            link_type_expression_ast(&spread.fields, None, compilation, namespace);
+                        let value = link_type_expression_ast(
+                            spread.fields.deref().value_as_ref(),
+                            None,
+                            compilation,
+                            namespace,
+                        );
 
                         fields.push(LiStructField::FieldSpread(LiStructFieldSpread {
                             spread: value,
@@ -102,13 +111,13 @@ pub fn link_type_expression_ast(
                     }
                     SyObjectLiteralField::ComputedKey(ckv) => {
                         let key = link_type_expression_ast(
-                            &ckv.key_expression,
+                            (&ckv.key.inner).value_as_ref().map(|v| &**v),
                             None,
                             compilation,
                             namespace,
                         );
                         let value = link_type_expression_ast(
-                            &ckv.value_expression,
+                            ckv.value_expression.deref().value_as_ref(),
                             None,
                             compilation,
                             namespace,
@@ -125,8 +134,18 @@ pub fn link_type_expression_ast(
             LiTypeKind::Struct(LiStruct { entries: fields })
         }
         SyExpression::Binary(binary) => {
-            let left = link_type_expression_ast(&binary.left, None, compilation, namespace);
-            let right = link_type_expression_ast(&binary.right, None, compilation, namespace);
+            let left = link_type_expression_ast(
+                binary.left.deref().value_as_ref(),
+                None,
+                compilation,
+                namespace,
+            );
+            let right = link_type_expression_ast(
+                binary.right.deref().value_as_ref(),
+                None,
+                compilation,
+                namespace,
+            );
 
             LiTypeKind::BinaryExpression(LiBinaryTypeExpression {
                 left: Box::new(left),
@@ -135,9 +154,13 @@ pub fn link_type_expression_ast(
             })
         }
         SyExpression::Parentheses(expr) => {
-            let mut li_ty =
-                link_type_expression_ast(&expr.expression, name, compilation, namespace);
-            li_ty.span = expr.parentheses.span();
+            let mut li_ty = link_type_expression_ast(
+                (&expr.parens.inner).value_as_ref().map(|v| &**v),
+                name,
+                compilation,
+                namespace,
+            );
+            li_ty.span = expr.parens.span();
 
             return li_ty;
         }

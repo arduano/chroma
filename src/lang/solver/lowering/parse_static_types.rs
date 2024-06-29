@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::lang::{
-    ast::items::{SyArithmeticBinaryOp, SyBinaryOp, SyBooleanLogicBinaryOp, SyMetaTypeBinaryOp},
+    ast::items::{SyArithmeticBinaryOp, SyBinaryOp, SyMetaTypeBinaryOp},
     solver::{
         type_system::*, Id, MId, ModItemSet, ModuleGroupCompilation, TyIdOrValWithSpan, TypeData,
         TypeIdWithSpan,

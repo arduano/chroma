@@ -6,7 +6,7 @@ use super::SyExpression;
 pub struct SyAttribute {
     at: TkAt,
     name: TkIdent,
-    contents: Option<SyAttributeParams>,
+    contents: Option<Grouped<TkParens, SAttributeFields>>,
 }
 
 impl AstItem for SyAttribute {
@@ -18,14 +18,14 @@ impl AstItem for SyAttribute {
     {
         let at = reader.parse_optional_token()?;
         let name = reader.parse_optional_token()?;
-        let contents = reader.parse_optional(env.inside_nested_expr()).ok();
+        let contents = reader.parse_optional_group(env.inside_nested_expr()).ok();
 
         Ok(Self { at, name, contents })
     }
 
     fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
         if let Some(params) = &self.contents {
-            params.check(env.inside_nested_expr(), errors);
+            params.inner.check(env.inside_nested_expr(), errors);
         }
     }
 }
@@ -36,34 +36,6 @@ impl ItemWithSpan for SyAttribute {
             .span()
             .join(&self.name.span())
             .join(&self.contents.span())
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct SyAttributeParams {
-    pub parens: TkParens,
-    pub fields: SAttributeFields,
-}
-
-impl AstItem for SyAttributeParams {
-    const NAME: &'static str = "attribute params";
-
-    fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
-    where
-        Self: Sized,
-    {
-        let (parens, fields) = reader.parse_optional_group(env.inside_nested_expr())?;
-        Ok(Self { parens, fields })
-    }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        self.fields.check(env.inside_nested_expr(), errors);
-    }
-}
-
-impl ItemWithSpan for SyAttributeParams {
-    fn span(&self) -> Span {
-        self.parens.span()
     }
 }
 

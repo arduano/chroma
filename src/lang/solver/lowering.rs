@@ -1,6 +1,8 @@
+use std::ops::Deref;
+
 use crate::lang::{
     ast::{
-        helpers::Attempted,
+        helpers::{Attempted, AttemptedAsRef},
         items::{SyDeclaration, SyDeclarationBody, SyExpression, SyObjectLiteralField},
     },
     tokens::TkIdent,
@@ -97,7 +99,7 @@ pub fn parse_module_data_linking(
                 };
 
                 let ty = link_type_expression_ast(
-                    &declaration_item.value,
+                    declaration_item.value.deref().value_as_ref(),
                     Some(declaration_item.name.clone()),
                     compilation,
                     &mod_results.namespace,

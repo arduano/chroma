@@ -264,8 +264,7 @@ impl ItemWithSpan for SyFloatLiteral {
 
 #[derive(Debug, Clone)]
 pub struct SyParenthesizedExpr {
-    pub parentheses: TkParens,
-    pub expression: Box<Attempted<SyExpression>>,
+    pub parens: Grouped<TkParens, Attempted<Box<SyExpression>>>,
 }
 
 impl AstItem for SyParenthesizedExpr {
@@ -275,16 +274,15 @@ impl AstItem for SyParenthesizedExpr {
     where
         Self: Sized,
     {
-        let (parentheses, expression) = reader.parse_optional_group(env)?;
+        let parens = reader.parse_optional_group_tolerant_inner(env)?;
 
         Ok(Self {
-            parentheses,
-            expression: Box::new(Ok(expression)),
+            parens: parens.map_inner(|expression| expression.map(Box::new)),
         })
     }
 
     fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        if let Ok(expression) = &*self.expression {
+        if let Ok(expression) = &self.parens.inner {
             expression.check(env, errors);
         }
     }
@@ -292,6 +290,6 @@ impl AstItem for SyParenthesizedExpr {
 
 impl ItemWithSpan for SyParenthesizedExpr {
     fn span(&self) -> Span {
-        self.parentheses.span()
+        self.parens.span()
     }
 }
