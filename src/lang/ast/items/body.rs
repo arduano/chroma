@@ -42,7 +42,7 @@ impl AstItem for SyBody {
                 let semi_requirement = statement.statement.needs_semicolon();
                 match semi_requirement {
                     SemiRequirement::Never => {
-                        if let Ok(semicolon) = &statement.semicolon {
+                        if let SySemicolon::Exists(semicolon) = &statement.semicolon {
                             reader.add_error(CompilerError::new(
                                 "Unexpected ;",
                                 semicolon.span().clone(),
@@ -51,13 +51,13 @@ impl AstItem for SyBody {
                     }
                     SemiRequirement::Expression => {
                         if !reader.is_empty() {
-                            if let Err(span) = &statement.semicolon {
+                            if let SySemicolon::Missing(span) = &statement.semicolon {
                                 reader.add_error(CompilerError::new("Expected ;", span.clone()));
                             }
                         }
                     }
                     SemiRequirement::Always => {
-                        if let Err(span) = &statement.semicolon {
+                        if let SySemicolon::Missing(span) = &statement.semicolon {
                             reader.add_error(CompilerError::new("Expected ;", span.clone()));
                         }
                     }
@@ -95,9 +95,7 @@ impl ItemWithSpan for SyBody {
 #[derive(Debug, Clone)]
 pub struct SyBodyStatement {
     pub statement: Box<SyStatement>,
-
-    // Result of the semicolon or the span where the semicolon should be
-    pub semicolon: Result<TkSemicolon, Span>,
+    pub semicolon: SySemicolon,
 }
 
 impl AstItem for SyBodyStatement {
@@ -111,10 +109,10 @@ impl AstItem for SyBodyStatement {
         let semicolon = reader.parse_optional_token::<TkSemicolon>();
 
         let semicolon = match semicolon {
-            Ok(semicolon) => Ok(semicolon),
+            Ok(semicolon) => SySemicolon::Exists(semicolon),
             Err(_) => {
                 let span = reader.input().span().clone();
-                Err(span)
+                SySemicolon::Missing(span)
             }
         };
 
@@ -158,7 +156,7 @@ impl AstItem for SyDeclarationBody {
                 let needs_semi = statement.item.needs_semicolon();
                 match needs_semi {
                     false => {
-                        if let Ok(semicolon) = &statement.semicolon {
+                        if let SySemicolon::Exists(semicolon) = &statement.semicolon {
                             reader.add_error(CompilerError::new(
                                 "Unexpected ;",
                                 semicolon.span().clone(),
@@ -166,7 +164,7 @@ impl AstItem for SyDeclarationBody {
                         }
                     }
                     true => {
-                        if let Err(span) = &statement.semicolon {
+                        if let SySemicolon::Missing(span) = &statement.semicolon {
                             reader.add_error(CompilerError::new("Expected ;", span.clone()));
                         }
                     }
@@ -225,9 +223,7 @@ impl ItemWithSpan for SyDeclarationPubVisibility {
 pub struct SyDeclarationBodyItem {
     pub visibility: Option<SyDeclarationPubVisibility>,
     pub item: SyDeclaration,
-
-    // Result of the semicolon or the span where the semicolon should be
-    pub semicolon: Result<TkSemicolon, Span>,
+    pub semicolon: SySemicolon,
 }
 
 impl AstItem for SyDeclarationBodyItem {
@@ -249,10 +245,10 @@ impl AstItem for SyDeclarationBodyItem {
         let semicolon = reader.parse_optional_token::<TkSemicolon>();
 
         let semicolon = match semicolon {
-            Ok(semicolon) => Ok(semicolon),
+            Ok(semicolon) => SySemicolon::Exists(semicolon),
             Err(_) => {
                 let span = reader.input().span().clone();
-                Err(span)
+                SySemicolon::Missing(span)
             }
         };
 

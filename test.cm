@@ -1,3 +1,7 @@
+fn test(a: number) {
+    return a + a;
+}
+
 // type A = {
 //     a: {
 //         a: {
@@ -29,8 +33,8 @@
 // type A = Foo extends Bar;
 // type B = true;
 
-type fn Test(Val) {
-    return {
-        val: Val,
-    };
-}
+// type fn Test(Val) {
+//     return {
+//         val: Val,
+//     };
+// }

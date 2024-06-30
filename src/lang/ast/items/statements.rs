@@ -1,5 +1,11 @@
+use std::sync::Arc;
+
 use super::*;
-use crate::lang::{ast::helpers::*, tokens::ItemWithSpan, ErrorCollector};
+use crate::lang::{
+    ast::helpers::*,
+    tokens::{ItemWithSpan, Span, TkReturn},
+    ErrorCollector,
+};
 
 pub enum SemiRequirement {
     Never,
@@ -11,6 +17,7 @@ pub enum SemiRequirement {
 pub enum SyStatement {
     Declaration(SyDeclaration),
     Expression(SyExpression),
+    Return(ReturnStatement),
 }
 
 impl SyStatement {
@@ -30,6 +37,7 @@ impl SyStatement {
                     SemiRequirement::Never
                 }
             }
+            SyStatement::Return(_) => SemiRequirement::Always,
         }
     }
 }
@@ -88,6 +96,7 @@ impl AstItem for SyStatement {
         match self {
             Self::Declaration(expr) => expr.check(env, errors),
             Self::Expression(expr) => expr.check(env.outside_nested_expr(), errors),
+            Self::Return(expr) => expr.check(env.outside_nested_expr(), errors),
         }
     }
 }
@@ -97,6 +106,42 @@ impl ItemWithSpan for SyStatement {
         match self {
             Self::Declaration(expr) => expr.span(),
             Self::Expression(expr) => expr.span(),
+            Self::Return(expr) => expr.span(),
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ReturnStatement {
+    pub return_token: TkReturn,
+    pub expr: Arc<Attempted<SyExpression>>,
+}
+
+impl AstItem for ReturnStatement {
+    const NAME: &'static str = "return statement";
+
+    fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
+    where
+        Self: Sized,
+    {
+        let return_token = reader.parse_required_token::<TkReturn>()?;
+        let expr = reader.parse_required(env.inside_nested_expr());
+
+        Ok(Self {
+            return_token,
+            expr: Arc::new(expr),
+        })
+    }
+
+    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
+        if let Ok(expr) = &*self.expr {
+            expr.check(env.inside_nested_expr(), errors);
+        }
+    }
+}
+
+impl ItemWithSpan for ReturnStatement {
+    fn span(&self) -> Span {
+        self.return_token.span().join(&self.expr.span())
     }
 }

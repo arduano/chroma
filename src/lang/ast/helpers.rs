@@ -1,7 +1,9 @@
 use std::rc::Rc;
 
 use crate::lang::{
-    tokens::{ItemWithSpan, ParseGroupToken, ParseSimpleToken, Span, TokenReader, TokenValue},
+    tokens::{
+        ItemWithSpan, ParseGroupToken, ParseSimpleToken, Span, TkSemicolon, TokenReader, TokenValue,
+    },
     CompilerError, ErrorCollector, WithSpan,
 };
 
@@ -177,6 +179,7 @@ pub enum ErrorRecoveryMode {
     UntilEnd,
     UntilN(usize),
     UntilToken(Rc<dyn ErrorRecoveryTokenMatch>),
+    None,
 }
 
 impl ErrorRecoveryMode {
@@ -203,6 +206,7 @@ impl ErrorRecoveryMode {
                 let matches = matcher.matches(&mut reader_clone);
                 matches
             }
+            ErrorRecoveryMode::None => false,
         }
     }
 
@@ -211,6 +215,22 @@ impl ErrorRecoveryMode {
             ErrorRecoveryMode::UntilEnd => false,
             ErrorRecoveryMode::UntilToken(_) => false,
             ErrorRecoveryMode::UntilN(_) => true,
+            ErrorRecoveryMode::None => false,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum SySemicolon {
+    Exists(TkSemicolon),
+    Missing(Span),
+}
+
+impl ItemWithSpan for SySemicolon {
+    fn span(&self) -> Span {
+        match self {
+            Self::Exists(s) => s.span(),
+            Self::Missing(_) => Span::new_empty(),
         }
     }
 }

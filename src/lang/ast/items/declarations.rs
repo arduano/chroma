@@ -5,11 +5,14 @@ use crate::lang::{ast::helpers::*, tokens::*, ErrorCollector};
 
 mod type_fn;
 pub use type_fn::*;
+mod function;
+pub use function::*;
 
 #[derive(Debug, Clone)]
 pub enum SyDeclaration {
     TypeDefine(Arc<SyTypeDefine>),
     TypeFn(Arc<SyTypeFn>),
+    Function(Arc<SyFunction>),
 }
 
 impl SyDeclaration {
@@ -17,6 +20,7 @@ impl SyDeclaration {
         match self {
             Self::TypeDefine(_) => true,
             Self::TypeFn(_) => false,
+            Self::Function(_) => false,
         }
     }
 }
@@ -34,6 +38,9 @@ impl AstItem for SyDeclaration {
         if let Ok(expr) = reader.parse_optional(env) {
             return Ok(SyDeclaration::TypeDefine(Arc::new(expr)));
         }
+        if let Ok(expr) = reader.parse_optional(env) {
+            return Ok(SyDeclaration::Function(Arc::new(expr)));
+        }
 
         Err(ParseError::NoMatch)
     }
@@ -42,6 +49,7 @@ impl AstItem for SyDeclaration {
         match self {
             Self::TypeDefine(expr) => expr.check(env, errors),
             Self::TypeFn(expr) => expr.check(env, errors),
+            Self::Function(expr) => expr.check(env, errors),
         }
     }
 }
@@ -51,6 +59,7 @@ impl ItemWithSpan for SyDeclaration {
         match self {
             Self::TypeDefine(expr) => expr.span(),
             Self::TypeFn(expr) => expr.span(),
+            Self::Function(expr) => expr.span(),
         }
     }
 }

@@ -21,8 +21,9 @@ use chroma::lang::{
 // Sy__ - AST
 // Li__ - Linked and simplified definitions, resolving any AST names to IDs
 // Ty__ - Raw type system
-// St__ - Static Compiler Data (e.g. types, generic function descriptions)
-// Rt__ - Runtime Data (e.g. values, generic function instances)
+// Tf__ - Type function related
+// Gf__ - Generic functions, in between linked functions and execution logic, referencing type functions
+// Rt__ - Runtime Data, execution logic
 
 // fn build_std_module(
 //     modules: &KnownItemHandler<DcModule>,
