@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use crate::lang::tokens::TkIdent;
 
 use super::{
-    linked_ast::{LiType, LiTypeFnArg, LiTypeFnLazyValue},
+    linked_ast::{LiExpression, LiTypeFnArg, LiTypeFnLazyValue},
     Id, MId,
 };
 
@@ -44,7 +44,7 @@ pub struct ModuleNamespaceItem {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ModuleNamespaceItemKind {
-    Type(MId<LiType>),
+    Type(MId<LiExpression>),
     Unknown,
 }
 

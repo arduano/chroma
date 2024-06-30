@@ -2,7 +2,7 @@ use logos::Span;
 
 use crate::lang::tokens::TkIdent;
 
-use super::LiType;
+use super::LiExpression;
 
 pub struct LiFunction {
     pub name: Option<TkIdent>,
@@ -11,13 +11,13 @@ pub struct LiFunction {
 
 pub struct LiFunctionArgument {
     pub name: TkIdent,
-    pub type_constraint: Option<LiType>,
+    pub type_constraint: Option<LiExpression>,
     pub span: Span,
 }
 
 pub struct LiFunctionBody {
     pub name: TkIdent,
-    pub type_constraint: Option<LiType>,
+    pub type_constraint: Option<LiExpression>,
     pub span: Span,
 }
 

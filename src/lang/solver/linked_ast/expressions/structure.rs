@@ -1,6 +1,6 @@
 use crate::lang::tokens::TkIdent;
 
-use super::LiType;
+use super::LiExpression;
 
 #[derive(Debug, Clone)]
 pub struct LiStruct {
@@ -17,16 +17,16 @@ pub enum LiStructField {
 #[derive(Debug, Clone)]
 pub struct LiStructKeyValue {
     pub key: TkIdent,
-    pub value: LiType,
+    pub value: LiExpression,
 }
 
 #[derive(Debug, Clone)]
 pub struct LiStructComputedKeyValue {
-    pub key: LiType,
-    pub value: LiType,
+    pub key: LiExpression,
+    pub value: LiExpression,
 }
 
 #[derive(Debug, Clone)]
 pub struct LiStructFieldSpread {
-    pub spread: LiType,
+    pub spread: LiExpression,
 }

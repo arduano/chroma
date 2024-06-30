@@ -10,20 +10,20 @@ use crate::lang::{
     CompilerError, ErrorCollector,
 };
 
-use super::{LiStructField, LiType, LiTypeKind};
+use super::{LiExpression, LiExpressionKind, LiStructField};
 
 /// A type for encapsulating which parts of this compilation step are mutated
 /// and which parts are immutable. This keeps rust happy.
 pub struct TypeFromLinkedTypeCompilation<'a> {
     pub current_module_id: Id<ModuleGroupCompilation>,
-    pub linked_type_definitions: &'a ModItemSet<LiType>,
-    pub linked_type_to_type_mapping: &'a mut HashMap<MId<LiType>, MId<TyType>>,
+    pub linked_type_definitions: &'a ModItemSet<LiExpression>,
+    pub linked_type_to_type_mapping: &'a mut HashMap<MId<LiExpression>, MId<TyType>>,
     pub type_data: &'a mut TypeData,
     pub errors: &'a mut ErrorCollector,
 }
 
 pub fn parse_type_from_linked_type_id(
-    linked_ty_id: MId<LiType>,
+    linked_ty_id: MId<LiExpression>,
     compilation: &mut TypeFromLinkedTypeCompilation,
 ) -> MId<TyType> {
     if let Some(existing_type) = compilation.linked_type_to_type_mapping.get(&linked_ty_id) {
@@ -47,32 +47,32 @@ pub fn parse_type_from_linked_type_id(
 }
 
 pub fn parse_type_from_linked_type(
-    linked_ty: &LiType,
+    linked_ty: &LiExpression,
     compilation: &mut TypeFromLinkedTypeCompilation,
 ) -> TyIdOrValWithSpan {
     let ty_kind = match &linked_ty.kind {
-        LiTypeKind::Number(num) => {
+        LiExpressionKind::Number(num) => {
             if let Some(literal) = &num.literal {
                 TyTypeKind::Number(TyNumber::from_literal(literal.value()))
             } else {
                 TyTypeKind::Number(TyNumber::new())
             }
         }
-        LiTypeKind::String(str) => {
+        LiExpressionKind::String(str) => {
             if let Some(literal) = &str.literal {
                 TyTypeKind::String(TyString::from_literal(literal.value().clone()))
             } else {
                 TyTypeKind::String(TyString::new())
             }
         }
-        LiTypeKind::Boolean(boolean) => {
+        LiExpressionKind::Boolean(boolean) => {
             if let Some(literal) = &boolean.literal {
                 TyTypeKind::Boolean(TyBoolean::from_literal(*literal))
             } else {
                 TyTypeKind::Boolean(TyBoolean::new())
             }
         }
-        LiTypeKind::Struct(structure) => {
+        LiExpressionKind::Struct(structure) => {
             let mut fields = Vec::<TyStructLiteralField>::new();
 
             let mut add_field_if_not_exists = |field: TyStructLiteralField| {
@@ -114,11 +114,11 @@ pub fn parse_type_from_linked_type(
 
             TyTypeKind::Struct(TyStruct::new_literal(fields))
         }
-        LiTypeKind::StaticTypeReference(linked_ty_id) => {
+        LiExpressionKind::StaticReference(linked_ty_id) => {
             let ty_id = parse_type_from_linked_type_id(*linked_ty_id, compilation);
             return TyIdOrValWithSpan::new_id(ty_id, linked_ty.span());
         }
-        LiTypeKind::BinaryExpression(binary) => {
+        LiExpressionKind::BinaryExpression(binary) => {
             let left = parse_type_from_linked_type(&binary.left, compilation);
             let right = parse_type_from_linked_type(&binary.right, compilation);
 
@@ -131,10 +131,10 @@ pub fn parse_type_from_linked_type(
                 compilation,
             );
         }
-        LiTypeKind::Unknown => TyTypeKind::Any(TyAnyTypeKind::Unknown),
-        LiTypeKind::Never => TyTypeKind::Never,
+        LiExpressionKind::Unknown => TyTypeKind::Any(TyAnyTypeKind::Unknown),
+        LiExpressionKind::Never => TyTypeKind::Never,
 
-        LiTypeKind::TypeFnLazyValue(_) => todo!(),
+        LiExpressionKind::TypeFnLazyValue(_) => todo!(),
     };
 
     let ty = TyType::new_named_infer_flags(
@@ -150,7 +150,7 @@ pub fn parse_type_from_linked_type(
 // The type can either be owned, or a reference type and therefore you get a borrow. Instead of dealing with
 // mapping a Cow through 4 layers, I'm just passing a reference to a callback.
 fn get_struct_literal_fields_from_ty_and_execute_callback<'a>(
-    ty: &LiType,
+    ty: &LiExpression,
     ref_span: &Span,
     compilation: &'a mut TypeFromLinkedTypeCompilation,
     callback: impl FnOnce(&Vec<TyStructLiteralField>),

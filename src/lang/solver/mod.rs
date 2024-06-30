@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use self::{
-    linked_ast::LiType,
+    linked_ast::LiExpression,
     type_system::{
         TyType, TyTypeFlags, TyTypeLogic, TypeAssignabilityCache, TypeSubsetabilityCache,
     },
@@ -113,9 +113,9 @@ pub struct ModuleGroupCompilation {
     pub current_module_id: ModId,
     pub files: Vec<Id<CodeFile>>,
     pub modules: HashMap<Id<CodeFile>, ModuleNamespace>,
-    pub linked_type_definitions: ModItemSet<LiType>,
+    pub linked_type_definitions: ModItemSet<LiExpression>,
     pub type_data: TypeData,
-    pub linked_type_to_type_mapping: HashMap<MId<LiType>, MId<TyType>>,
+    pub linked_type_to_type_mapping: HashMap<MId<LiExpression>, MId<TyType>>,
     pub errors: ErrorCollector,
 }
 
@@ -200,8 +200,8 @@ pub struct ModuleGroupResult {
     pub dependencies: Vec<Id<ModuleGroupResult>>,
     pub files: Vec<Id<CodeFile>>,
     pub modules: HashMap<Id<CodeFile>, ModuleNamespace>,
-    pub linked_type_definitions: Arc<ItemSet<MIdOrVal<LiType>>>,
-    pub linked_type_to_type_mapping: HashMap<Id<LiType>, Id<TyType>>,
+    pub linked_type_definitions: Arc<ItemSet<MIdOrVal<LiExpression>>>,
+    pub linked_type_to_type_mapping: HashMap<Id<LiExpression>, Id<TyType>>,
     pub types: Arc<ItemSet<MIdOrVal<TyType>>>,
     pub type_assignability: TypeAssignabilityCache,
     pub errors: ErrorCollector,

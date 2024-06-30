@@ -10,7 +10,7 @@ use crate::lang::{
 };
 
 use self::{
-    ast_to_li::link_type_expression_ast,
+    ast_to_li::link_expression_ast,
     parse_static_types::{parse_type_from_linked_type_id, TypeFromLinkedTypeCompilation},
 };
 
@@ -99,7 +99,7 @@ pub fn parse_module_data_linking(
                     unreachable!("Parse result mismatch")
                 };
 
-                let ty = link_type_expression_ast(
+                let ty = link_expression_ast(
                     declaration_item.value.deref().value_as_ref(),
                     Some(declaration_item.name.clone()),
                     compilation,
@@ -117,7 +117,7 @@ pub fn parse_module_data_linking(
 
 pub fn get_type_id_for_linked_type_id(
     compilation: &mut ModuleGroupCompilation,
-    linked_ty_id: MId<LiType>,
+    linked_ty_id: MId<LiExpression>,
 ) -> MId<TyType> {
     let mut ty_compilation = TypeFromLinkedTypeCompilation {
         current_module_id: compilation.current_module_id,

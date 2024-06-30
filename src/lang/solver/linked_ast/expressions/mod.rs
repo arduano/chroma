@@ -10,14 +10,14 @@ pub use structure::*;
 use super::LiTypeFnLazyValue;
 
 #[derive(Debug, Clone)]
-pub struct LiType {
+pub struct LiExpression {
     pub name: Option<TkIdent>,
-    pub kind: LiTypeKind,
+    pub kind: LiExpressionKind,
     pub span: Span,
 }
 
-impl LiType {
-    pub fn new(kind: LiTypeKind, span: Span) -> Self {
+impl LiExpression {
+    pub fn new(kind: LiExpressionKind, span: Span) -> Self {
         Self {
             name: None,
             kind: kind,
@@ -25,7 +25,7 @@ impl LiType {
         }
     }
 
-    pub fn new_named(name: Option<TkIdent>, kind: LiTypeKind, span: Span) -> Self {
+    pub fn new_named(name: Option<TkIdent>, kind: LiExpressionKind, span: Span) -> Self {
         Self {
             name,
             kind: kind,
@@ -33,7 +33,7 @@ impl LiType {
         }
     }
 
-    pub fn kind(&self) -> &LiTypeKind {
+    pub fn kind(&self) -> &LiExpressionKind {
         &self.kind
     }
 
@@ -43,13 +43,13 @@ impl LiType {
 }
 
 #[derive(Debug, Clone)]
-pub enum LiTypeKind {
+pub enum LiExpressionKind {
     Number(LiNumber),
     String(LiString),
     Boolean(LiBoolean),
     Struct(LiStruct),
-    StaticTypeReference(MId<LiType>),
-    BinaryExpression(LiBinaryTypeExpression),
+    StaticReference(MId<LiExpression>),
+    BinaryExpression(LiBinaryExpression),
     TypeFnLazyValue(Id<LiTypeFnLazyValue>),
     Unknown,
     Never,
@@ -71,8 +71,8 @@ pub struct LiBoolean {
 }
 
 #[derive(Debug, Clone)]
-pub struct LiBinaryTypeExpression {
-    pub left: Box<LiType>,
-    pub right: Box<LiType>,
+pub struct LiBinaryExpression {
+    pub left: Box<LiExpression>,
+    pub right: Box<LiExpression>,
     pub operator: SyBinaryOp,
 }

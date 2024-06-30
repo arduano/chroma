@@ -3,7 +3,7 @@ use crate::lang::{
     tokens::TkIdent,
 };
 
-use super::LiType;
+use super::LiExpression;
 
 pub struct LiTypeFn {
     pub name: TkIdent,
@@ -14,11 +14,11 @@ pub struct LiTypeFn {
 
 pub struct LiTypeFnArg {
     pub name: TkIdent,
-    pub ty_constraint: LiType,
+    pub ty_constraint: LiExpression,
 }
 
 pub enum LiTypeFnLazyValue {
-    LiType(LiType),
+    LiType(LiExpression),
     // LiTypeCondition(LiTypeCondition),
 }
 
