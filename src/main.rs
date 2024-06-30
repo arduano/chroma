@@ -21,7 +21,7 @@ use chroma::lang::{
 // Sy__ - AST
 // Li__ - Linked and simplified definitions, resolving any AST names to IDs
 // Ty__ - Raw type system
-// Tf__ - Type function related
+// Ts__ - Type scope, for type functions and the global scope
 // Gf__ - Generic functions, in between linked functions and execution logic, referencing type functions
 // Rt__ - Runtime Data, execution logic
 
