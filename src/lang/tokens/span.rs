@@ -160,3 +160,9 @@ impl<A: ?Sized + ItemWithSpan> ItemWithSpan for Arc<A> {
         self.deref().span()
     }
 }
+
+impl<A: ?Sized + ItemWithSpan> ItemWithSpan for Box<A> {
+    fn span(&self) -> Span {
+        self.deref().span()
+    }
+}

@@ -99,7 +99,7 @@ pub fn link_expression_ast(
                     }
                     SyObjectLiteralField::Spread(spread) => {
                         let value = link_expression_ast(
-                            spread.fields.deref().value_as_ref(),
+                            spread.fields.value_as_ref().map(|v| &**v),
                             None,
                             compilation,
                             namespace,
@@ -111,7 +111,7 @@ pub fn link_expression_ast(
                     }
                     SyObjectLiteralField::ComputedKey(ckv) => {
                         let key = link_expression_ast(
-                            (&ckv.key.inner).value_as_ref().map(|v| &**v),
+                            ckv.key.inner.value_as_ref().map(|v| &**v),
                             None,
                             compilation,
                             namespace,
@@ -155,7 +155,7 @@ pub fn link_expression_ast(
         }
         SyExpression::Parentheses(expr) => {
             let mut li_ty = link_expression_ast(
-                (&expr.parens.inner).value_as_ref().map(|v| &**v),
+                expr.parens.inner.value_as_ref().map(|v| &**v),
                 name,
                 compilation,
                 namespace,

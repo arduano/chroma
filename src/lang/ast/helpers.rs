@@ -44,13 +44,15 @@ pub type ParsedOptional<T> = Result<T, ParseErrorNoMatch>;
 pub type Attempted<T> = Result<T, ParseErrorError>;
 
 pub trait AttemptedAsRef {
-    type Output;
-    fn value_as_ref(&self) -> Self::Output;
+    type Output<'a>
+    where
+        Self: 'a;
+    fn value_as_ref<'a>(&'a self) -> Self::Output<'a>;
 }
 
-impl<'a, T> AttemptedAsRef for &'a Attempted<T> {
-    type Output = Attempted<&'a T>;
-    fn value_as_ref(&self) -> Self::Output {
+impl<T> AttemptedAsRef for Attempted<T> {
+    type Output<'a> = Attempted<&'a T> where Self: 'a;
+    fn value_as_ref<'a>(&'a self) -> Self::Output<'a> {
         match self {
             Ok(value) => Ok(value),
             Err(_) => Err(ParseErrorError),

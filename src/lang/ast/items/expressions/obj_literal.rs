@@ -240,7 +240,7 @@ impl ItemWithSpan for SyObjectLiteralKeyVariable {
 #[derive(Debug, Clone)]
 pub struct SyObjectLiteralSpread {
     pub spread: TkEpsilon,
-    pub fields: Box<Attempted<SyExpression>>,
+    pub fields: Attempted<Box<SyExpression>>,
 }
 
 impl AstItem for SyObjectLiteralSpread {
@@ -255,12 +255,12 @@ impl AstItem for SyObjectLiteralSpread {
 
         Ok(Self {
             spread,
-            fields: Box::new(fields),
+            fields: fields.map(Box::new),
         })
     }
 
     fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        if let Ok(fields) = &*self.fields {
+        if let Ok(fields) = &self.fields {
             fields.check(env.inside_nested_expr(), errors);
         }
     }
