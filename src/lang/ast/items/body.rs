@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::lang::{ast::helpers::*, tokens::*, CompilerError, ErrorCollector};
+use crate::lang::{ast::helpers::*, tokens::*, CompilerError};
 
 use super::*;
 
@@ -69,14 +69,6 @@ impl AstItem for SyBody {
 
         Ok(Self { statements })
     }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        for statement in &self.statements {
-            if let Ok(statement) = statement {
-                statement.check(env, errors);
-            }
-        }
-    }
 }
 
 impl ItemWithSpan for SyBody {
@@ -120,10 +112,6 @@ impl AstItem for SyBodyStatement {
             statement: Box::new(statement),
             semicolon,
         })
-    }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        self.statement.check(env.outside_nested_expr(), errors);
     }
 }
 
@@ -176,14 +164,6 @@ impl AstItem for SyDeclarationBody {
 
         Ok(Self { statements })
     }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        for statement in &self.statements {
-            if let Ok(statement) = statement {
-                statement.check(env, errors);
-            }
-        }
-    }
 }
 
 impl ItemWithSpan for SyDeclarationBody {
@@ -206,10 +186,6 @@ impl AstItem for SyDeclarationPubVisibility {
     {
         let public = reader.parse_optional_token::<TkPub>()?;
         Ok(Self { public })
-    }
-
-    fn check(&self, _env: CheckingPhaseEnv, _errors: &mut ErrorCollector) {
-        // N/A
     }
 }
 
@@ -257,14 +233,6 @@ impl AstItem for SyDeclarationBodyItem {
             item,
             semicolon,
         })
-    }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        if let Some(visibility) = &self.visibility {
-            visibility.check(env, errors);
-        }
-
-        self.item.check(env, errors);
     }
 }
 

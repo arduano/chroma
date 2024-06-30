@@ -1,4 +1,4 @@
-use crate::lang::{ast::helpers::*, tokens::*, CompilerError, ErrorCollector};
+use crate::lang::{ast::helpers::*, tokens::*, CompilerError};
 
 mod obj_literal;
 pub use obj_literal::*;
@@ -113,19 +113,6 @@ impl AstItem for SyExpression {
 
         Ok(expression)
     }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        match self {
-            Self::VarRead(expr) => expr.check(env, errors),
-            Self::StringLiteral(expr) => expr.check(env, errors),
-            Self::IntLiteral(expr) => expr.check(env, errors),
-            Self::FloatLiteral(expr) => expr.check(env, errors),
-            Self::ObjectLiteral(expr) => expr.check(env, errors),
-            Self::Parentheses(expr) => expr.check(env, errors),
-            Self::Binary(expr) => expr.check(env, errors),
-            Self::Invalid => {}
-        }
-    }
 }
 
 impl ItemWithSpan for SyExpression {
@@ -166,10 +153,6 @@ impl AstItem for SyVarRead {
 
         Ok(Self { name })
     }
-
-    fn check(&self, _env: CheckingPhaseEnv, _errors: &mut ErrorCollector) {
-        // N/A
-    }
 }
 
 impl ItemWithSpan for SyVarRead {
@@ -193,10 +176,6 @@ impl AstItem for SyStringLiteral {
         let literal = reader.parse_optional_token()?;
 
         Ok(Self { literal })
-    }
-
-    fn check(&self, _env: CheckingPhaseEnv, _errors: &mut ErrorCollector) {
-        // N/A
     }
 }
 
@@ -222,10 +201,6 @@ impl AstItem for SyIntLiteral {
 
         Ok(Self { literal })
     }
-
-    fn check(&self, _env: CheckingPhaseEnv, _errors: &mut ErrorCollector) {
-        // N/A
-    }
 }
 
 impl ItemWithSpan for SyIntLiteral {
@@ -249,10 +224,6 @@ impl AstItem for SyFloatLiteral {
         let literal = reader.parse_optional_token()?;
 
         Ok(Self { literal })
-    }
-
-    fn check(&self, _env: CheckingPhaseEnv, _errors: &mut ErrorCollector) {
-        // N/A
     }
 }
 
@@ -279,12 +250,6 @@ impl AstItem for SyParenthesizedExpr {
         Ok(Self {
             parens: parens.map_inner(|expression| expression.map(Box::new)),
         })
-    }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        if let Ok(expression) = &self.parens.inner {
-            expression.check(env, errors);
-        }
     }
 }
 

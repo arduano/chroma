@@ -1,7 +1,7 @@
 use crate::lang::{
     ast::{helpers::*, items::*},
     tokens::*,
-    CompilerError, ErrorCollector,
+    CompilerError,
 };
 
 #[derive(Debug, Clone)]
@@ -21,14 +21,6 @@ impl AstItem for SyTypeFn {
         let body = reader.parse_required_group(env.outside_nested_expr());
 
         Ok(Self { signature, body })
-    }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        self.signature.check(env, errors);
-
-        if let Ok(body) = &self.body {
-            body.inner.check(env, errors);
-        }
     }
 }
 
@@ -72,12 +64,6 @@ impl AstItem for SyTypeFnSignature {
             args,
         })
     }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        if let Ok(args) = &self.args {
-            args.inner.check(env.inside_type_only(), errors);
-        }
-    }
 }
 
 impl ItemWithSpan for SyTypeFnSignature {
@@ -115,14 +101,6 @@ impl AstItem for SyTypeArgs {
         }
 
         Ok(Self { args })
-    }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        for arg in &self.args {
-            if let Ok(arg) = &arg {
-                arg.check(env.inside_type_only(), errors);
-            }
-        }
     }
 }
 
@@ -163,12 +141,6 @@ impl AstItem for SyTypeArg {
 
         Ok(Self { name, constraint })
     }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        if let Some(constraint) = &self.constraint {
-            constraint.check(env.inside_type_only(), errors);
-        }
-    }
 }
 
 impl ItemWithSpan for SyTypeArg {
@@ -202,10 +174,6 @@ impl AstItem for SyTypeConstraint {
             is_const,
             name: reader.parse_required_token(),
         })
-    }
-
-    fn check(&self, _env: CheckingPhaseEnv, _errors: &mut ErrorCollector) {
-        // TODO: Check inner constraint type with env.inside_nested_expr()
     }
 }
 

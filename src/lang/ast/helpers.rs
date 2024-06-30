@@ -66,51 +66,6 @@ pub trait AstItem: ItemWithSpan {
     fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
     where
         Self: Sized;
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector);
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct CheckingPhaseEnv {
-    pub inside_type_only: bool,
-    pub inside_nested_expr: bool,
-}
-
-impl CheckingPhaseEnv {
-    pub fn new() -> Self {
-        Self {
-            inside_type_only: false,
-            inside_nested_expr: false,
-        }
-    }
-
-    pub fn inside_type_only(self) -> Self {
-        Self {
-            inside_type_only: true,
-            ..self
-        }
-    }
-
-    pub fn inside_nested_expr(self) -> Self {
-        Self {
-            inside_nested_expr: true,
-            ..self
-        }
-    }
-
-    pub fn outside_type_only(self) -> Self {
-        Self {
-            inside_type_only: false,
-            ..self
-        }
-    }
-
-    pub fn outside_nested_expr(self) -> Self {
-        Self {
-            inside_nested_expr: false,
-            ..self
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

@@ -4,7 +4,6 @@ use super::*;
 use crate::lang::{
     ast::helpers::*,
     tokens::{ItemWithSpan, Span, TkReturn},
-    ErrorCollector,
 };
 
 pub enum SemiRequirement {
@@ -91,14 +90,6 @@ impl AstItem for SyStatement {
 
         Ok(expression)
     }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        match self {
-            Self::Declaration(expr) => expr.check(env, errors),
-            Self::Expression(expr) => expr.check(env.outside_nested_expr(), errors),
-            Self::Return(expr) => expr.check(env.outside_nested_expr(), errors),
-        }
-    }
 }
 
 impl ItemWithSpan for SyStatement {
@@ -131,12 +122,6 @@ impl AstItem for ReturnStatement {
             return_token,
             expr: Arc::new(expr),
         })
-    }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        if let Ok(expr) = &*self.expr {
-            expr.check(env.inside_nested_expr(), errors);
-        }
     }
 }
 

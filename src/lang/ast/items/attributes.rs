@@ -1,4 +1,4 @@
-use crate::lang::{ast::helpers::*, tokens::*, CompilerError, ErrorCollector};
+use crate::lang::{ast::helpers::*, tokens::*, CompilerError};
 
 use super::SyExpression;
 
@@ -21,12 +21,6 @@ impl AstItem for SyAttribute {
         let contents = reader.parse_optional_group(env.inside_nested_expr()).ok();
 
         Ok(Self { at, name, contents })
-    }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        if let Some(params) = &self.contents {
-            params.inner.check(env.inside_nested_expr(), errors);
-        }
     }
 }
 
@@ -68,14 +62,6 @@ impl AstItem for SAttributeFields {
         }
 
         Ok(Self { fields })
-    }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        for field in &self.fields {
-            if let Ok(field) = field {
-                field.check(env, errors);
-            }
-        }
     }
 }
 

@@ -27,10 +27,6 @@ macro_rules! impl_binary_op {
                 )+
                 return Err(ParseError::NoMatch);
             }
-
-            fn check(&self, _env: CheckingPhaseEnv, _errors: &mut ErrorCollector) {
-                // N/A
-            }
         }
 
         impl ItemWithSpan for $ty {
@@ -121,10 +117,6 @@ impl AstItem for SyBinaryOp {
         try_parse!(MetaType);
 
         return Err(ParseError::NoMatch);
-    }
-
-    fn check(&self, _env: CheckingPhaseEnv, _errors: &mut ErrorCollector) {
-        // N/A
     }
 }
 
@@ -295,15 +287,6 @@ impl AstItem for SyBinary {
     {
         // This function shouldn't be reachable. Instead, parsing is done manually.
         unreachable!()
-    }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        if let Ok(left) = &*self.left {
-            left.check(env, errors);
-        }
-        if let Ok(right) = &*self.right {
-            right.check(env, errors);
-        }
     }
 }
 

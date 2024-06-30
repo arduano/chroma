@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use super::*;
-use crate::lang::{ast::helpers::*, tokens::*, ErrorCollector};
+use crate::lang::{ast::helpers::*, tokens::*};
 
 mod type_fn;
 pub use type_fn::*;
@@ -43,14 +43,6 @@ impl AstItem for SyDeclaration {
         }
 
         Err(ParseError::NoMatch)
-    }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        match self {
-            Self::TypeDefine(expr) => expr.check(env, errors),
-            Self::TypeFn(expr) => expr.check(env, errors),
-            Self::Function(expr) => expr.check(env, errors),
-        }
     }
 }
 
@@ -97,12 +89,6 @@ impl AstItem for SyTypeDefine {
             eq_token,
             value: Arc::new(value),
         })
-    }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        if let Ok(value) = &*self.value {
-            value.check(env.inside_type_only().inside_nested_expr(), errors);
-        }
     }
 }
 

@@ -23,10 +23,6 @@ impl AstItem for SyObjectLiteral {
         let braced = reader.parse_optional_group::<TkBraces, SObjectLiteralFields>(env)?;
         Ok(Self { braced })
     }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        self.braced.inner.check(env.inside_nested_expr(), errors);
-    }
 }
 
 impl ItemWithSpan for SyObjectLiteral {
@@ -71,14 +67,6 @@ impl AstItem for SObjectLiteralFields {
         }
 
         Ok(Self { fields })
-    }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        for field in &self.fields {
-            if let Ok(field) = field {
-                field.check(env, errors);
-            }
-        }
     }
 }
 
@@ -126,15 +114,6 @@ impl AstItem for SyObjectLiteralField {
 
         Err(ParseError::NoMatch)
     }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        match self {
-            Self::KeyValue(expr) => expr.check(env, errors),
-            Self::KeyVariable(expr) => expr.check(env, errors),
-            Self::Spread(expr) => expr.check(env, errors),
-            Self::ComputedKey(expr) => expr.check(env, errors),
-        }
-    }
 }
 
 impl ItemWithSpan for SyObjectLiteralField {
@@ -179,12 +158,6 @@ impl AstItem for SyObjectLiteralKeyValue {
             value: Arc::new(value),
         })
     }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        if let Ok(value) = &*self.value {
-            value.check(env.inside_nested_expr(), errors);
-        }
-    }
 }
 
 impl ItemWithSpan for SyObjectLiteralKeyValue {
@@ -217,10 +190,6 @@ impl AstItem for SyObjectLiteralKeyVariable {
     {
         let ident = reader.parse_optional_token()?;
         Ok(Self { key: ident })
-    }
-
-    fn check(&self, _env: CheckingPhaseEnv, _errors: &mut ErrorCollector) {
-        // N/A
     }
 }
 
@@ -257,12 +226,6 @@ impl AstItem for SyObjectLiteralSpread {
             spread,
             fields: fields.map(Box::new),
         })
-    }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        if let Ok(fields) = &self.fields {
-            fields.check(env.inside_nested_expr(), errors);
-        }
     }
 }
 
@@ -304,15 +267,6 @@ impl AstItem for SyObjectLiteralComputedKey {
             colon,
             value_expression: Box::new(value_expression),
         })
-    }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        if let Ok(expression) = &self.key.inner {
-            expression.check(env.inside_nested_expr(), errors);
-        }
-        if let Ok(expression) = &*self.value_expression {
-            expression.check(env.inside_nested_expr(), errors);
-        }
     }
 }
 

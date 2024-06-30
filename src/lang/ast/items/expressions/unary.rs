@@ -16,12 +16,6 @@ impl AstItem for SyUnaryNegate {
         let operand = reader.parse_required(env);
         Ok(Self { operator, operand })
     }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        if let Ok(operand) = &self.operand {
-            operand.check(env, errors);
-        }
-    }
 }
 
 impl ItemWithSpan for SyUnaryNegate {
@@ -45,12 +39,6 @@ impl AstItem for SyUnaryNot {
         let operator = reader.parse_optional_token()?;
         let operand = reader.parse_required(env);
         Ok(Self { operator, operand })
-    }
-
-    fn check(&self, env: CheckingPhaseEnv, errors: &mut ErrorCollector) {
-        if let Ok(operand) = &self.operand {
-            operand.check(env, errors);
-        }
     }
 }
 
