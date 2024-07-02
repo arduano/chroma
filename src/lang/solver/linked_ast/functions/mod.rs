@@ -1,6 +1,6 @@
 use logos::Span;
 
-use crate::lang::tokens::TkIdent;
+use crate::lang::tokens::{TkIdent, TkLet, TkReturn};
 
 use super::LiExpression;
 
@@ -31,8 +31,27 @@ pub struct LiBodyStatement {
     pub span: Span,
 }
 
-pub enum LiBodyStatementKind {}
+pub enum LiBodyStatementKind {
+    Expression(LiExpression),
+    VariableAssignment(LiVariableAssignment),
+}
+
+pub struct LiVariableAssignment {
+    pub let_token: TkLet,
+    pub name: TkIdent,
+    pub value: LiExpression,
+}
 
 pub struct LiBodyBlockEnd {
+    pub kind: LiBodyBlockEndKind,
     pub span: Span,
+}
+
+pub enum LiBodyBlockEndKind {
+    Return(LiReturnStatement),
+}
+
+pub struct LiReturnStatement {
+    pub return_token: TkReturn,
+    pub expr: LiExpression,
 }

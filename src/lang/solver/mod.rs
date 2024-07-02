@@ -17,6 +17,8 @@ mod type_system;
 pub use type_system::*;
 mod namespaces;
 pub use namespaces::*;
+mod runtime;
+pub use runtime::*;
 
 mod file_graph;
 pub use file_graph::*;

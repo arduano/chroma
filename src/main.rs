@@ -22,7 +22,6 @@ use chroma::lang::{
 // Li__ - Linked and simplified definitions, resolving any AST names to IDs
 // Ty__ - Raw type system
 // Ts__ - Type scope, for type functions and the global scope
-// Gf__ - Generic functions, in between linked functions and execution logic, referencing type functions
 // Rt__ - Runtime Data, execution logic
 
 // fn build_std_module(
