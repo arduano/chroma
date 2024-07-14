@@ -47,6 +47,10 @@ impl<T> ItemSet<T> {
     pub fn keys(&self) -> impl Iterator<Item = &Id<T>> {
         self.items.keys()
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = (Id<T>, &T)> {
+        self.items.iter().map(|(k, v)| (*k, v))
+    }
 }
 
 impl<T: std::fmt::Debug> std::fmt::Debug for ItemSet<T> {
