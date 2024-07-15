@@ -6,8 +6,8 @@ use crate::lang::{
 
 #[derive(Debug, Clone)]
 pub struct SyFunction {
-    signature: SyFunctionSignature,
-    body: Attempted<Grouped<TkBraces, SyBody>>,
+    pub signature: SyFunctionSignature,
+    pub body: Attempted<Grouped<TkBraces, SyBody>>,
 }
 
 impl AstItem for SyFunction {

@@ -1,14 +1,12 @@
 use std::fmt::Display;
 
-use logos::Span;
-
 use crate::lang::{
     ast::items::SyBinaryOp,
     solver::{Id, Id2, ItemSet},
-    tokens::TkIdent,
+    tokens::{Span, TkIdent},
 };
 
-type StatementId = Id2<Li2ExpressionBlock, Li2ExpressionStatement>;
+pub type StatementId = Id2<Li2ExpressionBlock, Li2ExpressionStatement>;
 
 impl Display for StatementId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -16,7 +14,7 @@ impl Display for StatementId {
     }
 }
 
-type BlockId = Id<Li2ExpressionBlock>;
+pub type BlockId = Id<Li2ExpressionBlock>;
 
 impl Display for BlockId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -24,7 +22,7 @@ impl Display for BlockId {
     }
 }
 
-type VariableId = Id<Li2Variable>;
+pub type VariableId = Id<Li2Variable>;
 
 impl Display for VariableId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -34,6 +32,7 @@ impl Display for VariableId {
 
 pub struct Li2ExpressionFunction {
     pub span: Option<Span>,
+    pub name: Option<TkIdent>,
     pub arguments: ItemSet<Li2Argument>,
     pub type_arguments: ItemSet<Li2TypeArgument>,
     pub blocks: ItemSet<Li2ExpressionBlock>,
@@ -147,6 +146,7 @@ pub enum Li2ExpressionStatementKind {
         right: Li2ValueSource,
         op: SyBinaryOp,
     },
+    Unknown,
 }
 
 impl Display for Li2ExpressionStatementKind {
@@ -155,6 +155,7 @@ impl Display for Li2ExpressionStatementKind {
             Self::ReadVar { source } => write!(f, "read {}", source),
             Self::WriteVar { source, value } => write!(f, "write {} = {}", source, value),
             Self::BinaryOp { left, right, op } => write!(f, "{} {:?} {}", left, op, right),
+            Self::Unknown => write!(f, "unknown"),
         }
     }
 }
@@ -182,6 +183,7 @@ pub enum Li2BlockEndKind {
     Return {
         value: Li2ValueSource,
     },
+    Unknown,
 }
 
 impl Display for Li2BlockEndKind {
@@ -194,6 +196,7 @@ impl Display for Li2BlockEndKind {
                 if_false,
             } => write!(f, "jump if {} then {} else{}", cond, if_true, if_false),
             Self::Return { value } => write!(f, "return {}", value),
+            Self::Unknown => write!(f, "unknown"),
         }
     }
 }

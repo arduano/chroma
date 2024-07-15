@@ -1,4 +1,12 @@
-use crate::lang::{ast::helpers::*, tokens::*, CompilerError};
+use crate::lang::{
+    ast::{
+        helpers::*,
+        linked_items::{Li2ExpressionStatement, Li2ExpressionStatementKind, StatementId},
+        linking::{FunctionBuilder, FunctionExpression, FunctionLinkingCompilation},
+    },
+    tokens::*,
+    CompilerError,
+};
 
 mod obj_literal;
 pub use obj_literal::*;
@@ -130,6 +138,25 @@ impl ItemWithSpan for SyExpression {
     }
 }
 
+impl FunctionExpression for SyExpression {
+    fn link_expression(
+        &self,
+        builder: &mut FunctionBuilder,
+        ctx: &mut FunctionLinkingCompilation,
+    ) -> StatementId {
+        match self {
+            Self::VarRead(var) => var.link_expression(builder, ctx),
+            Self::StringLiteral(string) => todo!(),
+            Self::IntLiteral(int) => todo!(),
+            Self::FloatLiteral(float) => todo!(),
+            Self::ObjectLiteral(obj) => todo!(),
+            Self::Parentheses(expr) => todo!(),
+            Self::Binary(binary) => todo!(),
+            Self::Invalid => todo!(),
+        }
+    }
+}
+
 /// Represents a simple variable read.
 ///
 /// # Example
@@ -158,6 +185,20 @@ impl AstItem for SyVarRead {
 impl ItemWithSpan for SyVarRead {
     fn span(&self) -> Span {
         self.name.span()
+    }
+}
+
+impl FunctionExpression for SyVarRead {
+    fn link_expression(
+        &self,
+        builder: &mut FunctionBuilder,
+        ctx: &mut FunctionLinkingCompilation,
+    ) -> StatementId {
+        let variable = builder.add_variable(self.name.clone(), Some(self.name.span()));
+        builder.add_statement(Li2ExpressionStatement {
+            kind: Li2ExpressionStatementKind::ReadVar { source: variable },
+            span: Some(self.span()),
+        })
     }
 }
 

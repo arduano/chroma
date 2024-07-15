@@ -1,3 +1,5 @@
+use crate::lang::ast::linked_items::Li2ValueSource;
+
 use super::*;
 
 macro_rules! try_parse_token {
@@ -296,6 +298,25 @@ impl ItemWithSpan for SyBinary {
             .span()
             .join(&self.operator.span())
             .join(&self.right.span())
+    }
+}
+
+impl FunctionExpression for SyBinary {
+    fn link_expression(
+        &self,
+        builder: &mut FunctionBuilder,
+        ctx: &mut FunctionLinkingCompilation,
+    ) -> StatementId {
+        let left = self.left.link_expression(builder, ctx);
+        let right = self.right.link_expression(builder, ctx);
+        builder.add_statement(Li2ExpressionStatement {
+            kind: Li2ExpressionStatementKind::BinaryOp {
+                left: Li2ValueSource::Statement(left),
+                right: Li2ValueSource::Statement(right),
+                op: self.operator.clone(),
+            },
+            span: Some(self.span()),
+        })
     }
 }
 
