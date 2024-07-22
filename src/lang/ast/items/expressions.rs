@@ -2,7 +2,10 @@ use crate::lang::{
     ast::{
         helpers::*,
         linked_items::{Li2ExpressionStatement, Li2ExpressionStatementKind, StatementId},
-        linking::{FunctionBuilder, FunctionExpression, FunctionLinkingCompilation},
+        linking::{
+            ident_finder::{LinkingIdentFinder, LinkingIdentKind},
+            FunctionBuilder, FunctionExpression, FunctionLinkingCompilation,
+        },
     },
     tokens::*,
     CompilerError,
@@ -151,7 +154,7 @@ impl FunctionExpression for SyExpression {
             Self::FloatLiteral(float) => todo!(),
             Self::ObjectLiteral(obj) => todo!(),
             Self::Parentheses(expr) => todo!(),
-            Self::Binary(binary) => todo!(),
+            Self::Binary(binary) => binary.link_expression(builder, ctx),
             Self::Invalid => todo!(),
         }
     }
@@ -194,7 +197,16 @@ impl FunctionExpression for SyVarRead {
         builder: &mut FunctionBuilder,
         ctx: &mut FunctionLinkingCompilation,
     ) -> StatementId {
-        let variable = builder.add_variable(self.name.clone(), Some(self.name.span()));
+        let found_value = builder.idents.find_ident(&self.name.ident);
+        let LinkingIdentKind::Variable(variable) = found_value else {
+            ctx.errors
+                .push(CompilerError::new("Variable not found", self.name.span()));
+            return builder.add_statement(Li2ExpressionStatement {
+                kind: Li2ExpressionStatementKind::Unknown,
+                span: Some(self.span()),
+            });
+        };
+
         builder.add_statement(Li2ExpressionStatement {
             kind: Li2ExpressionStatementKind::ReadVar { source: variable },
             span: Some(self.span()),

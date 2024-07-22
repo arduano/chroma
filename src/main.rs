@@ -2,6 +2,8 @@
 
 use std::{collections::HashMap, ops::Deref, path::PathBuf, str::FromStr, sync::Arc};
 
+use chroma::lang::ast::items::{SyBodyStatement, SyDeclaration, SyDeclarationBodyItem};
+use chroma::lang::ast::linking::{parse_function_ast, FunctionLinkingCompilation};
 use chroma::lang::tokens::parse_file;
 
 use chroma::lang::{
@@ -61,11 +63,11 @@ async fn main() {
 
     let tokens = parse_file(file_ref, &text);
 
-    let mut module_counter = IdCounter::new();
+    // let mut module_counter = IdCounter::new();
 
-    dbg!(&tokens);
+    // dbg!(&tokens);
 
-    let error_collector = ErrorCollector::new();
+    let mut error_collector = ErrorCollector::new();
 
     let mut ast_parser = AstParser::new(TokenReader::new(&tokens.tokens), error_collector.clone());
 
@@ -74,49 +76,62 @@ async fn main() {
 
     dbg!(&ast);
 
-    let mut compilation = ModuleGroupCompilation::new(module_counter.next(), HashMap::new());
-    let _type_ids = compilation.compile_in_ast(None, &ast);
+    let function = &ast.statements.first().unwrap().as_ref().unwrap().item;
+    let SyDeclaration::Function(function) = function else {
+        panic!("Expected function");
+    };
 
-    let a_li_type_id = compilation.linked_type_definitions.keys().find(|k| {
-        let Some(name) = &compilation.linked_type_definitions[k].name else {
-            return false;
-        };
+    let mut function_linking_compilation = FunctionLinkingCompilation {
+        errors: &mut error_collector,
+    };
 
-        name.ident.deref() == "A"
-    });
-    let a_type_id = *compilation
-        .linked_type_to_type_mapping
-        .get(&a_li_type_id.unwrap())
-        .unwrap();
+    let linked_function = parse_function_ast(function, vec![], &mut function_linking_compilation);
 
-    let b_li_type_id = compilation.linked_type_definitions.keys().find(|k| {
-        let Some(name) = &compilation.linked_type_definitions[k].name else {
-            return false;
-        };
+    println!("{}", linked_function);
 
-        name.ident.deref() == "B"
-    });
-    let b_type_id = *compilation
-        .linked_type_to_type_mapping
-        .get(&b_li_type_id.unwrap())
-        .unwrap();
+    // let mut compilation = ModuleGroupCompilation::new(module_counter.next(), HashMap::new());
+    // let _type_ids = compilation.compile_in_ast(None, &ast);
 
-    dbg!(&compilation.linked_type_definitions);
-    dbg!(&compilation.linked_type_to_type_mapping);
-    dbg!(&compilation.type_data.types);
+    // let a_li_type_id = compilation.linked_type_definitions.keys().find(|k| {
+    //     let Some(name) = &compilation.linked_type_definitions[k].name else {
+    //         return false;
+    //     };
 
-    let assignable = run_type_assignability_query(
-        &compilation.type_data.types,
-        &mut compilation.type_data.type_assignability,
-        a_type_id,
-        b_type_id,
-    );
-    dbg!(assignable);
+    //     name.ident.deref() == "A"
+    // });
+    // let a_type_id = *compilation
+    //     .linked_type_to_type_mapping
+    //     .get(&a_li_type_id.unwrap())
+    //     .unwrap();
+
+    // let b_li_type_id = compilation.linked_type_definitions.keys().find(|k| {
+    //     let Some(name) = &compilation.linked_type_definitions[k].name else {
+    //         return false;
+    //     };
+
+    //     name.ident.deref() == "B"
+    // });
+    // let b_type_id = *compilation
+    //     .linked_type_to_type_mapping
+    //     .get(&b_li_type_id.unwrap())
+    //     .unwrap();
+
+    // dbg!(&compilation.linked_type_definitions);
+    // dbg!(&compilation.linked_type_to_type_mapping);
+    // dbg!(&compilation.type_data.types);
+
+    // let assignable = run_type_assignability_query(
+    //     &compilation.type_data.types,
+    //     &mut compilation.type_data.type_assignability,
+    //     a_type_id,
+    //     b_type_id,
+    // );
+    // dbg!(assignable);
 
     let mut errors = Vec::new();
     errors.extend_from_slice(&tokens.errors);
     errors.extend_from_slice(&error_collector.errors());
-    errors.extend_from_slice(&compilation.errors.errors());
+    // errors.extend_from_slice(&compilation.errors.errors());
 
     dbg!(&errors);
 }

@@ -1,7 +1,17 @@
 use std::sync::Arc;
 
 use super::*;
-use crate::lang::{ast::helpers::*, tokens::*};
+use crate::lang::{
+    ast::{
+        helpers::*,
+        linked_items::StatementId,
+        linking::{
+            ident_finder::LinkingIdentFinder, FunctionBuilder, FunctionExpression,
+            FunctionLinkingCompilation,
+        },
+    },
+    tokens::*,
+};
 
 mod type_fn;
 pub use type_fn::*;
@@ -11,7 +21,6 @@ pub use function::*;
 #[derive(Debug, Clone)]
 pub enum SyDeclaration {
     TypeDefine(Arc<SyTypeDefine>),
-    TypeFn(Arc<SyTypeFn>),
     Function(Arc<SyFunction>),
 }
 
@@ -19,7 +28,6 @@ impl SyDeclaration {
     pub fn needs_semicolon(&self) -> bool {
         match self {
             Self::TypeDefine(_) => true,
-            Self::TypeFn(_) => false,
             Self::Function(_) => false,
         }
     }
@@ -32,9 +40,6 @@ impl AstItem for SyDeclaration {
     where
         Self: Sized,
     {
-        if let Ok(expr) = reader.parse_optional(env) {
-            return Ok(SyDeclaration::TypeFn(Arc::new(expr)));
-        }
         if let Ok(expr) = reader.parse_optional(env) {
             return Ok(SyDeclaration::TypeDefine(Arc::new(expr)));
         }
@@ -50,8 +55,20 @@ impl ItemWithSpan for SyDeclaration {
     fn span(&self) -> Span {
         match self {
             Self::TypeDefine(expr) => expr.span(),
-            Self::TypeFn(expr) => expr.span(),
             Self::Function(expr) => expr.span(),
+        }
+    }
+}
+
+impl FunctionExpression for SyDeclaration {
+    fn link_expression(
+        &self,
+        builder: &mut FunctionBuilder,
+        ctx: &mut FunctionLinkingCompilation,
+    ) -> StatementId {
+        match self {
+            Self::TypeDefine(expr) => todo!(),
+            Self::Function(expr) => todo!(),
         }
     }
 }

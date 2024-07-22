@@ -71,7 +71,6 @@ pub fn parse_module_decls(
                 });
                 namespace.add_item(item);
             }
-            SyDeclaration::TypeFn(_) => todo!(),
             SyDeclaration::Function(_) => todo!(),
         }
     }

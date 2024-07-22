@@ -138,7 +138,7 @@ pub enum Li2ExpressionStatementKind {
         source: VariableId,
     },
     WriteVar {
-        source: VariableId,
+        destination: VariableId,
         value: Li2ValueSource,
     },
     BinaryOp {
@@ -153,7 +153,10 @@ impl Display for Li2ExpressionStatementKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::ReadVar { source } => write!(f, "read {}", source),
-            Self::WriteVar { source, value } => write!(f, "write {} = {}", source, value),
+            Self::WriteVar {
+                destination: source,
+                value,
+            } => write!(f, "write {} = {}", source, value),
             Self::BinaryOp { left, right, op } => write!(f, "{} {:?} {}", left, op, right),
             Self::Unknown => write!(f, "unknown"),
         }

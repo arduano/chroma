@@ -1,6 +1,17 @@
 use std::sync::Arc;
 
-use crate::lang::{ast::helpers::*, tokens::*, CompilerError};
+use crate::lang::{
+    ast::{
+        helpers::*,
+        linked_items::StatementId,
+        linking::{
+            ident_finder::LinkingIdentFinder, FunctionBuilder, FunctionExpression,
+            FunctionLinkingCompilation, FunctionStatement,
+        },
+    },
+    tokens::*,
+    CompilerError,
+};
 
 use super::*;
 
@@ -74,6 +85,18 @@ impl AstItem for SyBody {
 impl ItemWithSpan for SyBody {
     fn span(&self) -> Span {
         self.statements.span()
+    }
+}
+
+impl FunctionStatement for SyBody {
+    fn link_statement(&self, builder: &mut FunctionBuilder, ctx: &mut FunctionLinkingCompilation) {
+        builder.with_child_ident_scope(|builder| {
+            for statement in self.statements.iter() {
+                if let Ok(statement) = &statement {
+                    statement.statement.link_statement(builder, ctx);
+                }
+            }
+        });
     }
 }
 

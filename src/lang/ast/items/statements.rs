@@ -2,7 +2,17 @@ use std::sync::Arc;
 
 use super::*;
 use crate::lang::{
-    ast::helpers::*,
+    ast::{
+        helpers::*,
+        linked_items::{
+            Li2BlockEnd, Li2BlockEndKind, Li2ExpressionStatement, Li2ExpressionStatementKind,
+            Li2ValueSource, StatementId,
+        },
+        linking::{
+            ident_finder::LinkingIdentFinder, FunctionBuilder, FunctionExpression,
+            FunctionLinkingCompilation, FunctionStatement,
+        },
+    },
     tokens::{ItemWithSpan, Span, TkReturn},
 };
 
@@ -15,8 +25,8 @@ pub enum SemiRequirement {
 #[derive(Debug, Clone)]
 pub enum SyStatement {
     Declaration(SyDeclaration),
-    Expression(SyExpression),
     Return(ReturnStatement),
+    Expression(SyExpression),
 }
 
 impl SyStatement {
@@ -29,6 +39,7 @@ impl SyStatement {
                     SemiRequirement::Never
                 }
             }
+            SyStatement::Return(_) => SemiRequirement::Always,
             SyStatement::Expression(expr) => {
                 if expr.needs_semicolon() {
                     SemiRequirement::Expression
@@ -36,7 +47,6 @@ impl SyStatement {
                     SemiRequirement::Never
                 }
             }
-            SyStatement::Return(_) => SemiRequirement::Always,
         }
     }
 }
@@ -54,6 +64,9 @@ impl AstItem for SyStatement {
         ) -> ParseResult<SyStatement> {
             if let Ok(expr) = reader.parse_optional(env) {
                 return Ok(SyStatement::Declaration(expr));
+            }
+            if let Ok(expr) = reader.parse_optional(env) {
+                return Ok(SyStatement::Return(expr));
             }
             if let Ok(expr) = reader.parse_optional(env) {
                 return Ok(SyStatement::Expression(expr));
@@ -96,8 +109,20 @@ impl ItemWithSpan for SyStatement {
     fn span(&self) -> crate::lang::tokens::Span {
         match self {
             Self::Declaration(expr) => expr.span(),
-            Self::Expression(expr) => expr.span(),
             Self::Return(expr) => expr.span(),
+            Self::Expression(expr) => expr.span(),
+        }
+    }
+}
+
+impl FunctionStatement for SyStatement {
+    fn link_statement(&self, builder: &mut FunctionBuilder, ctx: &mut FunctionLinkingCompilation) {
+        match self {
+            Self::Declaration(decl) => todo!(),
+            Self::Return(ret) => ret.link_statement(builder, ctx),
+            Self::Expression(expr) => {
+                expr.link_expression(builder, ctx);
+            }
         }
     }
 }
@@ -128,5 +153,17 @@ impl AstItem for ReturnStatement {
 impl ItemWithSpan for ReturnStatement {
     fn span(&self) -> Span {
         self.return_token.span().join(&self.expr.span())
+    }
+}
+
+impl FunctionStatement for ReturnStatement {
+    fn link_statement(&self, builder: &mut FunctionBuilder, ctx: &mut FunctionLinkingCompilation) {
+        let expr = self.expr.link_expression(builder, ctx);
+        builder.finish_current_block_with(Li2BlockEnd {
+            kind: Li2BlockEndKind::Return {
+                value: Li2ValueSource::Statement(expr),
+            },
+            span: Some(self.span()),
+        });
     }
 }
