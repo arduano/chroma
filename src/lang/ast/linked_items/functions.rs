@@ -6,6 +6,9 @@ use crate::lang::{
     tokens::{Span, TkIdent},
 };
 
+mod literal;
+pub use literal::*;
+
 pub type StatementId = Id2<Li2ExpressionBlock, Li2ExpressionStatement>;
 
 impl Display for StatementId {
@@ -146,6 +149,12 @@ pub enum Li2ExpressionStatementKind {
         right: Li2ValueSource,
         op: SyBinaryOp,
     },
+    PrimitiveLiteral {
+        literal: Li2PrimitiveLiteral,
+    },
+    CompositeLiteral {
+        literal: Li2CompositeLiteral,
+    },
     Unknown,
 }
 
@@ -158,6 +167,8 @@ impl Display for Li2ExpressionStatementKind {
                 value,
             } => write!(f, "write {} = {}", source, value),
             Self::BinaryOp { left, right, op } => write!(f, "{} {} {}", left, op, right),
+            Self::PrimitiveLiteral { literal } => write!(f, "literal {}", literal),
+            Self::CompositeLiteral { literal } => write!(f, "literal {}", literal),
             Self::Unknown => write!(f, "unknown"),
         }
     }

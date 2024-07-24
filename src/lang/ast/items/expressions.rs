@@ -2,7 +2,10 @@ use crate::lang::{
     ast::{
         helpers::*,
         items::SyBody,
-        linked_items::{Li2ExpressionStatement, Li2ExpressionStatementKind, StatementId},
+        linked_items::{
+            Li2ExpressionStatement, Li2ExpressionStatementKind, Li2PrimitiveLiteral,
+            Li2PrimitiveLiteralKind, StatementId,
+        },
         linking::{
             ident_finder::{LinkingIdentFinder, LinkingIdentKind},
             FunctionBuilder, FunctionExpression, FunctionLinkingCompilation,
@@ -156,7 +159,7 @@ impl FunctionExpression for SyExpression {
         match self {
             Self::VarRead(var) => var.link_expression(builder, ctx),
             Self::StringLiteral(string) => todo!(),
-            Self::IntLiteral(int) => todo!(),
+            Self::IntLiteral(int) => int.link_expression(builder, ctx),
             Self::FloatLiteral(float) => todo!(),
             Self::ObjectLiteral(obj) => todo!(),
             Self::Parentheses(expr) => todo!(),
@@ -265,6 +268,26 @@ impl AstItem for SyIntLiteral {
 impl ItemWithSpan for SyIntLiteral {
     fn span(&self) -> Span {
         self.literal.span()
+    }
+}
+
+impl FunctionExpression for SyIntLiteral {
+    fn link_expression(
+        &self,
+        builder: &mut FunctionBuilder,
+        _ctx: &mut FunctionLinkingCompilation,
+    ) -> StatementId {
+        let literal = Li2PrimitiveLiteral {
+            span: Some(self.span()),
+            kind: Li2PrimitiveLiteralKind::Integer {
+                value: self.literal.clone(),
+            },
+        };
+
+        builder.add_statement(Li2ExpressionStatement {
+            kind: Li2ExpressionStatementKind::PrimitiveLiteral { literal },
+            span: Some(self.span()),
+        })
     }
 }
 
