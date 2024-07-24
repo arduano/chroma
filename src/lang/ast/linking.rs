@@ -42,10 +42,16 @@ pub fn parse_function_ast(
 
                 // Create a variable for the argument
                 let var_id = builder.register_variable(arg.name.clone(), Some(arg.name.span()));
+
+                let arg_value = builder.add_statement(Li2ExpressionStatement {
+                    kind: Li2ExpressionStatementKind::GetArg { arg: arg_id },
+                    span: Some(arg.span()),
+                });
+
                 builder.add_statement(Li2ExpressionStatement {
                     kind: Li2ExpressionStatementKind::WriteVar {
                         destination: var_id,
-                        value: Li2ValueSource::Argument(arg_id),
+                        value: arg_value,
                     },
                     span: Some(arg.span()),
                 });

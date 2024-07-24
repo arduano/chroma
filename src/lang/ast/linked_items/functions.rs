@@ -33,6 +33,14 @@ impl Display for VariableId {
     }
 }
 
+pub type ArgumentId = Id<Li2Argument>;
+
+impl Display for ArgumentId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "arg{}", self.index())
+    }
+}
+
 pub struct Li2ExpressionFunction {
     pub span: Option<Span>,
     pub name: Option<TkIdent>,
@@ -122,31 +130,20 @@ impl Display for Li2ExpressionStatement {
     }
 }
 
-pub enum Li2ValueSource {
-    Argument(Id<Li2Argument>),
-    Statement(StatementId),
-}
-
-impl Display for Li2ValueSource {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Argument(arg) => write!(f, "arg{}", arg.index()),
-            Self::Statement(stmt) => write!(f, "{}", stmt),
-        }
-    }
-}
-
 pub enum Li2ExpressionStatementKind {
+    GetArg {
+        arg: Id<Li2Argument>,
+    },
     ReadVar {
         source: VariableId,
     },
     WriteVar {
         destination: VariableId,
-        value: Li2ValueSource,
+        value: StatementId,
     },
     BinaryOp {
-        left: Li2ValueSource,
-        right: Li2ValueSource,
+        left: StatementId,
+        right: StatementId,
         op: SyBinaryOp,
     },
     PrimitiveLiteral {
@@ -161,6 +158,7 @@ pub enum Li2ExpressionStatementKind {
 impl Display for Li2ExpressionStatementKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::GetArg { arg } => write!(f, "get {}", arg),
             Self::ReadVar { source } => write!(f, "read {}", source),
             Self::WriteVar {
                 destination: source,
@@ -195,7 +193,7 @@ pub enum Li2BlockEndKind {
         if_false: BlockId,
     },
     Return {
-        value: Li2ValueSource,
+        value: StatementId,
     },
     Unknown,
 }

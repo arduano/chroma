@@ -6,7 +6,7 @@ use crate::lang::{
         helpers::*,
         linked_items::{
             Li2BlockEnd, Li2BlockEndKind, Li2ExpressionStatement, Li2ExpressionStatementKind,
-            Li2ValueSource, StatementId,
+            StatementId,
         },
         linking::{
             ident_finder::LinkingIdentFinder, FunctionBuilder, FunctionExpression,
@@ -168,7 +168,7 @@ impl FunctionStatement for ReturnStatement {
         let expr = self.expr.link_expression(builder, ctx);
         builder.finish_current_block_with(Li2BlockEnd {
             kind: Li2BlockEndKind::Return {
-                value: Li2ValueSource::Statement(expr),
+                value: expr,
             },
             span: Some(self.span()),
         });
