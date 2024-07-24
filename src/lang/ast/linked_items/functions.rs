@@ -43,7 +43,7 @@ impl Display for Li2ExpressionFunction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "fn <")?;
         let mut first = true;
-        for (id, _) in self.arguments.iter() {
+        for (id, _) in self.arguments.iter_sorted() {
             if first {
                 first = false;
             } else {
@@ -54,7 +54,7 @@ impl Display for Li2ExpressionFunction {
         write!(f, ">(")?;
 
         let mut first = true;
-        for (id, _) in self.type_arguments.iter() {
+        for (id, _) in self.type_arguments.iter_sorted() {
             if first {
                 first = false;
             } else {
@@ -65,13 +65,13 @@ impl Display for Li2ExpressionFunction {
 
         writeln!(f, ") {{")?;
 
-        for (id, variable) in self.variables.iter() {
+        for (id, variable) in self.variables.iter_sorted() {
             writeln!(f, "  var {}: {}", id, variable.name.ident)?;
         }
 
-        for (block_id, block) in self.blocks.iter() {
+        for (block_id, block) in self.blocks.iter_sorted() {
             writeln!(f, "  block {}:", block_id)?;
-            for (stmt_id, statement) in block.statements.iter() {
+            for (stmt_id, statement) in block.statements.iter_sorted() {
                 let statement_id = StatementId::new(block_id, stmt_id);
                 writeln!(f, "    {}: {}", statement_id, statement)?;
             }
@@ -157,7 +157,7 @@ impl Display for Li2ExpressionStatementKind {
                 destination: source,
                 value,
             } => write!(f, "write {} = {}", source, value),
-            Self::BinaryOp { left, right, op } => write!(f, "{} {:?} {}", left, op, right),
+            Self::BinaryOp { left, right, op } => write!(f, "{} {} {}", left, op, right),
             Self::Unknown => write!(f, "unknown"),
         }
     }
@@ -197,7 +197,7 @@ impl Display for Li2BlockEndKind {
                 cond,
                 if_true,
                 if_false,
-            } => write!(f, "jump if {} then {} else{}", cond, if_true, if_false),
+            } => write!(f, "jump if {} then {} else {}", cond, if_true, if_false),
             Self::Return { value } => write!(f, "return {}", value),
             Self::Unknown => write!(f, "unknown"),
         }

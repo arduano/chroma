@@ -1,5 +1,13 @@
 fn test(a: number) {
-    return a + a;
+    // if (a > a) {
+    //     return a + a;
+    // } else {
+    //     a + a;
+    // }
+
+    // return a * a;
+
+    a + a;
 }
 
 // type A = {

@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use crate::lang::ast::items::SyBody;
+
 use super::*;
 /// Represents an object literal.
 ///
@@ -279,3 +281,4 @@ impl ItemWithSpan for SyObjectLiteralComputedKey {
             .join(&self.value_expression.span())
     }
 }
+

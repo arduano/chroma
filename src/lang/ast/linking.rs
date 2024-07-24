@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use ident_finder::{LinkingIdentFinder, LinkingIdentKind};
 
 use crate::lang::{
@@ -71,11 +73,6 @@ pub trait FunctionExpression {
         ctx: &mut FunctionLinkingCompilation,
     ) -> StatementId;
 }
-
-pub trait FunctionStatement {
-    fn link_statement(&self, builder: &mut FunctionBuilder, ctx: &mut FunctionLinkingCompilation);
-}
-
 impl<T: FunctionExpression> FunctionExpression for Attempted<T> {
     fn link_expression(
         &self,
@@ -89,6 +86,57 @@ impl<T: FunctionExpression> FunctionExpression for Attempted<T> {
                 span: None,
             }),
         }
+    }
+}
+
+impl<T: FunctionExpression> FunctionExpression for Box<T> {
+    fn link_expression(
+        &self,
+        builder: &mut FunctionBuilder,
+        ctx: &mut FunctionLinkingCompilation,
+    ) -> StatementId {
+        self.as_ref().link_expression(builder, ctx)
+    }
+}
+
+impl<T: FunctionExpression> FunctionExpression for Arc<T> {
+    fn link_expression(
+        &self,
+        builder: &mut FunctionBuilder,
+        ctx: &mut FunctionLinkingCompilation,
+    ) -> StatementId {
+        self.as_ref().link_expression(builder, ctx)
+    }
+}
+
+pub trait FunctionStatement {
+    fn link_statement(&self, builder: &mut FunctionBuilder, ctx: &mut FunctionLinkingCompilation);
+}
+
+impl<T: FunctionStatement> FunctionStatement for Attempted<T> {
+    fn link_statement(&self, builder: &mut FunctionBuilder, ctx: &mut FunctionLinkingCompilation) {
+        match self {
+            Ok(statement) => statement.link_statement(builder, ctx),
+            Err(_) => {}
+        }
+    }
+}
+
+impl<T: FunctionStatement> FunctionStatement for &T {
+    fn link_statement(&self, builder: &mut FunctionBuilder, ctx: &mut FunctionLinkingCompilation) {
+        (*self).link_statement(builder, ctx)
+    }
+}
+
+impl<T: FunctionStatement> FunctionStatement for Box<T> {
+    fn link_statement(&self, builder: &mut FunctionBuilder, ctx: &mut FunctionLinkingCompilation) {
+        self.as_ref().link_statement(builder, ctx)
+    }
+}
+
+impl<T: FunctionStatement> FunctionStatement for Arc<T> {
+    fn link_statement(&self, builder: &mut FunctionBuilder, ctx: &mut FunctionLinkingCompilation) {
+        self.as_ref().link_statement(builder, ctx)
     }
 }
 
@@ -165,12 +213,14 @@ impl<'a> FunctionBuilder<'a> {
         id
     }
 
-    pub fn add_block(&mut self, end: Li2BlockEnd) -> BlockId {
+    pub fn add_block(&mut self) -> BlockId {
         let id = self.blocks.add_value(Li2ExpressionBlock {
             statements: ItemSet::new(),
-            end,
+            end: Li2BlockEnd {
+                kind: Li2BlockEndKind::Unknown,
+                span: None,
+            },
         });
-        self.current_block = Some(id);
         id
     }
 
@@ -178,6 +228,19 @@ impl<'a> FunctionBuilder<'a> {
         let (_, current_block) = self.get_or_create_current_block();
         current_block.end = end;
         self.current_block = None;
+    }
+
+    pub fn current_block(&self) -> Option<BlockId> {
+        self.current_block
+    }
+
+    pub fn current_block_or_create(&mut self) -> BlockId {
+        if let Some(block) = self.current_block {
+            block
+        } else {
+            self.current_block = Some(self.add_block());
+            self.current_block.unwrap()
+        }
     }
 
     pub fn switch_block(&mut self, block: BlockId) {

@@ -50,6 +50,12 @@ macro_rules! impl_binary_op {
                 }
             }
         }
+
+        impl std::fmt::Display for $ty {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", self.as_op_symbol_str())
+            }
+        }
     };
 }
 
@@ -143,6 +149,12 @@ impl SyBinaryOp {
             Self::Bitwise(op) => op.as_op_symbol_str(),
             Self::MetaType(op) => op.as_op_symbol_str(),
         }
+    }
+}
+
+impl std::fmt::Display for SyBinaryOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_op_symbol_str())
     }
 }
 

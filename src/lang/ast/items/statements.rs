@@ -25,6 +25,7 @@ pub enum SemiRequirement {
 #[derive(Debug, Clone)]
 pub enum SyStatement {
     Declaration(SyDeclaration),
+    IfStatement(SyIfCondition),
     Return(ReturnStatement),
     Expression(SyExpression),
 }
@@ -39,6 +40,7 @@ impl SyStatement {
                     SemiRequirement::Never
                 }
             }
+            SyStatement::IfStatement(_) => SemiRequirement::Never,
             SyStatement::Return(_) => SemiRequirement::Always,
             SyStatement::Expression(expr) => {
                 if expr.needs_semicolon() {
@@ -64,6 +66,9 @@ impl AstItem for SyStatement {
         ) -> ParseResult<SyStatement> {
             if let Ok(expr) = reader.parse_optional(env) {
                 return Ok(SyStatement::Declaration(expr));
+            }
+            if let Ok(expr) = reader.parse_optional(env) {
+                return Ok(SyStatement::IfStatement(expr));
             }
             if let Ok(expr) = reader.parse_optional(env) {
                 return Ok(SyStatement::Return(expr));
@@ -109,6 +114,7 @@ impl ItemWithSpan for SyStatement {
     fn span(&self) -> crate::lang::tokens::Span {
         match self {
             Self::Declaration(expr) => expr.span(),
+            Self::IfStatement(expr) => expr.span(),
             Self::Return(expr) => expr.span(),
             Self::Expression(expr) => expr.span(),
         }
@@ -119,6 +125,7 @@ impl FunctionStatement for SyStatement {
     fn link_statement(&self, builder: &mut FunctionBuilder, ctx: &mut FunctionLinkingCompilation) {
         match self {
             Self::Declaration(decl) => todo!(),
+            Self::IfStatement(if_stmt) => if_stmt.link_statement(builder, ctx),
             Self::Return(ret) => ret.link_statement(builder, ctx),
             Self::Expression(expr) => {
                 expr.link_expression(builder, ctx);
@@ -140,7 +147,7 @@ impl AstItem for ReturnStatement {
     where
         Self: Sized,
     {
-        let return_token = reader.parse_required_token::<TkReturn>()?;
+        let return_token = reader.parse_optional_token::<TkReturn>()?;
         let expr = reader.parse_required(env.inside_nested_expr());
 
         Ok(Self {

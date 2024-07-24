@@ -51,6 +51,15 @@ impl<T> ItemSet<T> {
     pub fn iter(&self) -> impl Iterator<Item = (Id<T>, &T)> {
         self.items.iter().map(|(k, v)| (*k, v))
     }
+
+    pub fn iter_sorted(&self) -> impl Iterator<Item = (Id<T>, &T)> {
+        let mut keys_sorted = self.items.keys().collect::<Vec<_>>();
+        keys_sorted.sort_unstable();
+
+        keys_sorted
+            .into_iter()
+            .map(|key| (*key, self.items.get(key).unwrap()))
+    }
 }
 
 impl<T: std::fmt::Debug> std::fmt::Debug for ItemSet<T> {
