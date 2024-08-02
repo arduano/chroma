@@ -6,6 +6,8 @@ mod id2_or_val;
 pub use id2_or_val::*;
 mod itemset;
 pub use itemset::*;
+mod itemlist;
+pub use itemlist::*;
 mod groupitemset;
 pub use groupitemset::*;
 mod groupitemsetwithrefs;

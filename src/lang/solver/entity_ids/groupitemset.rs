@@ -50,12 +50,12 @@ impl<M, T> GroupItemSet<M, T> {
         let current_group_keys = self
             .current_group
             .keys()
-            .map(move |id| Id2::new(self.current_group_id, *id));
+            .map(move |id| Id2::new(self.current_group_id, id));
 
         let other_group_keys = self
             .other_groups
             .iter()
-            .map(|(k, v)| v.keys().map(move |id| Id2::new(*k, *id)))
+            .map(|(k, v)| v.keys().map(move |id| Id2::new(*k, id)))
             .flatten();
 
         current_group_keys.chain(other_group_keys)

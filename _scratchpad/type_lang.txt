@@ -1,0 +1,13 @@
+type Val = {
+  kind: 'str',
+  val: string,
+} | {
+  kind: 'num',
+  val: number,
+}
+
+fn test(arg: Val) {
+  if (arg.kind === 'str') {
+    
+  }
+}

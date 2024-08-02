@@ -2,6 +2,7 @@
 
 use std::{collections::HashMap, ops::Deref, path::PathBuf, str::FromStr, sync::Arc};
 
+use chroma::lang::analysis::AnBlockLinks;
 use chroma::lang::ast::items::{SyBodyStatement, SyDeclaration, SyDeclarationBodyItem};
 use chroma::lang::ast::linking::{parse_function_ast, FunctionLinkingCompilation};
 use chroma::lang::tokens::parse_file;
@@ -22,6 +23,7 @@ use chroma::lang::{
 // Tk__ - Tokens
 // Sy__ - AST
 // Li__ - Linked and simplified definitions, resolving any AST names to IDs
+// An__ - Analysis
 // Ty__ - Raw type system
 // Ts__ - Type scope, for type functions and the global scope
 // Rt__ - Runtime Data, execution logic
@@ -88,6 +90,9 @@ async fn main() {
     let linked_function = parse_function_ast(function, vec![], &mut function_linking_compilation);
 
     println!("{}", linked_function);
+    
+    let block_links = AnBlockLinks::analyze_block_links_for(&linked_function);
+    dbg!(&block_links);
 
     // let mut compilation = ModuleGroupCompilation::new(module_counter.next(), HashMap::new());
     // let _type_ids = compilation.compile_in_ast(None, &ast);

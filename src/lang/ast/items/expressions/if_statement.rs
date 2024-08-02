@@ -1,5 +1,5 @@
 use crate::lang::ast::{
-    linked_items::{Li2BlockEnd, Li2BlockEndKind},
+    linked_items::{Li2BlockEnd, Li2BlockEndKind, Li2Jump},
     linking::FunctionStatement,
 };
 
@@ -139,8 +139,8 @@ impl FunctionStatement for SyIfCondition {
                     builder.finish_current_block_with(Li2BlockEnd {
                         kind: Li2BlockEndKind::JumpIf {
                             cond: condition,
-                            if_true: then_block,
-                            if_false: else_block,
+                            if_true: Li2Jump::new_forward(then_block),
+                            if_false: Li2Jump::new_forward(else_block),
                         },
                         span: Some(conditional.jump_span),
                     });
@@ -163,7 +163,9 @@ impl FunctionStatement for SyIfCondition {
             for block in blocks_to_link_to_end {
                 builder.switch_block(block);
                 builder.finish_current_block_with(Li2BlockEnd {
-                    kind: Li2BlockEndKind::Jump { to: final_block },
+                    kind: Li2BlockEndKind::Jump {
+                        to: Li2Jump::new_forward(final_block),
+                    },
                     span: None,
                 });
             }

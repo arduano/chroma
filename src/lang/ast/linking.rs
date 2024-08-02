@@ -3,9 +3,9 @@ use std::sync::Arc;
 use ident_finder::{LinkingIdentFinder, LinkingIdentKind};
 
 use crate::lang::{
-    solver::{ItemSet, ModItemSet},
+    solver::{ItemList, ItemSet},
     tokens::{ItemWithSpan, Span, TkIdent},
-    CompilerError, ErrorCollector,
+    ErrorCollector,
 };
 
 use super::{helpers::Attempted, items::SyFunction, linked_items::*};
@@ -25,8 +25,8 @@ pub fn parse_function_ast(
     let name = ast.signature.name.clone().ok();
     let span = ast.span();
 
-    let mut arguments = ItemSet::new();
-    let type_arguments = ItemSet::new();
+    let mut arguments = ItemList::new();
+    let type_arguments = ItemList::new();
 
     let ident_finder = LinkingIdentFinder::new_with_inherited(inherited_idents);
     let mut builder = FunctionBuilder::new(ident_finder);
@@ -148,18 +148,18 @@ impl<T: FunctionStatement> FunctionStatement for Arc<T> {
 
 pub struct FunctionBuilder<'a> {
     current_block: Option<BlockId>,
-    variables: ItemSet<Li2Variable>,
-    blocks: ItemSet<Li2ExpressionBlock>,
+    variables: ItemList<Li2Variable>,
+    blocks: ItemList<Li2ExpressionBlock>,
     pub idents: LinkingIdentFinder<'a>,
 }
 
 impl<'a> FunctionBuilder<'a> {
     pub fn new(ident_finder: LinkingIdentFinder<'a>) -> Self {
-        let mut blocks = ItemSet::new();
+        let mut blocks = ItemList::new();
 
         Self {
             current_block: None,
-            variables: ItemSet::new(),
+            variables: ItemList::new(),
             blocks,
             idents: ident_finder,
         }
