@@ -61,6 +61,26 @@ impl<T> ItemList<T> {
     pub fn values(&self) -> impl Iterator<Item = &T> {
         self.items.iter()
     }
+
+    pub fn len(&self) -> usize {
+        self.items.len()
+    }
+
+    pub fn first_id(&self) -> Option<Id<T>> {
+        if self.items.is_empty() {
+            return None;
+        }
+
+        Some(self.id_for_index(0))
+    }
+
+    pub fn last_id(&self) -> Option<Id<T>> {
+        if self.items.is_empty() {
+            return None;
+        }
+
+        Some(self.id_for_index(self.items.len() - 1))
+    }
 }
 
 impl<T: std::fmt::Debug> std::fmt::Debug for ItemList<T> {

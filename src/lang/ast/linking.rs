@@ -172,7 +172,7 @@ impl<'a> FunctionBuilder<'a> {
             (block_id, block)
         } else {
             let block_id = self.blocks.add_value(Li2ExpressionBlock {
-                statements: ItemSet::new(),
+                statements: ItemList::new(),
                 end: Li2BlockEnd {
                     kind: Li2BlockEndKind::Unknown,
                     span: None,
@@ -221,7 +221,7 @@ impl<'a> FunctionBuilder<'a> {
 
     pub fn add_block(&mut self) -> BlockId {
         let id = self.blocks.add_value(Li2ExpressionBlock {
-            statements: ItemSet::new(),
+            statements: ItemList::new(),
             end: Li2BlockEnd {
                 kind: Li2BlockEndKind::Unknown,
                 span: None,

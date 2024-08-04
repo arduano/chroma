@@ -11,20 +11,20 @@ use super::*;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AnBlockJumps<Id> {
     /// The block IDs that jump to this block.
-    jumps_in: Vec<Id>,
+    pub jumps_in: Vec<Id>,
     /// The block IDs that this block jumps to.
-    jumps_out: Vec<Id>,
+    pub jumps_out: Vec<Id>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AnLinksOnBlock<Id> {
     /// Jumps that go forwards. They do not induce cycles in the block graph.
-    forwards: AnBlockJumps<Id>,
+    pub forwards: AnBlockJumps<Id>,
     /// Jumps that go backwards, caused by things like loops. They cause cycles.
-    cyclic: AnBlockJumps<Id>,
+    pub cyclic: AnBlockJumps<Id>,
 
-    forwards_dfs: Vec<Id>,
-    backward_dfs: Vec<Id>,
+    pub forwards_dfs: Vec<Id>,
+    pub backward_dfs: Vec<Id>,
 }
 
 #[derive(Debug, Clone)]
@@ -94,6 +94,12 @@ impl AnBlockLinks<()> {
         }
 
         return AnBlockLinks { block_relations };
+    }
+}
+
+impl<Id: Eq + Copy + Hash + std::fmt::Debug> AnBlockLinks<Id> {
+    pub fn for_block(&self, block_id: Id) -> &AnLinksOnBlock<Id> {
+        &self.block_relations[&block_id]
     }
 }
 

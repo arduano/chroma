@@ -2,7 +2,7 @@
 
 use std::{collections::HashMap, ops::Deref, path::PathBuf, str::FromStr, sync::Arc};
 
-use chroma::lang::analysis::AnBlockLinks;
+use chroma::lang::analysis::{AnBlockLinks, AnVariableDataSources};
 use chroma::lang::ast::items::{SyBodyStatement, SyDeclaration, SyDeclarationBodyItem};
 use chroma::lang::ast::linking::{parse_function_ast, FunctionLinkingCompilation};
 use chroma::lang::tokens::parse_file;
@@ -90,9 +90,13 @@ async fn main() {
     let linked_function = parse_function_ast(function, vec![], &mut function_linking_compilation);
 
     println!("{}", linked_function);
-    
+
     let block_links = AnBlockLinks::analyze_block_links_for(&linked_function);
     dbg!(&block_links);
+
+    let variable_data_sources =
+        AnVariableDataSources::analyze_variable_data_sources_for(&linked_function, &block_links);
+    dbg!(&variable_data_sources);
 
     // let mut compilation = ModuleGroupCompilation::new(module_counter.next(), HashMap::new());
     // let _type_ids = compilation.compile_in_ast(None, &ast);

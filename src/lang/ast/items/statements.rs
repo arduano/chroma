@@ -13,7 +13,7 @@ use crate::lang::{
             FunctionLinkingCompilation, FunctionStatement,
         },
     },
-    tokens::{ItemWithSpan, Span, TkReturn},
+    tokens::{ItemWithSpan, Span, TkAssign, TkIdent, TkLet, TkReturn},
 };
 
 pub enum SemiRequirement {
@@ -27,6 +27,7 @@ pub enum SyStatement {
     Declaration(SyDeclaration),
     IfStatement(SyIfCondition),
     Return(ReturnStatement),
+    LetVariable(LetVariable),
     Expression(SyExpression),
 }
 
@@ -42,6 +43,7 @@ impl SyStatement {
             }
             SyStatement::IfStatement(_) => SemiRequirement::Never,
             SyStatement::Return(_) => SemiRequirement::Always,
+            SyStatement::LetVariable(_) => SemiRequirement::Always,
             SyStatement::Expression(expr) => {
                 if expr.needs_semicolon() {
                     SemiRequirement::Expression
@@ -72,6 +74,9 @@ impl AstItem for SyStatement {
             }
             if let Ok(expr) = reader.parse_optional(env) {
                 return Ok(SyStatement::Return(expr));
+            }
+            if let Ok(expr) = reader.parse_optional(env) {
+                return Ok(SyStatement::LetVariable(expr));
             }
             if let Ok(expr) = reader.parse_optional(env) {
                 return Ok(SyStatement::Expression(expr));
@@ -116,6 +121,7 @@ impl ItemWithSpan for SyStatement {
             Self::Declaration(expr) => expr.span(),
             Self::IfStatement(expr) => expr.span(),
             Self::Return(expr) => expr.span(),
+            Self::LetVariable(expr) => expr.span(),
             Self::Expression(expr) => expr.span(),
         }
     }
@@ -127,6 +133,7 @@ impl FunctionStatement for SyStatement {
             Self::Declaration(decl) => todo!(),
             Self::IfStatement(if_stmt) => if_stmt.link_statement(builder, ctx),
             Self::Return(ret) => ret.link_statement(builder, ctx),
+            Self::LetVariable(var) => var.link_statement(builder, ctx),
             Self::Expression(expr) => {
                 expr.link_expression(builder, ctx);
             }
@@ -167,7 +174,59 @@ impl FunctionStatement for ReturnStatement {
     fn link_statement(&self, builder: &mut FunctionBuilder, ctx: &mut FunctionLinkingCompilation) {
         let expr = self.expr.link_expression(builder, ctx);
         builder.finish_current_block_with(Li2BlockEnd {
-            kind: Li2BlockEndKind::Return {
+            kind: Li2BlockEndKind::Return { value: expr },
+            span: Some(self.span()),
+        });
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct LetVariable {
+    pub let_token: TkLet,
+    pub name: TkIdent,
+    pub eq_token: TkAssign,
+    pub value: Arc<Attempted<SyExpression>>,
+}
+
+impl AstItem for LetVariable {
+    const NAME: &'static str = "let variable";
+
+    fn parse<'a>(reader: &mut AstParser<'a>, env: ParsingPhaseEnv) -> ParseResult<Self>
+    where
+        Self: Sized,
+    {
+        let let_token = reader.parse_optional_token()?;
+        let name = reader.parse_optional_token()?;
+        let eq_token = reader.parse_required_token()?;
+        let value = reader.parse_required(env.inside_nested_expr());
+
+        Ok(Self {
+            let_token,
+            name,
+            eq_token,
+            value: Arc::new(value),
+        })
+    }
+}
+
+impl ItemWithSpan for LetVariable {
+    fn span(&self) -> Span {
+        self.let_token
+            .span()
+            .join(&self.eq_token.span())
+            .join(&self.value.span())
+    }
+}
+
+impl FunctionStatement for LetVariable {
+    fn link_statement(&self, builder: &mut FunctionBuilder, ctx: &mut FunctionLinkingCompilation) {
+        let id = builder.register_variable(self.name.clone(), Some(self.name.span()));
+
+        let expr = self.value.link_expression(builder, ctx);
+
+        builder.add_statement(Li2ExpressionStatement {
+            kind: Li2ExpressionStatementKind::WriteVar {
+                destination: id,
                 value: expr,
             },
             span: Some(self.span()),

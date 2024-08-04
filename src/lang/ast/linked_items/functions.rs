@@ -51,6 +51,19 @@ pub struct Li2ExpressionFunction {
     pub variables: ItemList<Li2Variable>,
 }
 
+impl Li2ExpressionFunction {
+    pub fn iter_all_statements(
+        &self,
+    ) -> impl '_ + Iterator<Item = (StatementId, &Li2ExpressionStatement)> {
+        self.blocks.iter().flat_map(|(bid, block)| {
+            block
+                .statements
+                .iter()
+                .map(move |(sid, statement)| (StatementId::new(bid, sid), statement))
+        })
+    }
+}
+
 impl Display for Li2ExpressionFunction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "fn <")?;
@@ -129,7 +142,7 @@ impl Display for Li2Variable {
 }
 
 pub struct Li2ExpressionBlock {
-    pub statements: ItemSet<Li2ExpressionStatement>,
+    pub statements: ItemList<Li2ExpressionStatement>,
     pub end: Li2BlockEnd,
 }
 
