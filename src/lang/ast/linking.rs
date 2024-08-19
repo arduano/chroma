@@ -3,7 +3,7 @@ use std::sync::Arc;
 use ident_finder::{LinkingIdentFinder, LinkingIdentKind};
 
 use crate::lang::{
-    solver::{ItemList, ItemSet},
+    solver_old::{ItemList, ItemSet},
     tokens::{ItemWithSpan, Span, TkIdent},
     ErrorCollector,
 };

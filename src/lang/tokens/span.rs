@@ -3,7 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::lang::solver::CodeFileRef;
+use crate::lang::solver_old::CodeFileRef;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileLocation {

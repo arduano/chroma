@@ -3,7 +3,7 @@ use std::fmt::Display;
 use crate::lang::{
     analysis::{AnLogicBlock, AnLogicBlockContainer},
     ast::items::SyBinaryOp,
-    solver::{Id, Id2, ItemList, ItemSet},
+    solver_old::{Id, Id2, ItemList, ItemSet},
     tokens::{Span, TkIdent},
 };
 

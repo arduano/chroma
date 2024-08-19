@@ -49,3 +49,121 @@ fn test(a: number) {
 //         val: Val,
 //     };
 // }
+
+type Foo = {
+    a: string,
+    b: string,
+} | {
+    a: number,
+    b: string,
+} | {
+    a: string,
+    b: number,
+} | {
+    a: number,
+    b: number,
+};
+
+type Foo = {
+    a: string | number,
+    b: string | number,
+};
+
+
+
+type Foo = {
+    a: 1,
+    b: 1,
+} | {
+    a: 2,
+    b: 1,
+} | {
+    a: 3,
+    b: 1,
+} | {
+    a: 1,
+    b: 2,
+} | {
+    a: 2,
+    b: 2,
+} | {
+    a: 3,
+    b: 2,
+} | {
+    a: 1,
+    b: 3,
+} | {
+    a: 2,
+    b: 3,
+} | {
+    a: 3,
+    b: 3,
+};
+
+
+type Foo = {
+    a: 1,
+    b: 1,
+} | {
+    a: 2,
+    b: 1,
+} | {
+    a: 3,
+    b: 1,
+} | {
+    a: 1,
+    b: 2,
+} | {
+    a: 2,
+    b: 2,
+} | {
+    a: 3,
+    b: 2,
+} | {
+    a: 1,
+    b: 3,
+} | {
+    a: 2 | 3,
+    b: 3,
+};
+
+
+
+type Foo = {
+    a: 1 | 2 | 3,
+    b: 1,
+} | {
+    a: 1,
+    b: 2 | 3,
+} | {
+    a: 2 | 3,
+    b: 2,
+} | {
+    a: 2 | 3,
+    b: 3,
+};
+
+
+
+type Foo = {
+    a: 1,
+    b: 1 | 2 | 3,
+} | {
+    a: 1 | 2 | 3,
+    b: 1,
+};
+
+type Foo = {
+    a: 1 | 2 | 3,
+    b: 1 | 2 | 3,
+};
+
+type Bar = {
+    a: 1,
+    b: 'stuff',
+    c: true,
+} | {
+    a: 2,
+    b: 'other',
+    c: true,
+}

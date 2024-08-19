@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::lang::solver::{MId, ModItemSet};
+use crate::lang::solver_old::{MId, ModItemSet};
 
 use super::TyType;
 

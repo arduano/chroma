@@ -1,5 +1,5 @@
 use crate::lang::{
-    solver::{Id, ItemSet},
+    solver_old::{Id, ItemSet},
     tokens::TkIdent,
 };
 

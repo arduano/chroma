@@ -1,13 +1,76 @@
-type Val = {
+type ValStr = {
   kind: 'str',
   val: string,
-} | {
+}
+
+type ValNum = {
   kind: 'num',
   val: number,
 }
 
+type Val = ValStr | ValNum;
+
 fn test(arg: Val) {
   if (arg.kind === 'str') {
-    
+    return arg.val + 'foo';
+  } else {
+    return arg.val + 3;
   }
 }
+
+# Becomes
+
+fn test:
+  args:
+    arg1: Val
+  vars:
+    var1
+
+  blocks:
+    block1:
+      %b1s1: read_arg arg1
+      %b1s2: var_assign var1 %b1s1
+
+      %b1s3: read_var var1
+      %b1s4: select_field %b1s3 "kind"
+      %b1s5: literal "str"
+      %b1s6: eq %b1s4 %b1s5
+
+      end: if %b1s6 then %b2 else %b3
+
+    block2:
+      %b2s1: read_var var1
+      %b2s2: select_field %b2s1 "val"
+      %b2s3: literal "foo"
+      %b2s4: add %b2s2 %b2s3
+      end: return %b2s4
+
+    block3:
+      %b3s1: read_var var1
+      %b3s2: select_field %b3s1 "val"
+      %b3s3: literal 3
+      %b3s4: add %b3s2 %b3s3
+      end: return %b3s4
+
+# Interpreting
+
+block1:
+%b1s1: { var1: ??, b1s1: Val }
+%b1s2: { var1: Val, b1s2: ref var1 }
+%b1s3: { var1: Val, b1s3: ref var1 }
+%b1s4: { var1: Val, b1s3: ref var1, b1s4: ref b1s3."kind" }
+%b1s5: { var1: Val, b1s3: ref var1, b1s4: ref b1s3."kind", b1s5: "str" }
+%b1s6: { var1: ValStr, b1s6: true } | { var1: ValNum, b1s6: false }
+
+block2:
+%b2s1: { var1: ValStr, b2s1: ref var1 }
+%b2s2: { var1: ValStr, b2s1: ref var1, b2s2: ref b2s1."val" }
+%b2s3: { var1: ValStr, b2s1: ref var1, b2s2: ref b2s1."val", b2s3: "foo" }
+%b2s4: { var1: ValStr, b2s4: string }
+
+block3:
+%b3s1: { var1: ValNum, b3s1: ref var1 }
+%b3s2: { var1: ValNum, b3s1: ref var1, b3s2: ref b3s1."val" }
+%b3s3: { var1: ValNum, b3s1: ref var1, b3s2: ref b3s1."val", b3s3: 3 }
+%b3s4: { var1: ValNum, b3s4: number }
+

@@ -5,7 +5,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::lang::solver::{Id, IdCounter};
+use crate::lang::solver_old::{Id, IdCounter};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct CodeFilePath {

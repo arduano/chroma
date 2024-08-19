@@ -1,5 +1,5 @@
 use crate::lang::{
-    solver::{ModItemSet, TypeIdWithSpan},
+    solver_old::{ModItemSet, TypeIdWithSpan},
     tokens::TkIdent,
 };
 

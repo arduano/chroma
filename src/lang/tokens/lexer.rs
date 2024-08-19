@@ -2,7 +2,7 @@ use std::{borrow::Cow, sync::Arc};
 
 use logos::{Lexer, Logos};
 
-use crate::lang::{solver::CodeFileRef, CompilerError, WithSpan};
+use crate::lang::{solver_old::CodeFileRef, CompilerError, WithSpan};
 
 use super::{FileLocation, Span};
 

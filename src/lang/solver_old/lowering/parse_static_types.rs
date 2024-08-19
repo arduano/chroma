@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::lang::{
     ast::items::{SyArithmeticBinaryOp, SyBinaryOp, SyMetaTypeBinaryOp},
-    solver::{
+    solver_old::{
         type_system::*, Id, MId, ModItemSet, ModuleGroupCompilation, TyIdOrValWithSpan, TypeData,
         TypeIdWithSpan,
     },

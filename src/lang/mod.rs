@@ -2,10 +2,10 @@ use std::{backtrace::Backtrace, borrow::Cow, fmt::Debug, sync::Arc};
 
 use self::tokens::Span;
 
-pub mod ast;
-pub mod solver;
-pub mod tokens;
 pub mod analysis;
+pub mod ast;
+pub mod solver_old;
+pub mod tokens;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct WithSpan<T> {
