@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::lang::solver_old::Id;
+use crate::lang::solver::Id;
 
 use super::CodeFile;
 

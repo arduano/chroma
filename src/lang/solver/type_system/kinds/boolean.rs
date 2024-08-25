@@ -1,29 +1,27 @@
-use std::sync::Arc;
-
-use crate::lang::solver_old::ModItemSet;
+use crate::lang::solver::ModItemSet;
 
 use super::{
     TyType, TyTypeLogic, TypeAssignabilityQuery, TypeDependencies, TypeSubsetQuery,
 };
 
 #[derive(Debug, Clone)]
-pub struct TyString {
-    literal: Option<TyStringLiteral>,
+pub struct TyBoolean {
+    pub literal: Option<TyBooleanLiteral>,
 }
 
-impl TyString {
+impl TyBoolean {
     pub fn new() -> Self {
         Self { literal: None }
     }
 
-    pub fn from_literal(literal: Arc<str>) -> Self {
+    pub fn from_literal(value: bool) -> Self {
         Self {
-            literal: Some(TyStringLiteral { value: literal }),
+            literal: Some(TyBooleanLiteral { value }),
         }
     }
 }
 
-fn is_assignable(left: &TyString, right: &TyString) -> bool {
+fn is_assignable(left: &TyBoolean, right: &TyBoolean) -> bool {
     match (&left.literal, &right.literal) {
         (Some(l), Some(r)) => l == r,
         (Some(_), None) => true,
@@ -33,11 +31,11 @@ fn is_assignable(left: &TyString, right: &TyString) -> bool {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TyStringLiteral {
-    value: Arc<str>,
+pub struct TyBooleanLiteral {
+    pub value: bool,
 }
 
-impl TyTypeLogic for TyString {
+impl TyTypeLogic for TyBoolean {
     fn check_assignable_to(&self, other: &Self, _query: &mut TypeAssignabilityQuery) -> bool {
         is_assignable(self, other)
     }

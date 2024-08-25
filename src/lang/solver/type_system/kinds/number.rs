@@ -1,27 +1,25 @@
-use crate::lang::solver_old::ModItemSet;
+use crate::lang::solver::ModItemSet;
 
-use super::{
-    TyType, TyTypeLogic, TypeAssignabilityQuery, TypeDependencies, TypeSubsetQuery,
-};
+use super::{TyType, TyTypeLogic, TypeAssignabilityQuery, TypeDependencies, TypeSubsetQuery};
 
 #[derive(Debug, Clone)]
-pub struct TyBoolean {
-    pub literal: Option<TyBooleanLiteral>,
+pub struct TyNumber {
+    pub literal: Option<TyNumberLiteral>,
 }
 
-impl TyBoolean {
+impl TyNumber {
     pub fn new() -> Self {
         Self { literal: None }
     }
 
-    pub fn from_literal(value: bool) -> Self {
+    pub fn from_literal(value: i64) -> Self {
         Self {
-            literal: Some(TyBooleanLiteral { value }),
+            literal: Some(TyNumberLiteral { value }),
         }
     }
 }
 
-fn is_assignable(left: &TyBoolean, right: &TyBoolean) -> bool {
+fn is_assignable(left: &TyNumber, right: &TyNumber) -> bool {
     match (&left.literal, &right.literal) {
         (Some(l), Some(r)) => l == r,
         (Some(_), None) => true,
@@ -31,11 +29,11 @@ fn is_assignable(left: &TyBoolean, right: &TyBoolean) -> bool {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TyBooleanLiteral {
-    pub value: bool,
+pub struct TyNumberLiteral {
+    pub value: i64,
 }
 
-impl TyTypeLogic for TyBoolean {
+impl TyTypeLogic for TyNumber {
     fn check_assignable_to(&self, other: &Self, _query: &mut TypeAssignabilityQuery) -> bool {
         is_assignable(self, other)
     }

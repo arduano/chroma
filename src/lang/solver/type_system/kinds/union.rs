@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use crate::lang::{
-    solver_old::{ModItemSet, TypeData},
+    solver::{ModItemSet, TypeData},
     tokens::{Span, TkIdent},
 };
 

@@ -4,7 +4,6 @@ use self::tokens::Span;
 
 pub mod analysis;
 pub mod ast;
-pub mod solver_old;
 pub mod solver;
 pub mod tokens;
 

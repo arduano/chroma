@@ -12,7 +12,7 @@ use chroma::lang::{
         helpers::{AstItem, AstParser, ParsingPhaseEnv},
         items::SyDeclarationBody,
     },
-    solver_old::{CodeFilePath, IdCounter, KnownFiles, ModuleGroupCompilation},
+    solver::{CodeFilePath, IdCounter, KnownFiles, ModuleGroupCompilation},
     tokens::TokenReader,
     ErrorCollector,
 };

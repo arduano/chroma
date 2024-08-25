@@ -1,4 +1,4 @@
-use crate::lang::{solver_old::ModItemSet, tokens::TkIdent};
+use crate::lang::{solver::ModItemSet, tokens::TkIdent};
 
 use super::{
     TyType, TyTypeLogic, TypeAssignabilityQuery, TypeDependencies, TypeId, TypeSubsetQuery,

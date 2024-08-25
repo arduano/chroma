@@ -1,6 +1,6 @@
 use crate::lang::{
     ast::items::SyBinaryOp,
-    solver_old::{Id, MId},
+    solver::{Id, MId},
     tokens::{Span, TkIdent, TkInteger, TkString},
 };
 
