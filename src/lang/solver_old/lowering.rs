@@ -1,5 +1,7 @@
 use std::ops::Deref;
 
+use parse_static_types::parse_type_id_from_linked_type_id;
+
 use crate::lang::{
     ast::{
         helpers::{Attempted, AttemptedAsRef},
@@ -9,10 +11,7 @@ use crate::lang::{
     CompilerError,
 };
 
-use self::{
-    ast_to_li::link_expression_ast,
-    parse_static_types::{parse_type_from_linked_type_id, TypeFromLinkedTypeCompilation},
-};
+use self::{ast_to_li::link_expression_ast, parse_static_types::TypeFromLinkedTypeCompilation};
 
 use super::{
     linked_ast::*, type_system::TyType, MId, ModuleGroupCompilation, ModuleNamespace,
@@ -107,7 +106,7 @@ pub fn parse_module_data_linking(
 
                 compilation
                     .linked_type_definitions
-                    .insert_val_for_allocated_value(id, ty);
+                    .insert_allocated_value(id, ty);
             }
             ModuleNamespaceItemKind::Unknown => {}
         }
@@ -123,8 +122,9 @@ pub fn get_type_id_for_linked_type_id(
         linked_type_definitions: &compilation.linked_type_definitions,
         linked_type_to_type_mapping: &mut compilation.linked_type_to_type_mapping,
         type_data: &mut compilation.type_data,
+        type_relationships: &mut compilation.type_relationships,
         errors: &mut compilation.errors,
     };
 
-    parse_type_from_linked_type_id(linked_ty_id, &mut ty_compilation)
+    parse_type_id_from_linked_type_id(linked_ty_id, &mut ty_compilation)
 }

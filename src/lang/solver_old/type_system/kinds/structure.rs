@@ -1,10 +1,7 @@
-use crate::lang::{
-    solver_old::{ModItemSet, TypeIdWithSpan},
-    tokens::TkIdent,
-};
+use crate::lang::{solver_old::ModItemSet, tokens::TkIdent};
 
 use super::{
-    TyType, TyTypeFlags, TyTypeLogic, TypeAssignabilityQuery, TypeDependencies, TypeSubsetQuery,
+    TyType, TyTypeLogic, TypeAssignabilityQuery, TypeDependencies, TypeId, TypeSubsetQuery,
 };
 
 #[derive(Debug, Clone)]
@@ -44,11 +41,11 @@ impl TyStructLiteral {
 #[derive(Debug, Clone)]
 pub struct TyStructLiteralField {
     pub name: TkIdent,
-    pub value: TypeIdWithSpan,
+    pub value: TypeId,
 }
 
 impl TyStructLiteralField {
-    pub fn new(name: TkIdent, value: TypeIdWithSpan) -> Self {
+    pub fn new(name: TkIdent, value: TypeId) -> Self {
         Self { name, value }
     }
 }
@@ -79,7 +76,7 @@ impl TyTypeLogic for TyStruct {
                 return false;
             };
 
-            query.is_assignable_to(self_field.value.id, other_field.value.id)
+            query.is_type_assignable_to_type(self_field.value, other_field.value)
         })
     }
 
@@ -145,7 +142,7 @@ impl TyTypeLogic for TyStruct {
                 return false;
             };
 
-            query.is_substet_of(self_field.value.id, other_field.value.id)
+            query.is_type_subtype_of_type(self_field.value, other_field.value)
         });
 
         if !other_fields_are_substate {
@@ -165,28 +162,9 @@ impl TyTypeLogic for TyStruct {
         true
     }
 
-    fn flags(&self, types: &ModItemSet<TyType>) -> TyTypeFlags {
-        if let Some(literal) = &self.literal {
-            let mut flags = TyTypeFlags::new_all();
-
-            for field in &literal.fields {
-                let ty = types.get(field.value.id);
-                if let Some(ty) = ty {
-                    flags = flags.join(ty.flags(types));
-                } else {
-                    flags = flags.join(TyTypeFlags::new_for_unknown());
-                }
-            }
-
-            flags
-        } else {
-            TyTypeFlags::new_all()
-        }
-    }
-
     fn get_type_dependencies(&self, _types: &ModItemSet<TyType>) -> TypeDependencies {
         if let Some(literal) = &self.literal {
-            let inner_types = literal.fields.iter().map(|field| field.value.id).collect();
+            let inner_types = literal.fields.iter().map(|field| field.value).collect();
 
             TypeDependencies {
                 inner_types,

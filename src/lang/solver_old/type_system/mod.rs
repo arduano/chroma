@@ -7,80 +7,27 @@ pub use relationships::*;
 
 use super::{MId, ModItemSet};
 
-#[derive(Debug, Clone, Copy)]
-pub struct TyTypeFlags {}
-
-impl TyTypeFlags {
-    pub fn new() -> Self {
-        Self {}
-    }
-
-    pub fn new_all() -> Self {
-        Self {}
-    }
-
-    pub fn new_for_unknown() -> Self {
-        Self {}
-    }
-
-    pub fn join(self, _other: Self) -> Self {
-        Self {}
-    }
-}
+pub type TypeData = ModItemSet<TyType>;
+pub type TypeId = MId<TyType>;
 
 #[derive(Debug, Clone)]
 pub struct TyType {
     pub name: Option<TkIdent>,
     pub span: Span,
     pub kind: TyTypeKind,
-    pub flags: TyTypeFlags,
 }
 
 impl TyType {
-    pub fn new(kind: TyTypeKind, span: Span, flags: TyTypeFlags) -> Self {
+    pub fn new(kind: TyTypeKind, span: Span) -> Self {
         Self {
             name: None,
             kind,
             span,
-            flags,
         }
     }
 
-    pub fn new_infer_flags(kind: TyTypeKind, span: Span, types: &ModItemSet<TyType>) -> Self {
-        Self {
-            flags: kind.flags(types),
-            name: None,
-            kind,
-            span,
-        }
-    }
-
-    pub fn new_named(
-        name: Option<TkIdent>,
-        kind: TyTypeKind,
-        span: Span,
-        flags: TyTypeFlags,
-    ) -> Self {
-        Self {
-            name,
-            kind,
-            span,
-            flags,
-        }
-    }
-
-    pub fn new_named_infer_flags(
-        name: Option<TkIdent>,
-        kind: TyTypeKind,
-        span: Span,
-        types: &ModItemSet<TyType>,
-    ) -> Self {
-        Self {
-            flags: kind.flags(types),
-            name,
-            kind,
-            span,
-        }
+    pub fn new_named(name: Option<TkIdent>, kind: TyTypeKind, span: Span) -> Self {
+        Self { name, kind, span }
     }
 
     pub fn new_unknown(name: Option<TkIdent>, span: Span) -> Self {
@@ -88,7 +35,6 @@ impl TyType {
             name,
             kind: TyTypeKind::Any(TyAnyTypeKind::Unknown),
             span,
-            flags: TyTypeFlags::new_for_unknown(),
         }
     }
 
@@ -139,8 +85,6 @@ pub trait TyTypeLogic: Sized {
     fn is_substate_of(&self, other: &Self, query: &mut TypeSubsetQuery) -> bool;
 
     fn get_intersection(&self, other: &Self) -> Self;
-
-    fn flags(&self, types: &ModItemSet<TyType>) -> TyTypeFlags;
 
     fn get_type_dependencies(&self, types: &ModItemSet<TyType>) -> TypeDependencies;
 }
@@ -237,18 +181,6 @@ impl TyTypeLogic for TyTypeKind {
         }
     }
 
-    fn flags(&self, types: &ModItemSet<TyType>) -> TyTypeFlags {
-        match self {
-            TyTypeKind::Number(number) => number.flags(types),
-            TyTypeKind::String(string) => string.flags(types),
-            TyTypeKind::Boolean(boolean) => boolean.flags(types),
-            TyTypeKind::Struct(struct_ty) => struct_ty.flags(types),
-            TyTypeKind::Union(union) => union.flags(types),
-            TyTypeKind::Never => TyTypeFlags::new_all(),
-            TyTypeKind::Any(_) => TyTypeFlags::new_all(),
-        }
-    }
-
     fn get_type_dependencies(&self, types: &ModItemSet<TyType>) -> TypeDependencies {
         match self {
             TyTypeKind::Number(number) => number.get_type_dependencies(types),
@@ -272,16 +204,11 @@ impl TyTypeLogic for TyType {
             name: None,
             kind: self.kind.get_intersection(&other.kind),
             span: Span::new_empty(),
-            flags: self.flags.join(other.flags),
         }
     }
 
     fn is_substate_of(&self, other: &Self, query: &mut TypeSubsetQuery) -> bool {
         self.kind.is_substate_of(&other.kind, query)
-    }
-
-    fn flags(&self, _types: &ModItemSet<TyType>) -> TyTypeFlags {
-        self.flags
     }
 
     fn get_type_dependencies(&self, types: &ModItemSet<TyType>) -> TypeDependencies {

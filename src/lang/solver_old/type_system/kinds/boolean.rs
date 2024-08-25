@@ -1,7 +1,7 @@
 use crate::lang::solver_old::ModItemSet;
 
 use super::{
-    TyType, TyTypeFlags, TyTypeLogic, TypeAssignabilityQuery, TypeDependencies, TypeSubsetQuery,
+    TyType, TyTypeLogic, TypeAssignabilityQuery, TypeDependencies, TypeSubsetQuery,
 };
 
 #[derive(Debug, Clone)]
@@ -46,10 +46,6 @@ impl TyTypeLogic for TyBoolean {
 
     fn is_substate_of(&self, other: &Self, _query: &mut TypeSubsetQuery) -> bool {
         is_assignable(self, other)
-    }
-
-    fn flags(&self, _types: &ModItemSet<TyType>) -> TyTypeFlags {
-        TyTypeFlags::new_all()
     }
 
     fn get_type_dependencies(&self, _types: &ModItemSet<TyType>) -> TypeDependencies {

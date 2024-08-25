@@ -1,19 +1,19 @@
 use std::collections::HashMap;
 
-use crate::lang::solver_old::{MId, ModItemSet};
+use crate::lang::solver_old::{MId, ModItemSet, TypeData};
 
-use super::TyType;
+use super::{TyType, TypeId};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 /// An arbitrary type relationship, e.g. if a type is assignable to another, or a type is a subset of another.
 pub struct TypeRelationship<T: std::fmt::Debug + Clone + PartialEq + Eq + std::hash::Hash> {
-    pub from: MId<TyType>,
-    pub to: MId<TyType>,
+    pub from: TypeId,
+    pub to: TypeId,
     _phantom: std::marker::PhantomData<T>,
 }
 
 impl<T: std::fmt::Debug + Clone + PartialEq + Eq + std::hash::Hash> TypeRelationship<T> {
-    pub fn new(from: MId<TyType>, to: MId<TyType>) -> Self {
+    pub fn new(from: TypeId, to: TypeId) -> Self {
         Self {
             from,
             to,
@@ -44,11 +44,11 @@ impl<T: std::fmt::Debug + Clone + PartialEq + Eq + std::hash::Hash> TypeRelation
         }
     }
 
-    pub fn has(&self, from: MId<TyType>, to: MId<TyType>) -> Option<bool> {
+    pub fn has(&self, from: TypeId, to: TypeId) -> Option<bool> {
         self.cache.get(&TypeRelationship::new(from, to)).copied()
     }
 
-    pub fn set(&mut self, from: MId<TyType>, to: MId<TyType>, assignable: bool) {
+    pub fn set(&mut self, from: TypeId, to: TypeId, assignable: bool) {
         self.cache
             .insert(TypeRelationship::new(from, to), assignable);
     }
@@ -75,7 +75,7 @@ impl<'a> TypeAssignabilityQuery<'a> {
         }
     }
 
-    pub fn is_assignable_to(&mut self, left: MId<TyType>, right: MId<TyType>) -> bool {
+    pub fn is_type_assignable_to_type(&mut self, left: TypeId, right: TypeId) -> bool {
         if let Some(assignable) = self.type_assignability.has(left, right) {
             return assignable;
         }
@@ -87,7 +87,7 @@ impl<'a> TypeAssignabilityQuery<'a> {
         assignable
     }
 
-    fn is_assignable_to_impl(&mut self, left: MId<TyType>, right: MId<TyType>) -> bool {
+    fn is_assignable_to_impl(&mut self, left: TypeId, right: TypeId) -> bool {
         if left == right {
             return true;
         }
@@ -131,7 +131,7 @@ impl<'a> TypeSubsetQuery<'a> {
         }
     }
 
-    pub fn is_substet_of(&mut self, left: MId<TyType>, right: MId<TyType>) -> bool {
+    pub fn is_type_subtype_of_type(&mut self, left: TypeId, right: TypeId) -> bool {
         if let Some(assignable) = self.type_subsetability.has(left, right) {
             return assignable;
         }
@@ -143,7 +143,7 @@ impl<'a> TypeSubsetQuery<'a> {
         assignable
     }
 
-    pub fn is_subset_of_impl(&mut self, left: MId<TyType>, right: MId<TyType>) -> bool {
+    pub fn is_subset_of_impl(&mut self, left: TypeId, right: TypeId) -> bool {
         if left == right {
             return true;
         }
@@ -169,12 +169,38 @@ impl<'a> TypeSubsetQuery<'a> {
     }
 }
 
-pub fn run_type_assignability_query<'a>(
-    types: &'a ModItemSet<TyType>,
-    type_assignability: &'a mut TypeAssignabilityCache,
-    left: MId<TyType>,
-    right: MId<TyType>,
-) -> bool {
-    let mut query = TypeAssignabilityQuery::new(types, type_assignability);
-    query.is_assignable_to(left, right)
+pub struct TypeRelationships {
+    pub type_assignability: TypeAssignabilityCache,
+    pub type_subsetability: TypeSubsetabilityCache,
+}
+
+impl TypeRelationships {
+    pub fn new() -> Self {
+        Self {
+            type_assignability: TypeAssignabilityCache::new(),
+            type_subsetability: TypeSubsetabilityCache::new(),
+        }
+    }
+}
+
+impl TypeRelationships {
+    pub fn is_type_assignable_to_type(
+        &mut self,
+        types: &TypeData,
+        left: TypeId,
+        right: TypeId,
+    ) -> bool {
+        let mut query = TypeAssignabilityQuery::new(&types, &mut self.type_assignability);
+        query.is_type_assignable_to_type(left, right)
+    }
+
+    pub fn is_type_subtype_of_type(
+        &mut self,
+        types: &TypeData,
+        left: TypeId,
+        right: TypeId,
+    ) -> bool {
+        let mut query = TypeSubsetQuery::new(&types, &mut self.type_subsetability);
+        query.is_type_subtype_of_type(left, right)
+    }
 }
