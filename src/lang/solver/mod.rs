@@ -13,6 +13,8 @@ mod linked_ast;
 mod lowering;
 mod type_system;
 pub use type_system::*;
+mod type_system_2;
+pub use type_system_2::*;
 mod namespaces;
 pub use namespaces::*;
 mod runtime;

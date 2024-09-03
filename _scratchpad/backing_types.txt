@@ -1,0 +1,13 @@
+type A = {
+    kind: 'val',
+    foo: number,
+    bar: {
+        baz: string,
+        quix: string,
+    }
+} | {
+    kind: 'val2',
+    foo: string,
+};
+
+let a: A = ...;
