@@ -1,3 +1,4 @@
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct OrderedSet<K: PartialEq, V> {
     map: Vec<(K, V)>,
 }

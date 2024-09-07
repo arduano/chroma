@@ -1,8 +1,10 @@
 use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 
+use frunk::labelled::chars::R;
+
 use super::{
-    ordered_set::OrderedSet, Ty2FieldSelect, Ty2SystemStorage, Ty2TypeId, Ty2TypeVariantKind,
-    Ty2VariantId,
+    ordered_set::OrderedSet, Ty2FieldSelect, Ty2SystemStorage, Ty2TypeId, Ty2TypeVariant,
+    Ty2TypeVariantKind, Ty2VariantId,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -153,6 +155,11 @@ fn check_type_union_assignability_respecting_backing_type(
     let left_ty = system_storage.types.get(left).unwrap();
     let right_ty = system_storage.types.get(right).unwrap();
 
+    // If the right type has no variants, nothing can be assigned to it
+    if right_ty.variants.len() == 0 {
+        return false;
+    }
+
     if let (Some(left_backing), Some(right_backing)) = (&left_ty.backing, &right_ty.backing) {
         if left_backing != right_backing {
             return false;
@@ -182,6 +189,11 @@ fn check_type_union_assignability_without_backing_type(
     // TODO: No unwrap
     let left_ty = system_storage.types.get(left).unwrap();
     let right_ty = system_storage.types.get(right).unwrap();
+
+    // If the right type has no variants, nothing can be assigned to it
+    if right_ty.variants.len() == 0 {
+        return false;
+    }
 
     for left_variant in left_ty.variants.iter() {
         let true_for_any = right_ty
@@ -353,6 +365,11 @@ fn is_attrib_set_subset_or_equal(
     right: &OrderedSet<Arc<str>, Ty2FieldSelect>,
     mut callback: impl FnMut(Ty2TypeId, Ty2TypeId) -> bool,
 ) -> bool {
+    // The number of keys is the same
+    if left.len() != right.len() {
+        return false;
+    }
+
     // Every key on the left has a matching key on the right
     for (key1, value1) in left.iter() {
         let Some(value2) = right.get(key1) else {
@@ -364,13 +381,6 @@ fn is_attrib_set_subset_or_equal(
         }
 
         if !callback(value1.id, value2.id) {
-            return false;
-        }
-    }
-
-    // Every key on the right also has a key on the left
-    for (key2, _) in right.iter() {
-        if left.get(key2).is_none() {
             return false;
         }
     }
@@ -396,10 +406,104 @@ impl_relationship_probe!(
     check_type_variant_equality
 );
 
+struct TypeRecursionProbe<'a> {
+    cache: &'a mut HashMap<Ty2TypeId, bool>,
+    stack: Vec<Ty2TypeId>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Unresolved;
+
+impl<'a> TypeRecursionProbe<'a> {
+    pub fn new(cache: &'a mut HashMap<Ty2TypeId, bool>) -> Self {
+        Self {
+            cache,
+            stack: Vec::new(),
+        }
+    }
+
+    pub fn query_for_type(
+        &mut self,
+        types: &Ty2SystemStorage,
+        ty: Ty2TypeId,
+    ) -> Result<bool, Unresolved> {
+        if let Some(result) = self.cache.get(&ty) {
+            return Ok(*result);
+        }
+
+        if self.stack.contains(&ty) {
+            self.cache.insert(ty, true);
+            return Ok(true);
+        }
+
+        self.stack.push(ty);
+
+        let result = self.run_for_child_types(types, ty);
+
+        self.stack.pop();
+
+        if let Ok(result) = result {
+            self.cache.insert(ty, result);
+            return Ok(result);
+        } else {
+            return Err(Unresolved);
+        }
+    }
+
+    fn run_for_child_types(
+        &mut self,
+        types: &Ty2SystemStorage,
+        ty: Ty2TypeId,
+    ) -> Result<bool, Unresolved> {
+        let ty = types.types.get(ty).ok_or(Unresolved)?;
+
+        let mut has_unresolved = false;
+        macro_rules! process_result {
+            ($result:expr) => {
+                if $result as Result<bool, Unresolved> == Err(Unresolved) {
+                    has_unresolved = true;
+                } else if $result == Ok(true) {
+                    return Ok(true);
+                }
+            };
+        }
+
+        for variant in ty.variants.iter() {
+            let variant = types.type_variants.get(variant.id);
+            let Some(variant) = variant else {
+                process_result!(Err(Unresolved));
+                continue;
+            };
+
+            match &variant.kind {
+                Ty2TypeVariantKind::Any
+                | Ty2TypeVariantKind::String(_)
+                | Ty2TypeVariantKind::Number(_)
+                | Ty2TypeVariantKind::True
+                | Ty2TypeVariantKind::False => {}
+
+                Ty2TypeVariantKind::AttribSet(set) => {
+                    for (_, value) in set.iter() {
+                        let key_result = self.query_for_type(types, value.id);
+                        process_result!(key_result);
+                    }
+                }
+            }
+        }
+
+        if has_unresolved {
+            Err(Unresolved)
+        } else {
+            Ok(false)
+        }
+    }
+}
+
 pub struct TypeRelationships {
     pub type_assignability: TypeRelationshipCache<bool>,
     pub type_subset: TypeRelationshipCache<bool>,
     pub type_equality: TypeRelationshipCache<bool>,
+    pub is_recursive_type: HashMap<Ty2TypeId, bool>,
 }
 
 impl TypeRelationships {
@@ -408,6 +512,7 @@ impl TypeRelationships {
             type_assignability: TypeRelationshipCache::new(),
             type_subset: TypeRelationshipCache::new(),
             type_equality: TypeRelationshipCache::new(),
+            is_recursive_type: HashMap::new(),
         }
     }
 
@@ -439,5 +544,15 @@ impl TypeRelationships {
     ) -> bool {
         let mut probe = TypeEqualityProbe::new(&mut self.type_equality);
         probe.query_for_type(types, left, right)
+    }
+
+    /// Returns true if the type is recursive, false if it is not, and Err if no recursion was found but it's also not a fully resolved type.
+    pub fn is_recursive_type(
+        &mut self,
+        types: &Ty2SystemStorage,
+        ty: Ty2TypeId,
+    ) -> Result<bool, Unresolved> {
+        let mut probe = TypeRecursionProbe::new(&mut self.is_recursive_type);
+        probe.query_for_type(types, ty)
     }
 }
