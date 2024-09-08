@@ -74,6 +74,12 @@ impl Ty2System {
 
         todo!()
     }
+
+    pub fn is_recursive_type(&mut self, ty: Ty2TypeId) -> bool {
+        self.relationships
+            .is_recursive_type(&self.storage, ty)
+            .unwrap_or(false)
+    }
 }
 
 pub struct Ty2SystemStorage {
@@ -108,9 +114,10 @@ impl Ty2Handle {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Ty2VariantChoice {
     id: Ty2VariantId,
-    backing_id: Id<Ty2BackingStructureVariant>,
+    backing_id: Option<Id<Ty2BackingStructureVariant>>,
 }
 
 pub struct Ty2Type {
@@ -126,7 +133,7 @@ pub struct Ty2TypeVariant {
     kind: Ty2TypeVariantKind,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Ty2FieldSelect {
     id: Ty2TypeId,
     kind: Ty2FieldSelectKind,
@@ -135,7 +142,8 @@ pub struct Ty2FieldSelect {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Ty2FieldSelectKind {
     SelectBackingField,
-    Constant,
+    ConstantWithMatchingBackingField,
+    ConstantWithoutBackingData,
     VirtualTypeOnly,
 }
 
@@ -163,7 +171,84 @@ pub enum Ty2BackingStructureVariant {
 enum DifferentKey {
     None,
     One(Arc<str>),
-    Many,
+    Unmergeable,
+}
+
+fn options_equal_or_true<T: PartialEq>(left: Option<T>, right: Option<T>) -> bool {
+    match (left, right) {
+        (Some(left), Some(right)) => left == right,
+        _ => true,
+    }
+}
+
+fn try_merge_field_select_kinds(
+    left: Ty2FieldSelectKind,
+    right: Ty2FieldSelectKind,
+) -> Option<Ty2FieldSelectKind> {
+    use Ty2FieldSelectKind::*;
+    match (left, right) {
+        // SelectBackingField can be mixed with ConstantWithMatchingBackingField
+        (SelectBackingField, SelectBackingField)
+        | (ConstantWithMatchingBackingField, SelectBackingField)
+        | (SelectBackingField, ConstantWithMatchingBackingField) => Some(SelectBackingField),
+
+        (ConstantWithMatchingBackingField, ConstantWithMatchingBackingField) => {
+            Some(ConstantWithMatchingBackingField)
+        }
+
+        (ConstantWithoutBackingData, ConstantWithoutBackingData) => {
+            Some(ConstantWithoutBackingData)
+        }
+
+        (VirtualTypeOnly, VirtualTypeOnly) => Some(VirtualTypeOnly),
+
+        (VirtualTypeOnly, other) => Some(other),
+        (other, VirtualTypeOnly) => Some(other),
+
+        _ => None,
+    }
+}
+
+fn find_different_key_for_merging<'a>(
+    storage: &'a Ty2SystemStorage,
+    relationships: &mut TypeRelationships,
+    left: &'a OrderedSet<Arc<str>, Ty2FieldSelect>,
+    right: &'a OrderedSet<Arc<str>, Ty2FieldSelect>,
+) -> DifferentKey {
+    // The number of keys is the same
+    if left.len() != right.len() {
+        return DifferentKey::Unmergeable;
+    }
+
+    let mut different_key = DifferentKey::None;
+
+    for (key1, value1) in left.iter() {
+        let Some(value2) = right.get(key1) else {
+            return DifferentKey::Unmergeable;
+        };
+
+        let backing_can_be_merged =
+            try_merge_field_select_kinds(value1.kind, value2.kind).is_some();
+
+        let ty_equal = relationships.is_type_equal_to_type(storage, value1.id, value2.id);
+
+        let equal = backing_can_be_merged && ty_equal;
+
+        if !equal {
+            match different_key {
+                // We found one different key
+                DifferentKey::None => different_key = DifferentKey::One(key1.clone()),
+                // We found more than one different key, unable to merge
+                DifferentKey::One(_) => {
+                    return DifferentKey::Unmergeable;
+                }
+                // Unreachable
+                DifferentKey::Unmergeable => unreachable!(),
+            }
+        }
+    }
+
+    different_key
 }
 
 // pub fn try_merge_variants(

@@ -3,8 +3,8 @@ use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 use frunk::labelled::chars::R;
 
 use super::{
-    ordered_set::OrderedSet, Ty2FieldSelect, Ty2SystemStorage, Ty2TypeId, Ty2TypeVariant,
-    Ty2TypeVariantKind, Ty2VariantId,
+    options_equal_or_true, ordered_set::OrderedSet, Ty2FieldSelect, Ty2SystemStorage, Ty2TypeId,
+    Ty2TypeVariant, Ty2TypeVariantKind, Ty2VariantId,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -160,15 +160,13 @@ fn check_type_union_assignability_respecting_backing_type(
         return false;
     }
 
-    if let (Some(left_backing), Some(right_backing)) = (&left_ty.backing, &right_ty.backing) {
-        if left_backing != right_backing {
-            return false;
-        }
+    if !options_equal_or_true(left_ty.backing, right_ty.backing) {
+        return false;
     }
 
     for left_variant in left_ty.variants.iter() {
         let true_for_any = right_ty.variants.iter().any(|right_variant| {
-            left_variant.backing_id == right_variant.backing_id
+            options_equal_or_true(left_variant.backing_id, right_variant.backing_id)
                 && callback(left_variant.id, right_variant.id)
         });
 
