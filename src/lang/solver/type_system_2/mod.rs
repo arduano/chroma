@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
-use logos::Span;
 use ordered_set::OrderedSet;
 use relationships::TypeRelationships;
+
+use crate::lang::tokens::Span;
 
 use super::{Id, ItemSet};
 
@@ -35,44 +36,9 @@ impl Ty2System {
         self.storage.backings.add_value(backing)
     }
 
-    pub fn normalize_variant_list(
-        &mut self,
-        variants: impl IntoIterator<Item = Ty2VariantId>,
-    ) -> Vec<Ty2VariantId> {
-        // let mut new_variants = Vec::new();
-        todo!()
-    }
-
     pub fn are_types_equal(&mut self, left: Ty2TypeId, right: Ty2TypeId) -> bool {
         self.relationships
             .is_type_equal_to_type(&self.storage, left, right)
-    }
-
-    pub fn merge_two_types_without_backing_changes(
-        &mut self,
-        left: Ty2TypeId,
-        right: Ty2TypeId,
-    ) -> Option<Ty2TypeId> {
-        let left_ty = self.storage.types.get(left)?;
-        let right_ty = self.storage.types.get(right)?;
-
-        if let (Some(left_backing), Some(right_backing)) = (&left_ty.backing, &right_ty.backing) {
-            if left_backing != right_backing {
-                return None;
-            }
-        }
-
-        let left_variants = left_ty.variants.iter();
-        let right_variants = right_ty.variants.iter();
-        let all_variants = left_variants.chain(right_variants).collect::<Vec<_>>();
-
-        // let mut new_variants = Vec::new();
-
-        // for variant in all_variants {
-
-        // }
-
-        todo!()
     }
 
     pub fn is_recursive_type(&mut self, ty: Ty2TypeId) -> bool {
@@ -117,7 +83,7 @@ impl Ty2Handle {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Ty2VariantChoice {
     id: Ty2VariantId,
-    backing_id: Option<Id<Ty2BackingStructureVariant>>,
+    backing_id: Ty2BackingDataKind,
 }
 
 pub struct Ty2Type {
@@ -127,22 +93,16 @@ pub struct Ty2Type {
     backing: Option<Ty2BackingId>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Ty2TypeVariant {
     span: Option<Span>,
     kind: Ty2TypeVariantKind,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Ty2FieldSelect {
-    id: Ty2TypeId,
-    kind: Ty2FieldSelectKind,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Ty2FieldSelectKind {
-    SelectBackingField,
-    ConstantWithMatchingBackingField,
+pub enum Ty2BackingDataKind {
+    AccessBackingData(Id<Ty2BackingStructureVariant>),
+    ConstantWithMatchingBackingData(Id<Ty2BackingStructureVariant>),
     ConstantWithoutBackingData,
     VirtualTypeOnly,
 }
@@ -152,7 +112,8 @@ enum Ty2TypeVariantKind {
     Any,
     String(Option<Arc<str>>),
     Number(Option<i64>),
-    AttribSet(OrderedSet<Arc<str>, Ty2FieldSelect>),
+    AttribSet(OrderedSet<Arc<str>, Ty2TypeId>),
+    FunctionScope(OrderedSet<ScopeKey, Ty2TypeId>),
     True,
     False,
 }
@@ -167,10 +128,15 @@ pub enum Ty2BackingStructureVariant {
     Struct(OrderedSet<Arc<str>, Ty2BackingId>),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ScopeKey {
+    Whatever(u32),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-enum DifferentKey {
+enum DifferentKey<Key: Clone + Eq> {
     None,
-    One(Arc<str>),
+    One(Key),
     Unmergeable,
 }
 
@@ -181,19 +147,29 @@ fn options_equal_or_true<T: PartialEq>(left: Option<T>, right: Option<T>) -> boo
     }
 }
 
-fn try_merge_field_select_kinds(
-    left: Ty2FieldSelectKind,
-    right: Ty2FieldSelectKind,
-) -> Option<Ty2FieldSelectKind> {
-    use Ty2FieldSelectKind::*;
+fn try_merge_backing_data_kinds(
+    left: Ty2BackingDataKind,
+    right: Ty2BackingDataKind,
+) -> Option<Ty2BackingDataKind> {
+    use Ty2BackingDataKind::*;
     match (left, right) {
         // SelectBackingField can be mixed with ConstantWithMatchingBackingField
-        (SelectBackingField, SelectBackingField)
-        | (ConstantWithMatchingBackingField, SelectBackingField)
-        | (SelectBackingField, ConstantWithMatchingBackingField) => Some(SelectBackingField),
+        (AccessBackingData(id1), AccessBackingData(id2))
+        | (ConstantWithMatchingBackingData(id1), AccessBackingData(id2))
+        | (AccessBackingData(id1), ConstantWithMatchingBackingData(id2)) => {
+            if id1 == id2 {
+                Some(AccessBackingData(id1))
+            } else {
+                None
+            }
+        }
 
-        (ConstantWithMatchingBackingField, ConstantWithMatchingBackingField) => {
-            Some(ConstantWithMatchingBackingField)
+        (ConstantWithMatchingBackingData(id1), ConstantWithMatchingBackingData(id2)) => {
+            if id1 == id2 {
+                Some(ConstantWithMatchingBackingData(id1))
+            } else {
+                None
+            }
         }
 
         (ConstantWithoutBackingData, ConstantWithoutBackingData) => {
@@ -209,12 +185,12 @@ fn try_merge_field_select_kinds(
     }
 }
 
-fn find_different_key_for_merging<'a>(
+fn find_different_key_for_merging<'a, Key: Clone + Eq>(
     storage: &'a Ty2SystemStorage,
     relationships: &mut TypeRelationships,
-    left: &'a OrderedSet<Arc<str>, Ty2FieldSelect>,
-    right: &'a OrderedSet<Arc<str>, Ty2FieldSelect>,
-) -> DifferentKey {
+    left: &'a OrderedSet<Key, Ty2TypeId>,
+    right: &'a OrderedSet<Key, Ty2TypeId>,
+) -> DifferentKey<Key> {
     // The number of keys is the same
     if left.len() != right.len() {
         return DifferentKey::Unmergeable;
@@ -227,12 +203,7 @@ fn find_different_key_for_merging<'a>(
             return DifferentKey::Unmergeable;
         };
 
-        let backing_can_be_merged =
-            try_merge_field_select_kinds(value1.kind, value2.kind).is_some();
-
-        let ty_equal = relationships.is_type_equal_to_type(storage, value1.id, value2.id);
-
-        let equal = backing_can_be_merged && ty_equal;
+        let equal = relationships.is_type_equal_to_type(storage, *value1, *value2);
 
         if !equal {
             match different_key {
@@ -250,95 +221,3 @@ fn find_different_key_for_merging<'a>(
 
     different_key
 }
-
-// pub fn try_merge_variants(
-//     system: &mut Ty2System,
-//     left_id: Ty2VariantId,
-//     right_id: Ty2VariantId,
-// ) -> Option<Ty2VariantId> {
-//     let left_ty = system.storage.type_variants.get(left_id)?;
-//     let right_ty = system.storage.type_variants.get(right_id)?;
-
-//     match (&left_ty.kind, &right_ty.kind) {
-//         // Any has no merging logic
-//         (Ty2TypeVariantKind::Any, _) => None,
-//         // String has no merging logic
-//         (Ty2TypeVariantKind::String(left), _) => None,
-//         // Number has no merging logic
-//         (Ty2TypeVariantKind::Number(left), _) => None,
-//         // Bools have no merging logic
-//         (Ty2TypeVariantKind::True, _) => None,
-//         (Ty2TypeVariantKind::False, _) => None,
-
-//         // AttribSet can be merged if at most 1 field differs
-//         (Ty2TypeVariantKind::AttribSet(set1), Ty2TypeVariantKind::AttribSet(set2)) => {
-//             // If the number of keys is different, they can't be merged
-//             if set1.len() != set2.len() {
-//                 return None;
-//             }
-
-//             let mut different_key = DifferentKey::None;
-//             for (key1, value1) in set1.iter() {
-//                 let Some(value2) = set2.get(key1) else {
-//                     return None;
-//                 };
-
-//                 let backing_equal = value1.kind == value2.kind;
-//                 let ty_equal = system.relationships.is_type_equal_to_type(
-//                     &system.storage,
-//                     value1.id,
-//                     value2.id,
-//                 );
-
-//                 let equal = backing_equal || ty_equal;
-
-//                 if !equal {
-//                     match different_key {
-//                         // We found one different key
-//                         DifferentKey::None => different_key = DifferentKey::One(key1.clone()),
-//                         // We found more than one different key, unable to merge
-//                         DifferentKey::One(_) => {
-//                             different_key = DifferentKey::Many;
-//                             break;
-//                         }
-//                         // Unreachable
-//                         DifferentKey::Many => unreachable!(),
-//                     }
-//                 }
-//             }
-
-//             // If there is zero difference (types are effectively equal), return the left id
-//             if different_key == DifferentKey::None {
-//                 return Some(left_id);
-//             }
-
-//             // If there are more than 1 difference, they can't be merged
-//             let DifferentKey::One(different_key) = different_key else {
-//                 return None;
-//             };
-
-//             let mut new_set = OrderedSet::new();
-//             for (key1, value1) in set1.iter() {
-//                 let Some(value2) = set2.get(key1) else {
-//                     unreachable!();
-//                 };
-
-//                 if key1 == &different_key {
-//                     // TODO:
-//                     // let merged_ty = try_merge_variants(system, value1.id, value2.id)?;
-//                     // new_set.insert(key1.clone(), value2.clone());
-//                 } else {
-//                     new_set.insert(key1.clone(), value1.clone());
-//                 }
-//             }
-
-//             let new_variant = Ty2TypeVariant {
-//                 span: left_ty.span.clone(),
-//                 kind: Ty2TypeVariantKind::AttribSet(new_set),
-//             };
-
-//             Some(system.storage.type_variants.add_value(new_variant))
-//         }
-//         (Ty2TypeVariantKind::AttribSet(_), _) => None,
-//     }
-// }

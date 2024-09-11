@@ -1,15 +1,15 @@
 use std::sync::Arc;
 
-use crate::lang::solver::type_system_2::try_merge_field_select_kinds;
-use crate::lang::solver::{Id, Ty2FieldSelect};
+use crate::lang::solver::Id;
+use crate::lang::tokens::Span;
 
 use super::{
     find_different_key_for_merging, ordered_set::OrderedSet, DifferentKey, Ty2TypeVariantKind,
 };
 
 use super::{
-    options_equal_or_true, Ty2BackingStructureVariant, Ty2System, Ty2Type, Ty2TypeId,
-    Ty2TypeVariant, Ty2VariantChoice, Ty2VariantId,
+    options_equal_or_true, try_merge_backing_data_kinds, Ty2BackingStructureVariant, Ty2System,
+    Ty2Type, Ty2TypeId, Ty2TypeVariant, Ty2VariantChoice, Ty2VariantId,
 };
 
 pub struct MergeProcedure {
@@ -69,18 +69,24 @@ pub fn merge_type_into_type_without_backing_changes(
             return None;
         };
 
-        pairs.push((current_variant.id, incoming_variant.id));
+        pairs.push((current_variant.clone(), incoming_variant.clone()));
     }
 
     let mut new_variants = Vec::new();
 
-    for (current_id, incoming_id) in pairs {
-        let new_variant =
-            merge_type_variant_into_type_without_backing_changes(system, current_id, incoming_id);
+    for (current_variant, incoming_variant) in pairs {
+        let merged_ids =
+            try_merge_backing_data_kinds(current_variant.backing_id, incoming_variant.backing_id);
 
-        if let Some(new_variant) = new_variant {
+        let new_variant = merge_type_variant_into_type_without_backing_changes(
+            system,
+            current_variant.id,
+            incoming_variant.id,
+        );
+
+        if let (Some(new_variant), Some(merged_ids)) = (new_variant, merged_ids) {
             new_variants.push(Ty2VariantChoice {
-                backing_id: None,
+                backing_id: merged_ids,
                 id: new_variant,
             });
         } else {
@@ -179,23 +185,14 @@ pub fn merge_type_variant_into_type_without_backing_changes(
                     // Try to merge the types
                     let merged_ty = merge_type_into_type_without_backing_changes(
                         system,
-                        val_from_current.id,
-                        val_from_incoming.id,
+                        val_from_current,
+                        val_from_incoming,
                     )?;
-
-                    let merged_kind =
-                        try_merge_field_select_kinds(val_from_current.kind, val_from_incoming.kind)
-                            .unwrap();
-
-                    let merged_val = Ty2FieldSelect {
-                        id: merged_ty,
-                        kind: merged_kind,
-                    };
 
                     let mut new_set = OrderedSet::new();
                     for (key, value) in set1.iter() {
                         if key == &different_key {
-                            new_set.insert(key.clone(), merged_val);
+                            new_set.insert(key.clone(), merged_ty);
                         } else {
                             new_set.insert(key.clone(), value.clone());
                         }
@@ -212,5 +209,53 @@ pub fn merge_type_variant_into_type_without_backing_changes(
         }
         // AttribSets can't be merged with anything else
         (Ty2TypeVariantKind::AttribSet(_), _) => None,
+
+        // FunctionScopes can be merged if they have the same keys or differ by at least 1 key
+        (Ty2TypeVariantKind::FunctionScope(set1), Ty2TypeVariantKind::FunctionScope(set2)) => {
+            let different_key = find_different_key_for_merging(
+                &system.storage,
+                &mut system.relationships,
+                &set1,
+                &set2,
+            );
+
+            match different_key {
+                DifferentKey::None => Some(current_id),
+                DifferentKey::Unmergeable => None,
+                DifferentKey::One(different_key) => {
+                    let val_from_current = *set1.get(&different_key).unwrap();
+                    let val_from_incoming = *set2.get(&different_key).unwrap();
+
+                    // TODO: Avoid these clones
+                    let set1 = set1.clone();
+                    let span = current.span.clone();
+
+                    // Try to merge the types
+                    let merged_ty = merge_type_into_type_without_backing_changes(
+                        system,
+                        val_from_current,
+                        val_from_incoming,
+                    )?;
+
+                    let mut new_set = OrderedSet::new();
+                    for (key, value) in set1.iter() {
+                        if key == &different_key {
+                            new_set.insert(key.clone(), merged_ty);
+                        } else {
+                            new_set.insert(key.clone(), value.clone());
+                        }
+                    }
+
+                    let new_variant = Ty2TypeVariant {
+                        span,
+                        kind: Ty2TypeVariantKind::FunctionScope(new_set),
+                    };
+
+                    Some(system.storage.type_variants.add_value(new_variant))
+                }
+            }
+        }
+        // FunctionScopes can't be merged with anything else
+        (Ty2TypeVariantKind::FunctionScope(_), _) => None,
     }
 }

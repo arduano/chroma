@@ -1,10 +1,8 @@
-use std::{collections::HashMap, marker::PhantomData, sync::Arc};
-
-use frunk::labelled::chars::R;
+use std::{collections::HashMap, sync::Arc};
 
 use super::{
-    options_equal_or_true, ordered_set::OrderedSet, Ty2FieldSelect, Ty2SystemStorage, Ty2TypeId,
-    Ty2TypeVariant, Ty2TypeVariantKind, Ty2VariantId,
+    options_equal_or_true, ordered_set::OrderedSet, try_merge_backing_data_kinds, Ty2SystemStorage,
+    Ty2TypeId, Ty2TypeVariantKind, Ty2VariantId,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -145,7 +143,7 @@ macro_rules! impl_relationship_probe {
     };
 }
 
-fn check_type_union_assignability_respecting_backing_type(
+fn check_type_union_assignability(
     system_storage: &Ty2SystemStorage,
     left: Ty2TypeId,
     right: Ty2TypeId,
@@ -166,38 +164,10 @@ fn check_type_union_assignability_respecting_backing_type(
 
     for left_variant in left_ty.variants.iter() {
         let true_for_any = right_ty.variants.iter().any(|right_variant| {
-            options_equal_or_true(left_variant.backing_id, right_variant.backing_id)
+            try_merge_backing_data_kinds(left_variant.backing_id, right_variant.backing_id)
+                .is_some()
                 && callback(left_variant.id, right_variant.id)
         });
-
-        if !true_for_any {
-            return false;
-        }
-    }
-
-    true
-}
-
-fn check_type_union_assignability_without_backing_type(
-    system_storage: &Ty2SystemStorage,
-    left: Ty2TypeId,
-    right: Ty2TypeId,
-    mut callback: impl FnMut(Ty2VariantId, Ty2VariantId) -> bool,
-) -> bool {
-    // TODO: No unwrap
-    let left_ty = system_storage.types.get(left).unwrap();
-    let right_ty = system_storage.types.get(right).unwrap();
-
-    // If the right type has no variants, nothing can be assigned to it
-    if right_ty.variants.len() == 0 {
-        return false;
-    }
-
-    for left_variant in left_ty.variants.iter() {
-        let true_for_any = right_ty
-            .variants
-            .iter()
-            .any(|right_variant| callback(left_variant.id, right_variant.id));
 
         if !true_for_any {
             return false;
@@ -214,7 +184,7 @@ enum ComparisonKind {
     Equal,
 }
 
-fn check_type_variant_assignability_respecting_backing_type(
+fn check_type_variant_assignability(
     system_storage: &Ty2SystemStorage,
     left: Ty2VariantId,
     right: Ty2VariantId,
@@ -229,7 +199,7 @@ fn check_type_variant_assignability_respecting_backing_type(
     )
 }
 
-fn check_type_variant_subset_respecting_backing_type(
+fn check_type_variant_subset(
     system_storage: &Ty2SystemStorage,
     left: Ty2VariantId,
     right: Ty2VariantId,
@@ -332,12 +302,24 @@ fn compare_two_types(
         }
         // AttribSets aren't assignable/subset/equal to anything else
         (AttribSet(_), _, _) => false,
+
+        // FunctionScopes may be assignable to other FunctionScopes
+        (FunctionScope(set1), FunctionScope(set2), Kind::Assignable) => {
+            is_attib_set_assignable(set1, set2, callback)
+        }
+        // FunctionScopes may be subset/equal to other FunctionScopes
+        (FunctionScope(set1), FunctionScope(set2), Kind::Subset)
+        | (FunctionScope(set1), FunctionScope(set2), Kind::Equal) => {
+            is_attrib_set_subset_or_equal(set1, set2, callback)
+        }
+        // FunctionScopes aren't assignable/subset/equal to anything else
+        (FunctionScope(_), _, _) => false,
     }
 }
 
-fn is_attib_set_assignable(
-    left: &OrderedSet<Arc<str>, Ty2FieldSelect>,
-    right: &OrderedSet<Arc<str>, Ty2FieldSelect>,
+fn is_attib_set_assignable<Key: Clone + Eq>(
+    left: &OrderedSet<Key, Ty2TypeId>,
+    right: &OrderedSet<Key, Ty2TypeId>,
     mut callback: impl FnMut(Ty2TypeId, Ty2TypeId) -> bool,
 ) -> bool {
     // Every key on the left has a matching key on the right
@@ -346,11 +328,7 @@ fn is_attib_set_assignable(
             return false;
         };
 
-        if value1.kind != value2.kind {
-            return false;
-        }
-
-        if !callback(value1.id, value2.id) {
+        if !callback(*value1, *value2) {
             return false;
         }
     }
@@ -358,9 +336,9 @@ fn is_attib_set_assignable(
     true
 }
 
-fn is_attrib_set_subset_or_equal(
-    left: &OrderedSet<Arc<str>, Ty2FieldSelect>,
-    right: &OrderedSet<Arc<str>, Ty2FieldSelect>,
+fn is_attrib_set_subset_or_equal<Key: Clone + Eq>(
+    left: &OrderedSet<Key, Ty2TypeId>,
+    right: &OrderedSet<Key, Ty2TypeId>,
     mut callback: impl FnMut(Ty2TypeId, Ty2TypeId) -> bool,
 ) -> bool {
     // The number of keys is the same
@@ -374,11 +352,7 @@ fn is_attrib_set_subset_or_equal(
             return false;
         };
 
-        if value1.kind != value2.kind {
-            return false;
-        }
-
-        if !callback(value1.id, value2.id) {
+        if !callback(*value1, *value2) {
             return false;
         }
     }
@@ -388,19 +362,19 @@ fn is_attrib_set_subset_or_equal(
 
 impl_relationship_probe!(
     TypeAssignabilityProbe,
-    check_type_union_assignability_respecting_backing_type,
-    check_type_variant_assignability_respecting_backing_type
+    check_type_union_assignability,
+    check_type_variant_assignability
 );
 
 impl_relationship_probe!(
     TypeSubsetProbe,
-    check_type_union_assignability_respecting_backing_type,
-    check_type_variant_subset_respecting_backing_type
+    check_type_union_assignability,
+    check_type_variant_subset
 );
 
 impl_relationship_probe!(
     TypeEqualityProbe,
-    check_type_union_assignability_respecting_backing_type,
+    check_type_union_assignability,
     check_type_variant_equality
 );
 
@@ -482,7 +456,13 @@ impl<'a> TypeRecursionProbe<'a> {
 
                 Ty2TypeVariantKind::AttribSet(set) => {
                     for (_, value) in set.iter() {
-                        let key_result = self.query_for_type(types, value.id);
+                        let key_result = self.query_for_type(types, *value);
+                        process_result!(key_result);
+                    }
+                }
+                Ty2TypeVariantKind::FunctionScope(scope) => {
+                    for (_, value) in scope.iter() {
+                        let key_result = self.query_for_type(types, *value);
                         process_result!(key_result);
                     }
                 }
