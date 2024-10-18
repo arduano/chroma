@@ -67,6 +67,7 @@ impl Ty2SystemStorage {
 pub type Ty2TypeId = Id<Ty2Type>;
 pub type Ty2VariantId = Id<Ty2TypeVariant>;
 pub type Ty2BackingId = Id<Ty2BackingStructure>;
+pub type Ty2BackingVariantId = Id<Ty2BackingStructureVariant>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Ty2Handle {
@@ -101,8 +102,8 @@ pub struct Ty2TypeVariant {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Ty2BackingDataKind {
-    AccessBackingData(Id<Ty2BackingStructureVariant>),
-    ConstantWithMatchingBackingData(Id<Ty2BackingStructureVariant>),
+    AccessBackingData(Ty2BackingVariantId),
+    ConstantWithMatchingBackingData(Ty2BackingVariantId),
     ConstantWithoutBackingData,
     VirtualTypeOnly,
 }

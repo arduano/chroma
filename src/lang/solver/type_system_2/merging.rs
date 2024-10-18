@@ -30,14 +30,86 @@ pub enum MergeInstruction {
         key: Arc<str>,
         procedure: MergeProcedure,
     },
-    Nothing,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MergeProcedureError {
+    Unresolved,
+    DifferentBackingData,
 }
 
 // pub fn merge_type_into_type(
 //     system: &mut Ty2System,
 //     current: Ty2TypeId,
 //     incoming: Ty2TypeId,
-// ) -> MergeProcedure {
+// ) -> Result<MergeProcedure, MergeProcedureError> {
+//     if let Some(merged) = merge_type_into_type_without_backing_changes(system, current, incoming) {
+//         // If we can merge without backing changes, we can just merge without any actions
+//         return Ok(MergeProcedure {
+//             resulting_type_id: merged,
+//             conditions: Vec::new(),
+//         });
+//     }
+
+//     let current = system
+//         .storage
+//         .types
+//         .get(current)
+//         .ok_or(MergeProcedureError::Unresolved)?;
+//     let incoming = system
+//         .storage
+//         .types
+//         .get(incoming)
+//         .ok_or(MergeProcedureError::Unresolved)?;
+
+//     let name = current.name.clone();
+//     let span = current.span.clone();
+//     let backing = current.backing;
+
+//     let current_variants = current.variants.clone();
+//     let incoming_variants = incoming.variants.clone();
+
+//     let mut new_variants = Vec::new();
+
+//     for incoming_variant in incoming_variants.iter() {
+//         let matching_current_variant = current_variants
+//             .iter()
+//             .find(|v| v.backing_id == incoming_variant.backing_id);
+
+//         // If there is a matching variant, attempt to merge them together as-is
+//         if let Some(matching_current_variant) = matching_current_variant {
+//             let merged_ids = try_merge_backing_data_kinds(
+//                 matching_current_variant.backing_id,
+//                 incoming_variant.backing_id,
+//             );
+
+//             let new_variant = merge_type_variant_into_type_without_backing_changes(
+//                 system,
+//                 matching_current_variant.id,
+//                 incoming_variant.id,
+//             );
+
+//             // If they successfully merge, add them to the new variants and continue
+//             if let (Some(new_variant), Some(merged_ids)) = (new_variant, merged_ids) {
+//                 new_variants.push(Ty2VariantChoice {
+//                     backing_id: merged_ids,
+//                     id: new_variant,
+//                 });
+//                 continue;
+//             }
+
+
+//         }
+//     }
+
+//     let new_type = Ty2Type {
+//         name,
+//         span,
+//         variants: new_variants,
+//         backing,
+//     };
+
+//     Some(system.storage.types.add_value(new_type))
 // }
 
 pub fn merge_type_into_type_without_backing_changes(
@@ -56,7 +128,8 @@ pub fn merge_type_into_type_without_backing_changes(
         return None;
     }
 
-    let mut pairs = Vec::new();
+    let mut pairs = Vec::new(); // Pairs to be merged together
+    let mut extras = Vec::new(); // Extra types that don't need merging and can be inserted
 
     for incoming_variant in incoming.variants.iter() {
         // Find a matching variant in the current type
@@ -64,16 +137,31 @@ pub fn merge_type_into_type_without_backing_changes(
             .variants
             .iter()
             .find(|v| v.backing_id == incoming_variant.backing_id);
-        let Some(current_variant) = current_variant else {
-            // If there is no matching variant, then we can't merge without backing changes
-            return None;
-        };
 
-        pairs.push((current_variant.clone(), incoming_variant.clone()));
+        if let Some(current_variant) = current_variant {
+            // If there is a matching variant, then we can merge them together.
+            pairs.push((current_variant.clone(), incoming_variant.clone()));
+        } else {
+            // If there is no matching variant, then we can just insert it in without merging
+            extras.push(incoming_variant.clone());
+        }
     }
 
-    let mut new_variants = Vec::new();
+    // Include the extras
+    let mut new_variants = extras;
 
+    // Push in all the current variants that didn't get pairs
+    for current_variant in current.variants.iter() {
+        let is_in_pairs = pairs.iter().any(|(a, _)| a.id == current_variant.id);
+        if !is_in_pairs {
+            new_variants.push(Ty2VariantChoice {
+                backing_id: current_variant.backing_id,
+                id: current_variant.id,
+            });
+        }
+    }
+
+    // Merge and push in the pairs
     for (current_variant, incoming_variant) in pairs {
         let merged_ids =
             try_merge_backing_data_kinds(current_variant.backing_id, incoming_variant.backing_id);
