@@ -63,7 +63,7 @@ async fn main() {
 
     let tokens = parse_file(file_ref, &text);
 
-    // let mut module_counter = IdCounter::new();
+    let mut module_counter = IdCounter::new();
 
     // dbg!(&tokens);
 
@@ -76,28 +76,28 @@ async fn main() {
 
     dbg!(&ast);
 
-    let function = &ast.statements.first().unwrap().as_ref().unwrap().item;
-    let SyDeclaration::Function(function) = function else {
-        panic!("Expected function");
-    };
+    // let function = &ast.statements.first().unwrap().as_ref().unwrap().item;
+    // let SyDeclaration::Function(function) = function else {
+    //     panic!("Expected function");
+    // };
 
-    let mut function_linking_compilation = FunctionLinkingCompilation {
-        errors: &mut error_collector,
-    };
+    // let mut function_linking_compilation = FunctionLinkingCompilation {
+    //     errors: &mut error_collector,
+    // };
 
-    let linked_function = parse_function_ast(function, vec![], &mut function_linking_compilation);
+    // let linked_function = parse_function_ast(function, vec![], &mut function_linking_compilation);
 
-    println!("{}", linked_function);
+    // println!("{}", linked_function);
 
-    let block_links = AnBlockLinks::analyze_block_links_for(&linked_function);
-    dbg!(&block_links);
+    // let block_links = AnBlockLinks::analyze_block_links_for(&linked_function);
+    // dbg!(&block_links);
 
-    let variable_data_sources =
-        AnVariableDataSources::analyze_variable_data_sources_for(&linked_function, &block_links);
-    dbg!(&variable_data_sources);
+    // let variable_data_sources =
+    //     AnVariableDataSources::analyze_variable_data_sources_for(&linked_function, &block_links);
+    // dbg!(&variable_data_sources);
 
-    // let mut compilation = ModuleGroupCompilation::new(module_counter.next(), HashMap::new());
-    // let _type_ids = compilation.compile_in_ast(None, &ast);
+    let mut compilation = ModuleGroupCompilation::new(module_counter.next(), HashMap::new());
+    let _type_ids = compilation.compile_in_ast(None, &ast);
 
     // let a_li_type_id = compilation.linked_type_definitions.keys().find(|k| {
     //     let Some(name) = &compilation.linked_type_definitions[k].name else {

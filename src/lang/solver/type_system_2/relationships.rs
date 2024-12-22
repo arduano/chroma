@@ -238,6 +238,10 @@ fn compare_two_types(
     use Ty2TypeVariantKind::*;
 
     match (&left_ty.kind, &right_ty.kind, kind) {
+        (Referential(_), _, _) | (_, Referential(_), _) => {
+            panic!("Referential types should be normalized at this point")
+        }
+
         // Any is equal to any
         (Any, Any, Kind::Equal) => true,
         // Anything is assignable/subset to any
@@ -448,6 +452,10 @@ impl<'a> TypeRecursionProbe<'a> {
             };
 
             match &variant.kind {
+                Ty2TypeVariantKind::Referential(_) => {
+                    panic!("Referential types should be normalized at this point")
+                }
+
                 Ty2TypeVariantKind::Any
                 | Ty2TypeVariantKind::String(_)
                 | Ty2TypeVariantKind::Number(_)

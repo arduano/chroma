@@ -1,35 +1,35 @@
-fn test(a: number) {
-    a + 1;
-    let b = 1;
+// fn test(a: number) {
+//     a + 1;
+//     let b = 1;
 
-    if (a > a) {
-        a + 2;
-        b = 2;
-    } else {
-        a + 1;
-        b = 3;
-    }
-
-    return b;
-}
-
-// type A = {
-//     a: {
-//         a: {
-//             a: C
-//         },
-//         b: string
+//     if (a > a) {
+//         a + 2;
+//         b = 2;
+//     } else {
+//         a + 1;
+//         b = 3;
 //     }
-// };
 
-// type C = D;
-// type D = A;
+//     return b;
+// }
 
-// type B = {
-//     a: {
-//         a: B,
-//     },
-// };
+type A = {
+    a: {
+        a: {
+            a: C
+        },
+        b: string
+    }
+};
+
+type C = D;
+type D = A;
+
+type B = {
+    a: {
+        a: B,
+    },
+};
 
 // type Foo = { a: string, rec: Foo | string } | number | Bar | string;
 // type Bar = { a: "string", rec: Bar };
@@ -50,120 +50,120 @@ fn test(a: number) {
 //     };
 // }
 
-type Foo = {
-    a: string,
-    b: string,
-} | {
-    a: number,
-    b: string,
-} | {
-    a: string,
-    b: number,
-} | {
-    a: number,
-    b: number,
-};
+// type Foo = {
+//     a: string,
+//     b: string,
+// } | {
+//     a: number,
+//     b: string,
+// } | {
+//     a: string,
+//     b: number,
+// } | {
+//     a: number,
+//     b: number,
+// };
 
-type Foo = {
-    a: string | number,
-    b: string | number,
-};
-
-
-
-type Foo = {
-    a: 1,
-    b: 1,
-} | {
-    a: 2,
-    b: 1,
-} | {
-    a: 3,
-    b: 1,
-} | {
-    a: 1,
-    b: 2,
-} | {
-    a: 2,
-    b: 2,
-} | {
-    a: 3,
-    b: 2,
-} | {
-    a: 1,
-    b: 3,
-} | {
-    a: 2,
-    b: 3,
-} | {
-    a: 3,
-    b: 3,
-};
-
-
-type Foo = {
-    a: 1,
-    b: 1,
-} | {
-    a: 2,
-    b: 1,
-} | {
-    a: 3,
-    b: 1,
-} | {
-    a: 1,
-    b: 2,
-} | {
-    a: 2,
-    b: 2,
-} | {
-    a: 3,
-    b: 2,
-} | {
-    a: 1,
-    b: 3,
-} | {
-    a: 2 | 3,
-    b: 3,
-};
+// type Foo = {
+//     a: string | number,
+//     b: string | number,
+// };
 
 
 
-type Foo = {
-    a: 1 | 2 | 3,
-    b: 1,
-} | {
-    a: 1,
-    b: 2 | 3,
-} | {
-    a: 2 | 3,
-    b: 2,
-} | {
-    a: 2 | 3,
-    b: 3,
-};
+// type Foo = {
+//     a: 1,
+//     b: 1,
+// } | {
+//     a: 2,
+//     b: 1,
+// } | {
+//     a: 3,
+//     b: 1,
+// } | {
+//     a: 1,
+//     b: 2,
+// } | {
+//     a: 2,
+//     b: 2,
+// } | {
+//     a: 3,
+//     b: 2,
+// } | {
+//     a: 1,
+//     b: 3,
+// } | {
+//     a: 2,
+//     b: 3,
+// } | {
+//     a: 3,
+//     b: 3,
+// };
+
+
+// type Foo = {
+//     a: 1,
+//     b: 1,
+// } | {
+//     a: 2,
+//     b: 1,
+// } | {
+//     a: 3,
+//     b: 1,
+// } | {
+//     a: 1,
+//     b: 2,
+// } | {
+//     a: 2,
+//     b: 2,
+// } | {
+//     a: 3,
+//     b: 2,
+// } | {
+//     a: 1,
+//     b: 3,
+// } | {
+//     a: 2 | 3,
+//     b: 3,
+// };
 
 
 
-type Foo = {
-    a: 1,
-    b: 1 | 2 | 3,
-} | {
-    a: 1 | 2 | 3,
-    b: 1,
-};
+// type Foo = {
+//     a: 1 | 2 | 3,
+//     b: 1,
+// } | {
+//     a: 1,
+//     b: 2 | 3,
+// } | {
+//     a: 2 | 3,
+//     b: 2,
+// } | {
+//     a: 2 | 3,
+//     b: 3,
+// };
 
-type Foo = {
-    a: 1 | 2 | 3,
-    b: 1 | 2 | 3,
-};
 
-type Bar = {
-    a: 1,
-    b: 'stuff',
-    c: true,
-} | {
-    a: 2,
-    b: 'other',
-    c: true,
-}
+
+// type Foo = {
+//     a: 1,
+//     b: 1 | 2 | 3,
+// } | {
+//     a: 1 | 2 | 3,
+//     b: 1,
+// };
+
+// type Foo = {
+//     a: 1 | 2 | 3,
+//     b: 1 | 2 | 3,
+// };
+
+// type Bar = {
+//     a: 1,
+//     b: 'stuff',
+//     c: true,
+// } | {
+//     a: 2,
+//     b: 'other',
+//     c: true,
+// }

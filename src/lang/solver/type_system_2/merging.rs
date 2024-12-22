@@ -98,7 +98,6 @@ pub enum MergeProcedureError {
 //                 continue;
 //             }
 
-
 //         }
 //     }
 
@@ -188,6 +187,7 @@ pub fn merge_type_into_type_without_backing_changes(
         span,
         variants: new_variants,
         backing,
+        normalized_references: true,
     };
 
     Some(system.storage.types.add_value(new_type))
@@ -202,6 +202,10 @@ pub fn merge_type_variant_into_type_without_backing_changes(
     let incoming = system.storage.type_variants.get(incoming_id)?;
 
     match (&current.kind, &incoming.kind) {
+        (Ty2TypeVariantKind::Referential(_), _) | (_, Ty2TypeVariantKind::Referential(_)) => {
+            panic!("Referential types should be normalized at this point")
+        }
+
         // Any can be merged with any
         (Ty2TypeVariantKind::Any, Ty2TypeVariantKind::Any) => Some(current_id),
         // Any can't be merged with anything else
@@ -289,6 +293,7 @@ pub fn merge_type_variant_into_type_without_backing_changes(
                     let new_variant = Ty2TypeVariant {
                         span,
                         kind: Ty2TypeVariantKind::AttribSet(new_set),
+                        normalized_references: true,
                     };
 
                     Some(system.storage.type_variants.add_value(new_variant))
@@ -337,6 +342,7 @@ pub fn merge_type_variant_into_type_without_backing_changes(
                     let new_variant = Ty2TypeVariant {
                         span,
                         kind: Ty2TypeVariantKind::FunctionScope(new_set),
+                        normalized_references: true,
                     };
 
                     Some(system.storage.type_variants.add_value(new_variant))

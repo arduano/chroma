@@ -8,6 +8,7 @@ use crate::lang::tokens::Span;
 use super::{Id, ItemSet};
 
 pub mod merging;
+mod normalising;
 pub mod ordered_set;
 mod relationships;
 
@@ -92,12 +93,14 @@ pub struct Ty2Type {
     span: Option<Span>,
     variants: Vec<Ty2VariantChoice>,
     backing: Option<Ty2BackingId>,
+    normalized_references: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Ty2TypeVariant {
     span: Option<Span>,
     kind: Ty2TypeVariantKind,
+    normalized_references: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -110,6 +113,9 @@ pub enum Ty2BackingDataKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum Ty2TypeVariantKind {
+    // Temporary type for cyclical type definitions, which gets normalized away after.
+    Referential(Ty2TypeId),
+
     Any,
     String(Option<Arc<str>>),
     Number(Option<i64>),
